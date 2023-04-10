@@ -2,7 +2,7 @@ import os
 import json
 
 # Set the directory containing the JSON files
-directory = './living_and_the_son_of_death'
+directory = '../projects/living_and_the_son_of_death'
 
 # Initialize an empty dictionary to hold the merged data
 data = {}

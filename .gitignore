@@ -1,2 +1,3 @@
 noveller/projects/*
 db*
+noveller/__pycache__/

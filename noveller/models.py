@@ -1,17 +1,19 @@
 from __future__ import annotations
 from django.db import models
+import uuid
+from django.apps import apps
 
 class Book(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
-    settings = models.ManyToManyField('Setting', blank=True)
+    settings = models.ManyToManyField('Setting', blank=True, related_name='book_settings')
     
     def __str__(self):
         return self.name
 
 class StoryEvent(models.Model):
-    uuid = models.UUIDField(primary_key=True)
-    book = models.ForeignKey('Book', on_delete=models.CASCADE)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
+    book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='story_events')
     description = models.TextField(blank=True)
     date_from = models.DateField(blank=True, null=True)
     date_to = models.DateField(blank=True, null=True)
@@ -21,11 +23,10 @@ class StoryEvent(models.Model):
     def __str__(self):
         return f"Story Event: {self.description}"
 
-
 #Chapters, Outlines, Summaries
 
 class Chapter(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     books = models.ForeignKey('Book', on_delete=models.CASCADE)
     chapter_num = models.IntegerField()
     chapter_title = models.CharField(max_length=200, blank=True)
@@ -37,7 +38,7 @@ class Chapter(models.Model):
 
 
 class ChapterPart(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     part_title = models.CharField(max_length=200, blank=True)
     part_num = models.IntegerField()
     teller = models.OneToOneField('StoryTeller', on_delete=models.SET_NULL, blank=True, null=True)
@@ -53,7 +54,7 @@ class ChapterPart(models.Model):
 
 
 class ChapterOutline(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     for_chapter = models.OneToOneField('Chapter', on_delete=models.SET_NULL, blank=True, null=True)
     summary = models.TextField(blank=True)
     story_event = models.ManyToManyField('StoryEvent', blank=True)
@@ -64,7 +65,7 @@ class ChapterOutline(models.Model):
 
 
 class ChapterPartOutline(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200, blank=True)
     for_chapter_part = models.OneToOneField('ChapterPart', on_delete=models.SET_NULL, blank=True, null=True)
     chapter_summary = models.TextField(blank=True)
@@ -74,7 +75,7 @@ class ChapterPartOutline(models.Model):
         return f"Outline for {self.for_chapter_part}"
 
 class ChapterPartSummaryItem(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     for_chapter_part_outline = models.ForeignKey('ChapterPartOutline', on_delete=models.SET_NULL, blank=True, null=True)
     content = models.TextField(blank=True)
     
@@ -85,7 +86,7 @@ class ChapterPartSummaryItem(models.Model):
 # Background, Setting and Research
 
 class Setting(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     books = models.ManyToManyField('Book', blank=True)
     bg_events = models.ManyToManyField('BGEvent', blank=True)
@@ -98,7 +99,7 @@ class Setting(models.Model):
 
 
 class BGResearch(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     bg_research = models.TextField(blank=True)
     deeper_bg_research_topic = models.ManyToManyField('DeeperBGResearchTopic', blank=True)
 
@@ -106,7 +107,7 @@ class BGResearch(models.Model):
         return f"{self.bg_research}"
     
 class DeeperBGResearchTopic(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     topic = models.CharField(max_length=200)
     notes = models.TextField(blank=True)
     
@@ -114,7 +115,7 @@ class DeeperBGResearchTopic(models.Model):
         return self.notes
 
 class BGEvent(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     event = models.CharField(max_length=200)
     date_from = models.DateField(blank=True, null=True)
     date_to = models.DateField(blank=True, null=True)
@@ -125,7 +126,7 @@ class BGEvent(models.Model):
         return self.event
 
 class Faction(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     members = models.ManyToManyField('CharacterVersion', blank=True)
@@ -134,7 +135,7 @@ class Faction(models.Model):
         return self.name
     
 class CharacterRelatedSettingTopic(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     setting = models.ForeignKey('Setting', on_delete=models.SET_NULL, blank=True, null=True)
     name = models.CharField(max_length=255)
     character = models.ForeignKey('CharacterVersion', on_delete=models.SET_NULL, blank=True, null=True)
@@ -150,7 +151,7 @@ class CharacterRelatedSettingTopic(models.Model):
         return f"Setting as it relates to {self.character}"
 
 class Character(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     book = models.ForeignKey('Book', on_delete=models.CASCADE)
     name = models.CharField(max_length=200)
     age_at_start = models.IntegerField(null=True, blank=True)
@@ -170,7 +171,7 @@ class Character(models.Model):
 
 
 class CharacterVersion(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     for_character = models.ForeignKey('Character', blank=True, on_delete=models.SET_NULL, null=True)
     version_num = models.IntegerField()
     version_name = models.CharField(max_length=200, blank=True, null=True)
@@ -205,7 +206,7 @@ class ChangesFromPreviousCharacterVersion(CharacterVersion):
 
 
 class CharacterRelationship(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     relationship_from = models.OneToOneField('Character', on_delete=models.CASCADE, related_name='has_relationship')
     relationship_to = models.OneToOneField('Character', on_delete=models.CASCADE, related_name='character_relationship')
     age_started = models.IntegerField()
@@ -219,7 +220,7 @@ class CharacterRelationship(models.Model):
 
 
 class Appearance(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     distinguishing_features = models.TextField()
     eyes = models.CharField(max_length=200)
     hair = models.CharField(max_length=200)
@@ -232,7 +233,7 @@ class Appearance(models.Model):
 
 
 class AppearanceModifiers(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     clothing = models.TextField(blank=True, null=True)
     hair_head_options = models.TextField(blank=True, null=True)
     perfume = models.CharField(max_length=200, blank=True, null=True)
@@ -246,7 +247,7 @@ class AppearanceModifiers(models.Model):
 
 
 class CharacterTrait(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
     
@@ -255,7 +256,7 @@ class CharacterTrait(models.Model):
 
 
 class Drive(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
     
@@ -263,7 +264,7 @@ class Drive(models.Model):
         return self.name
 
 class Fear(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
     
@@ -271,7 +272,7 @@ class Fear(models.Model):
         return self.name
 
 class Belief(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
     
@@ -279,7 +280,7 @@ class Belief(models.Model):
         return self.name
     
 class InternalConflict(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     rel = models.CharField(max_length=200)
     character_version = models.OneToOneField('CharacterVersion', on_delete=models.CASCADE, blank=True, null=True, related_name='internal_conflict_character_version')
@@ -290,7 +291,7 @@ class InternalConflict(models.Model):
 
 
 class LitStyleGuide(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     character = models.ForeignKey('Character', on_delete=models.CASCADE)
     character_version = models.ForeignKey('CharacterVersion', on_delete=models.SET_NULL, blank=True, null=True)
@@ -307,7 +308,7 @@ class LitStyleGuide(models.Model):
 
 
 class StoryTeller(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     character = models.ForeignKey('CharacterVersion', on_delete=models.CASCADE)
     style = models.ForeignKey('LitStyleGuide', on_delete=models.CASCADE)
     description = models.TextField(blank=True, null=True)
@@ -316,7 +317,7 @@ class StoryTeller(models.Model):
         return f"{self.character} style as a story teller"
 
 class Theme(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
     
@@ -324,7 +325,7 @@ class Theme(models.Model):
         return self.name
 
 class Perspective(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
     lit_style_guides = models.ForeignKey('LitStyleGuide', on_delete=models.CASCADE, related_name='perspectives')
@@ -334,7 +335,7 @@ class Perspective(models.Model):
 
 
 class LiteraryTraits(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
     lit_style_guide_traits = models.ManyToManyField('LitStyleGuide', related_name='litstyleguide_traits', blank=True)
@@ -346,7 +347,7 @@ class LiteraryTraits(models.Model):
 # Other
 
 class File(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     file_location = models.CharField(max_length=255)
     file_content = models.TextField(blank=True, null=True)
     
@@ -355,11 +356,10 @@ class File(models.Model):
 
 
 class Location(models.Model):
-    uuid = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
     character_versions = models.ManyToManyField('CharacterVersion', blank=True, related_name='locations_in_character_version')
     
     def __str__(self):
         return self.name
-

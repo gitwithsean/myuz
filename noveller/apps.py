@@ -7,9 +7,9 @@ class NovellerConfig(AppConfig):
     name = "noveller"
     
     def ready(self):
-        from phusis.models import Agent
+        from phusis.models import AbstractAgent
         for model in apps.get_models():
             if model.__module__ == self.name+'.models':
                 field_name = 'responsibilities'
-                field = ManyToManyField(Agent, blank=True)
+                field = ManyToManyField(AbstractAgent, blank=True)
                 setattr(model, field_name, field)

@@ -657,3 +657,180 @@ Questions:
 How will you ensure the privacy and security of user data, particularly for sensitive or personal writing projects?
 Will the platform offer support for multiple languages and accommodate users from diverse linguistic backgrounds?
 As an AI assistant, I believe I can be a valuable collaborator for such projects. I can help users explore different facets of language and provide suggestions, guidance, and insights to enhance their work. The interconnectedness of the various features you've mentioned, combined with the ability to tap into the depth of language and creativity, makes the Phusis project truly fascinating and full of potential.
+
+
+
+
+
+I have a question about this project you might be able to help me with
+
+As you know, I have a large and complex data base of information about a story. These are some of what is recorded in the db
+
+* Book
+** LiteraryStyles
+*** LiteraryInspirations
+*** Perspectives
+*** Traits
+*** AvoidTraits
+*** WritingSamples
+** PlotEvents
+** BackgroundSettings
+*** BackgroundEvents
+*** Factions
+*** BackgroundsResearch
+** Chapters
+*** ChapterParts
+**** ChapterPartBlocks
+** Characters
+*** CharacterVersionAtAge
+**** Strenghts
+**** Weaknesses
+**** Drives
+**** Fears
+**** RelationshipsWithOtherCharacters
+**** LiteraryStyleWhenTheyNarrate
+
+------------------------------------------------------------------
+ 
+Seán Ryan
+
+What I want to do is to create a 'swarm' of GPT agents with different functions, to take the information that the user has partly filled in in that database, and fill it out even more. These are the agents I'm thinking of 
+
+* 'PoeticsGPTAgents'
+** different versions of agents concerned with narrative technique
+** different versions of agents concerned with poetic literacy
+** different versions of agents concerned with, like yourself, literary/linguistic theory
+** different versions of agents concerned with (DVOACW) exploring themes
+** DVOACW metaphoric / analogistic approaches to the content
+
+* 'StructuralGPTAgents' 
+** DVOACW story plotting
+** DVOACW story structure (r.g. experimental and/or tried and tested structures)
+** DVOACW fleshing out the story structure and plotting based on the other agents in this 'group
+
+* 'CharacterGPTAgents'
+** DVOACW fleshing out character profiles the user hasn't yet fleshed out
+** DVOACW imagining themselves as a character based on how the user had described them, becoming available to have conversations with other CharacterGPTAgents, talk to the user/each other about how they might respond to events in the story, and present dialog that would match their character
+
+* 'ResearchGPTAgents'
+** DVOACW thinking of research topics that should be researched for the book, and how to initially approach that research
+** DVOACW doing the background research on those specific topics
+** DVOACW 
+
+* 'InterdisciplinaryAgents'
+** These would be relatively neutral agents that would consider the output from the above agents and make sure they are not deviating from each other, that each of them are serving towards a common goal in a cohesive way, that research informs setting, informs, themes, informs style etc. Not quite like a director of a film, more life assistant directors
+** They will provide 'grades' to the what is produced, but less about quality and more about how close they are to cohering with the work of the other agents working in different disciplines. With 0.5 being neutral, 1 being exemplary and 0 meaning heading in the wrong direction.
+
+* 'QualityEvaluationAgents'
+** DVOACW evaluating 'poetics' to rate the output of the other agents and suggest improvements
+** DVOACW evaluating 'story structure' to rate the output of the other agents and suggest ways entertainment, gripping value of narratives, or whatever else, could be improved
+** DVOACW evaluating the output of the CharacterGPTAgents
+
+What do you think of this? Is there anything different you would do about this? Are there other kinds of agents you could suggest?
+
+------------------------------------------------------------------
+
+GPT4
+
+I think your idea of creating a "swarm" of GPT agents with different functions is an innovative and promising approach to enhancing the writing process. By having specialized AI agents focusing on different aspects of the story, you can ensure that each element receives dedicated attention and expertise.
+
+Here are some suggestions and additional agent types to consider:
+
+World-Building GPT Agents: These agents could focus on developing the story's setting, including geography, cultures, history, technology, magic systems, etc. They would work closely with Research GPT Agents to ensure that the world-building is consistent, coherent, and well-researched.
+
+Theme-Exploration GPT Agents: These agents could analyze the story's themes and suggest ways to incorporate them into the plot, characters, and setting more effectively. They would help to ensure that the themes are consistently developed and resonate throughout the story.
+
+Conflict and Resolution GPT Agents: These agents could focus on developing the story's conflicts, both internal and external, and help to create satisfying resolutions for them. They would work closely with Character GPT Agents and Structural GPT Agents to ensure that the conflicts drive the plot and character development.
+
+Voice and Style GPT Agents: These agents could assist in refining the narrative voice and writing style of the story. They would help to ensure that the voice is consistent, engaging, and appropriate for the story's genre and target audience. They could also suggest stylistic techniques and devices to enhance the story's overall impact.
+
+Editing and Revision GPT Agents: These agents would focus on improving the story's overall structure, pacing, and clarity. They could provide feedback on areas that may need tightening, expansion, or reorganization, as well as identifying inconsistencies or plot holes.
+
+Remember that effective communication and collaboration among the different GPT agents will be crucial for the success of this project. Consider creating an overarching "Coordinator GPT Agent" that can manage the interactions between the various specialized agents and ensure that they're working together effectively and cohesively.
+
+Overall, your plan for a multi-agent system to aid in creative writing is ambitious and has the potential to significantly enhance the writing process by providing specialized expertise in various aspects of storytelling.
+
+------------------------------------------------------------------
+ 
+Seán Ryan
+
+Thank you very much, I will definitely take your suggestions into consideration and thank you for the encouragement. It is a lot of work and i'm not sure it will work out very well in the end!
+
+Can I remind you of this?
+
+As you know, I have a large and complex data base of information about a story. These are some of what is recorded in the db
+
+* Book
+** LiteraryStyles
+*** LiteraryInspirations
+*** Perspectives
+*** Traits
+*** AvoidTraits
+*** WritingSamples
+** PlotEvents
+** BackgroundSettings
+*** BackgroundEvents
+*** Factions
+*** BackgroundsResearch
+** Chapters
+*** ChapterParts
+**** ChapterPartBlocks
+** Characters
+*** CharacterVersionAtAge
+**** Strenghts
+**** Weaknesses
+**** Drives
+**** Fears
+**** RelationshipsWithOtherCharacters
+**** LiteraryStyleWhenTheyNarrate
+
+do you have any suggestions on other elements I could add to this schema to help with the project?
+
+------------------------------------------------------------------
+
+GPT4
+
+Your existing schema is already quite comprehensive, but here are some additional elements you might consider adding to further enhance the depth and complexity of your story:
+
+* Book
+** Themes
+*** Central Themes
+*** Sub-themes
+*** Motifs
+** Genre and Sub-genre
+**Target Audience
+
+* LiteraryStyles
+** Tone and Mood
+** Imagery and Symbolism
+** Pacing
+
+* PlotEvents
+** Subplots
+** Foreshadowing
+** Climax
+** Resolution
+
+* BackgroundSettings
+** Culture and Customs
+** Languages and Dialects
+** Economy
+** Government and Politics
+** Religion and Beliefs
+** Climate and Geography
+** Flora and Fauna
+
+* Chapters
+** Chapter Goals (What should be accomplished in each chapter?)
+** Chapter Summaries
+** Point of View (Which character's perspective is the chapter told from?)
+
+* Characters
+** Physical Appearance
+** Background and History
+** Beliefs and Values
+** Goals and Motivations
+** Character Arcs (How do the characters grow and change throughout the story?)
+** Conflicts (Internal and External)
+** Voice and Dialogue Style
+** Adding these elements to your schema can help to provide a more detailed and nuanced understanding of your story, allowing you and your GPT agents to develop a richer, more engaging narrative.

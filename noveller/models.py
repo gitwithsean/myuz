@@ -7,13 +7,16 @@ class Book(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     settings = models.ManyToManyField('Setting', blank=True, related_name='book_settings')
+    events = models.ManyToManyField('StoryEvent', blank=True, null=True, related_name='books_events')
+    chapters = models.ManyToManyField('Chapter', blank=True, null=True, related_name='books_chapters')
+    characters = models.ManyToManyField('Character', blank=True, null=True, related_name='characters_book_characters')
     
     def __str__(self):
         return self.name
 
 class StoryEvent(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
-    book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='story_events')
+    book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_story_events')
     description = models.TextField(blank=True)
     date_from = models.DateField(blank=True, null=True)
     date_to = models.DateField(blank=True, null=True)
@@ -26,7 +29,7 @@ class StoryEvent(models.Model):
 #Chapters, Outlines, Summaries
 class Chapter(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
-    books = models.ForeignKey('Book', on_delete=models.CASCADE)
+    books = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='book_characters')
     chapter_num = models.IntegerField()
     chapter_title = models.CharField(max_length=200, blank=True)
     chapter_file = models.OneToOneField('File', on_delete=models.SET_NULL, blank=True, null=True)
@@ -143,20 +146,18 @@ class CharacterRelatedSettingTopic(models.Model):
 
 class Character(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
-    book = models.ForeignKey('Book', on_delete=models.CASCADE)
+    book = models.ManyToManyField('Book')
     name = models.CharField(max_length=200)
     age_at_start = models.IntegerField(null=True, blank=True)
     gender = models.CharField(max_length=200, blank=True, null=True)
     sex = models.CharField(max_length=200, blank=True, null=True)
     sexuality = models.CharField(max_length=200, blank=True, null=True)
-    origin = models.CharField(max_length=200, blank=True, null=True)
+    origin = models.TextField(blank=True, null=True)
     representative_of = models.ManyToManyField('Theme', blank=True)
     permanent_characteristics = models.TextField(blank=True, null=True)
+    versions = models.ManyToManyField('CharacterVersion', blank=True, null=True, related_name='+')
     elaboration = models.TextField(null=True, blank=True)
-    relationship_for = models.OneToOneField('CharacterRelationship', blank=True, on_delete=models.SET_NULL, null=True, related_name='+')
-    relationship_with = models.OneToOneField('CharacterRelationship', blank=True, on_delete=models.SET_NULL, null=True, related_name='+')
-    lit_style_guides = models.ForeignKey('LitStyleGuide', blank=True, on_delete=models.SET_NULL, null=True, related_name='style_guide_for_character_perspective')
-
+    
     def __str__(self):
         return self.name
 
@@ -180,31 +181,25 @@ class CharacterVersion(models.Model):
     fears = models.ManyToManyField('Fear', blank=True)
     beliefs = models.ManyToManyField('Belief', blank=True)
     internal_conflicts = models.ManyToManyField('InternalConflict', blank=True)
+    relationship_for = models.OneToOneField('CharacterRelationship', blank=True, on_delete=models.SET_NULL, null=True, related_name='+')
+    relationship_with = models.OneToOneField('CharacterRelationship', blank=True, on_delete=models.SET_NULL, null=True, related_name='+')
     subter = models.CharField(max_length=200, blank=True, null=True)
     elaboration = models.TextField(blank=True, null=True)
-    changes_from_previous_character_version = models.OneToOneField('ChangesFromPreviousCharacterVersion', null=True, blank=True, on_delete=models.SET_NULL)
     lit_style_guides = models.ForeignKey('LitStyleGuide', blank=True, null=True, on_delete=models.SET_NULL)
 
     def __str__(self):
         return f"{self.for_character} v{self.version_num}"
 
-    
-class ChangesFromPreviousCharacterVersion(CharacterVersion):
-    previous_character_version = models.OneToOneField('CharacterVersion', on_delete=models.CASCADE, null=True, blank=True, related_name='previous_version')
-    
-    def __str__(self):
-        return f"Changes to {self.previous_character_version}"
 
 
 class CharacterRelationship(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
-    relationship_from = models.OneToOneField('Character', on_delete=models.CASCADE, related_name='has_relationship')
-    relationship_to = models.OneToOneField('Character', on_delete=models.CASCADE, related_name='character_relationship')
+    relationship_from = models.OneToOneField('CharacterVersion', on_delete=models.CASCADE, related_name='has_relationship')
+    relationship_to = models.OneToOneField('CharacterVersion', on_delete=models.CASCADE, related_name='character_relationship')
     age_started = models.IntegerField()
     relationship_descriptors = models.TextField()
     elaboration = models.TextField(blank=True, null=True)
     character_version = models.ForeignKey('CharacterVersion', on_delete=models.CASCADE, null=True, related_name='character_versions')
-    changes_from_previous_version = models.ForeignKey('ChangesFromPreviousCharacterVersion', on_delete=models.CASCADE, null=True, related_name='character_version_changes')
 
     def __str__(self):
         return f"{self.character_version}'s relationship with {self.relationship_to}"
@@ -219,7 +214,6 @@ class Appearance(models.Model):
     build = models.CharField(max_length=200, blank=True, null=True)
     movement = models.CharField(max_length=200, blank=True, null=True)
     elaboration = models.TextField(blank=True, null=True)
-    changes_from_previous_character_version = models.OneToOneField('ChangesFromPreviousCharacterVersion', on_delete=models.CASCADE, null=True, related_name='version_appearane_change')
     character_version = models.OneToOneField('CharacterVersion', on_delete=models.CASCADE, null=True, related_name='appearance_for_character_version')
 
 
@@ -275,7 +269,6 @@ class InternalConflict(models.Model):
     name = models.CharField(max_length=200)
     rel = models.CharField(max_length=200)
     character_version = models.OneToOneField('CharacterVersion', on_delete=models.CASCADE, blank=True, null=True, related_name='internal_conflict_character_version')
-    changes_from_previous_character_version = models.OneToOneField('ChangesFromPreviousCharacterVersion', on_delete=models.CASCADE, blank=True, null=True, related_name='internal_conflict_changes_from_previous_character_version')
 
     def __str__(self):
         return self.name

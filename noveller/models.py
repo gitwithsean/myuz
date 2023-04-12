@@ -1,48 +1,120 @@
 from __future__ import annotations
 from django.db import models
 import uuid
-from django.apps import apps
+from phusis.models import *
 
 class Book(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     settings = models.ManyToManyField('Setting', blank=True, related_name='book_settings')
-    events = models.ManyToManyField('StoryEvent', blank=True, null=True, related_name='books_events')
-    chapters = models.ManyToManyField('Chapter', blank=True, null=True, related_name='books_chapters')
-    characters = models.ManyToManyField('Character', blank=True, null=True, related_name='characters_book_characters')
+    plot = models.ManyToManyField('PlotEvent', blank=True, related_name='books_events')
+    chapters = models.ManyToManyField('Chapter', blank=True, related_name='books_chapters')
+    characters = models.ManyToManyField('Character', blank=True, related_name='characters_book_characters')
+    themes = models.ManyToManyField('Theme', blank=True, related_name='book_themes')
+    genre = models.ManyToManyField('Genre', blank=True, related_name='book_genres')
+    target_audience = models.ManyToManyField('TargetAudience', blank=True, related_name='book_audiences')
     
     def __str__(self):
         return self.name
-
-class StoryEvent(models.Model):
+    
+    class Meta:
+        ordering = ['name']
+    
+class Genre(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
-    book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_story_events')
+    book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_genres')
+    name = models.CharField(max_length=200)
+    elaboration = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['name']
+    
+class TargetAudience(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
+    book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_audience')
+    name = models.CharField(max_length=200)
+    elaboration = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['name']
+
+class Plot(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
+    book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_plots')
+    title = models.CharField(max_length=200)
+    elaboration = models.TextField(blank=True, null=True)
+    events_of_plot = models.ManyToManyField('PlotEvent', blank=True)
+        
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['title']
+        
+class PlotEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
+    subplot_of = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_events', null=True)
     description = models.TextField(blank=True)
     date_from = models.DateField(blank=True, null=True)
     date_to = models.DateField(blank=True, null=True)
     order_in_story_events = models.IntegerField(blank=True, null=True)
     order_in_narrative_telling = models.IntegerField(blank=True, null=True)
-        
+    foreshadowing = models.ManyToManyField('PlotEvent', 'SubPlotEvent', blank=True)
+    is_climax_of_plot = models.BooleanField(blank=True, null=True)
+
+    def __str__(self):
+        return self.description
+
+    class Meta:
+        ordering = ['description']
+
+class SubPlot(Plot):
+    sub_plot_of = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_subplot')
+    events_of_subplot = models.ManyToManyField('SubPlotEvent', blank=True, related_name='subplots_events')
+    
+    def __str__(self):
+        return f"Subplot: {self.title}"
+    
+    class Meta:
+        ordering = ['sub_plot_of__title', 'title']
+
+class SubPlotEvent(PlotEvent):
+    subplot = models.ForeignKey('SubPlot', on_delete=models.CASCADE, related_name='subplots_events', null=True)
+    
     def __str__(self):
         return f"Story Event {self.order_in_story_events}: {self.description}"
+    
+    class Meta:
+        ordering = ['order_in_story_events']
 
 #Chapters, Outlines, Summaries
 class Chapter(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
-    books = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='book_characters')
+    book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='book_characters')
     chapter_num = models.IntegerField()
     chapter_title = models.CharField(max_length=200, blank=True)
+    chapter_goals = models.TextField(blank=True, null=True)
     chapter_file = models.OneToOneField('File', on_delete=models.SET_NULL, blank=True, null=True)
-    parts_for_chapter = models.ManyToManyField('ChapterPart', blank=True, null=True,  related_name='chapters')
+    parts_for_chapter = models.ManyToManyField('ChapterPart', blank=True, related_name='chapters')
     
     def __str__(self):
         return f"ch.{self.chapter_num}"
+    
+    class Meta:
+        ordering = ['chapter_num']
 
 
 class ChapterPart(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     part_title = models.CharField(max_length=200, blank=True)
     part_num = models.IntegerField()
+    part_goals = models.TextField(blank=True, null=True)
     teller = models.OneToOneField('StoryTeller', on_delete=models.SET_NULL, blank=True, null=True)
     location = models.ManyToManyField('Location', blank=True)
     chapter = models.ForeignKey('Chapter', on_delete=models.SET_NULL, blank=True, null=True)
@@ -51,9 +123,12 @@ class ChapterPart(models.Model):
     factions = models.ManyToManyField('Faction', blank=True)
     chapter_part_summary = models.ManyToManyField('ChapterPartSummary', blank=True)
     for_chapter = models.ForeignKey('Chapter', on_delete=models.CASCADE, blank=True, null=True, related_name='chapter_parts')
-    
+
     def __str__(self):
         return f"{self.chapter}.pt{self.part_num}"
+    
+    class Meta:
+        ordering = ['chapter__chapter_num', 'part_num']
 
 class ChapterPartSummary(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -61,22 +136,40 @@ class ChapterPartSummary(models.Model):
     for_chapter_part = models.OneToOneField('ChapterPart', on_delete=models.SET_NULL, blank=True, null=True)
     chapter_summary = models.TextField(blank=True)
     themes = models.ManyToManyField('Theme', blank=True)
+    pacing = models.ManyToManyField('Pacing', blank=True,)
     summary_items = models.ForeignKey('ChapterPartSummaryItem', on_delete=models.SET_NULL, blank=True, null=True, related_name='chapter_part_summary')
     summary_items = models.ManyToManyField('ChapterPartSummaryItem', related_name='chapter_part_summary_items')
-
+    
     def __str__(self):
         return f"{self.for_chapter_part}"
+    
+    class Meta:
+        ordering = ['for_chapter_part__chapter__chapter_num', 'for_chapter_part__part_num']
+
 
 class ChapterPartSummaryItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
-    for_chapter_part_outline = models.ForeignKey('ChapterPartSummary', on_delete=models.SET_NULL, blank=True, null=True)
+    for_chapter_part = models.ForeignKey('ChapterPartSummary', on_delete=models.SET_NULL, blank=True, null=True)
     content = models.TextField(blank=True)
     order_in_part = models.IntegerField(blank=True, default=0)
     
     def __str__(self):
-        return f"{self.for_chapter_part_outline}-{self.order_in_part}"
+        return f"{self.for_chapter_part}-{self.order_in_part}: {self.content}"
+    
+    class Meta:
+        ordering = ['for_chapter_part__for_chapter_part__chapter__book','for_chapter_part__for_chapter_part__chapter__chapter_num', 'for_chapter_part__for_chapter_part__part_num', 'order_in_part']
 
-
+class Pacing(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
+    name = models.CharField(max_length=200, blank=True)
+    elaboration = models.TextField(blank=True)
+    
+    def __str__(self):
+        return f"{self.name}"
+    
+    class Meta:
+        ordering = ['name']
+    
 # Background, Setting and Research
 
 class Setting(models.Model):
@@ -87,26 +180,48 @@ class Setting(models.Model):
     factions = models.ManyToManyField('Faction', blank=True)
     bg_research = models.OneToOneField('BGResearch', on_delete=models.SET_NULL, blank=True, null=True)
     general_setting = models.TextField(blank=True)
-    
+   
     def __str__(self):
         return f"{self.name}"
+    
+    class Meta:
+        ordering = ['name']
 
+
+class Location(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
+    name = models.CharField(max_length=200)
+    elaboration = models.TextField(blank=True, null=True)
+    character_versions = models.ManyToManyField('CharacterVersion', blank=True, related_name='locations_in_character_version')
+       
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['name']
 
 class BGResearch(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     bg_research = models.TextField(blank=True)
     deeper_bg_research_topic = models.ManyToManyField('DeeperBGResearchTopic', blank=True)
+   
 
     def __str__(self):
         return f"{self.bg_research}"
+    
+    class Meta:
+        ordering = ['bg_research']
     
 class DeeperBGResearchTopic(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     topic = models.CharField(max_length=200)
     notes = models.TextField(blank=True)
-    
+   
     def __str__(self):
         return self.topic
+    
+    class Meta:
+        ordering = ['topic']
 
 class BGEvent(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -115,9 +230,12 @@ class BGEvent(models.Model):
     date_to = models.DateField(blank=True, null=True)
     order_in_story_events = models.IntegerField(blank=True, null=True)
     order_in_narrative_telling = models.IntegerField(blank=True, null=True)
-    
+        
     def __str__(self):
         return self.event
+    
+    class Meta:
+        ordering = ['date_from']
 
 class Faction(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -127,6 +245,9 @@ class Faction(models.Model):
     
     def __str__(self):
         return self.name
+    
+    class Meta:
+        ordering = ['name']
     
 class CharacterRelatedSettingTopic(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -140,9 +261,12 @@ class CharacterRelatedSettingTopic(models.Model):
     food = models.TextField(blank=True, null=True)
     work = models.TextField(blank=True, null=True)
     social_life = models.TextField(blank=True, null=True)
-
+    
     def __str__(self):
         return f"Setting as it relates to {self.character}"
+    
+    class Meta:
+        ordering = ['name']
 
 class Character(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -155,11 +279,15 @@ class Character(models.Model):
     origin = models.TextField(blank=True, null=True)
     representative_of = models.ManyToManyField('Theme', blank=True)
     permanent_characteristics = models.TextField(blank=True, null=True)
-    versions = models.ManyToManyField('CharacterVersion', blank=True, null=True, related_name='+')
+    versions = models.ManyToManyField('CharacterVersion', blank=True, related_name='+')
+    character_arc = models.TextField(blank=True, null=True)
     elaboration = models.TextField(null=True, blank=True)
     
     def __str__(self):
         return self.name
+    
+    class Meta:
+        ordering = ['name']
 
 
 class CharacterVersion(models.Model):
@@ -189,9 +317,11 @@ class CharacterVersion(models.Model):
 
     def __str__(self):
         return f"{self.for_character} v{self.version_num}"
+    
+    class Meta:
+        ordering = ['for_character__name',]
 
-
-
+     
 class CharacterRelationship(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     relationship_from = models.OneToOneField('CharacterVersion', on_delete=models.CASCADE, related_name='has_relationship')
@@ -200,10 +330,12 @@ class CharacterRelationship(models.Model):
     relationship_descriptors = models.TextField()
     elaboration = models.TextField(blank=True, null=True)
     character_version = models.ForeignKey('CharacterVersion', on_delete=models.CASCADE, null=True, related_name='character_versions')
-
+    
     def __str__(self):
         return f"{self.character_version}'s relationship with {self.relationship_to}"
 
+    class Meta:
+        ordering = ['relationship_from__for_character__name', 'relationship_to__for_character__name']
 
 class Appearance(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -216,6 +348,11 @@ class Appearance(models.Model):
     elaboration = models.TextField(blank=True, null=True)
     character_version = models.OneToOneField('CharacterVersion', on_delete=models.CASCADE, null=True, related_name='appearance_for_character_version')
 
+    def __str__(self):
+        return f"{self.character_version}'s appearance"
+
+    class Meta:
+        ordering = ['character_version__for_character__name', 'character_version__version_num']
 
 class AppearanceModifiers(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -226,10 +363,12 @@ class AppearanceModifiers(models.Model):
     shaving = models.CharField(max_length=200, blank=True, null=True)
     hygiene = models.CharField(max_length=200, blank=True, null=True)
     character_version = models.ForeignKey('CharacterVersion', on_delete=models.CASCADE, null=True)
-
+    
     def __str__(self):
         return f"{self.character_version}'s appearance"
 
+    class Meta:
+        ordering = ['character_version__for_character__name', 'character_version__version_num']
 
 class CharacterTrait(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -238,7 +377,9 @@ class CharacterTrait(models.Model):
     
     def __str__(self):
         return self.name
-
+    
+    class Meta:
+        ordering = ['name']
 
 class Drive(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -247,6 +388,9 @@ class Drive(models.Model):
     
     def __str__(self):
         return self.name
+    
+    class Meta:
+        ordering = ['name']
 
 class Fear(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -255,6 +399,9 @@ class Fear(models.Model):
     
     def __str__(self):
         return self.name
+    
+    class Meta:
+        ordering = ['name']
 
 class Belief(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -264,6 +411,9 @@ class Belief(models.Model):
     def __str__(self):
         return self.name
     
+    class Meta:
+        ordering = ['name']
+    
 class InternalConflict(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
@@ -272,7 +422,9 @@ class InternalConflict(models.Model):
 
     def __str__(self):
         return self.name
-
+    
+    class Meta:
+        ordering = ['name']
 
 class LitStyleGuide(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -280,25 +432,33 @@ class LitStyleGuide(models.Model):
     character = models.ForeignKey('Character', on_delete=models.CASCADE)
     character_version = models.ForeignKey('CharacterVersion', on_delete=models.SET_NULL, blank=True, null=True)
     perspective = models.ForeignKey('Perspective', on_delete=models.CASCADE)
-    inspirations = models.ManyToManyField('LiteraryInspirationPerson', blank=True, null=True)
+    inspirations = models.ManyToManyField('LiteraryInspirationPerson', blank=True)
     traits = models.ManyToManyField('LiteraryTraits', related_name='litstyleguide_traits', blank=True)
     avoid = models.ManyToManyField('LiteraryTraits', related_name='litstyleguide_avoid', blank=True)
     style_guide = models.TextField(blank=True, null=True)
     compressed_sg = models.TextField(blank=True, null=True)
     writing_samples = models.TextField(blank=True, null=True)
+    tone = models.ManyToManyField('LiteraryTone', blank=True)
+    imagery = models.ManyToManyField('LiteraryImagery', blank=True)
+    symbolism = models.ManyToManyField('LiterarySymbolism', blank=True)
     
     def __str__(self):
         return self.name
-
+    
+    class Meta:
+        ordering = ['name']
 
 class LiteraryInspirationPerson(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     person = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
-    sources = models.ManyToManyField('LiteraryInspirationSource', blank=True, null=True)
+    sources = models.ManyToManyField('LiteraryInspirationSource', blank=True)
     
     def __str__(self):
         return self.person
+    
+    class Meta:
+        ordering = ['person']
     
 class LiteraryInspirationSource(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -307,6 +467,9 @@ class LiteraryInspirationSource(models.Model):
     
     def __str__(self):
         return self.source
+    
+    class Meta:
+        ordering = ['source']
 
 class StoryTeller(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -316,6 +479,9 @@ class StoryTeller(models.Model):
     
     def __str__(self):
         return f"{self.character} style as a story teller"
+    
+    class Meta:
+        ordering = ['character__for_character__name']
 
 class Theme(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -324,6 +490,9 @@ class Theme(models.Model):
     
     def __str__(self):
         return self.name
+    
+    class Meta:
+        ordering = ['name']
 
 class Perspective(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -332,6 +501,9 @@ class Perspective(models.Model):
     
     def __str__(self):
         return self.name
+    
+    class Meta:
+        ordering = ['name']
 
 
 class LiteraryTraits(models.Model):
@@ -341,6 +513,53 @@ class LiteraryTraits(models.Model):
     
     def __str__(self):
         return self.name
+    
+    class Meta:
+        ordering = ['name']
+
+class LiteraryTone(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
+    name = models.CharField(max_length=200)
+    elaboration = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['name']
+
+class LiteraryMood(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
+    name = models.CharField(max_length=200)
+    elaboration = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['name']
+
+class LiteraryImagery(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
+    name = models.CharField(max_length=200)
+    elaboration = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['name']
+
+class LiterarySymbolism(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
+    name = models.CharField(max_length=200)
+    elaboration = models.TextField(blank=True, null=True)
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        ordering = ['name']
 
 # Other
 
@@ -351,13 +570,4 @@ class File(models.Model):
     
     def __str__(self):
         return self.file_location
-
-
-class Location(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
-    name = models.CharField(max_length=200)
-    elaboration = models.TextField(blank=True, null=True)
-    character_versions = models.ManyToManyField('CharacterVersion', blank=True, related_name='locations_in_character_version')
     
-    def __str__(self):
-        return self.name

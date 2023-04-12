@@ -1,5 +1,5 @@
 
-
+. venv/myuz/bin/activate
 dateTime=$(date +"%y.%m.%d_%H:%M")
 python manage.py makemigrations
 python manage.py migrate

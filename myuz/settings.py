@@ -33,13 +33,13 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     "rest_framework",
     "noveller.apps.NovellerConfig",
-    "phusis.apps.PhusisConfig",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "phusis.apps.PhusisConfig",
 ]
 
 MIDDLEWARE = [

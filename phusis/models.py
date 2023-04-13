@@ -256,7 +256,6 @@ def test_from_manager():
             print(f"{type(instance)}.objects.filter(name='_tst').delete()")
             type(instance).objects.filter(name__contains=test_name_appendage).delete()
         
-                
         print(f'confirming no {test_name_appendage} agent attributes are left')
         agent_att_instances = get_instances_of_subclasses_of(AbstractAgentAttribute)
         for instance in agent_att_instances:

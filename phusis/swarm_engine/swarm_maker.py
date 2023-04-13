@@ -3,7 +3,6 @@ from langchain.prompts import PromptTemplate
 # from phusis.models import *
 
 
-
 def main():
     llm = OpenAI(temperature=0.9)
     

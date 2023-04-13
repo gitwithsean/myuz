@@ -3,6 +3,7 @@ from django.db import models
 import uuid
 
 class Book(models.Model):
+    puuid = str
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     settings = models.ManyToManyField('Setting', blank=True, related_name='book_settings')
@@ -13,6 +14,8 @@ class Book(models.Model):
     genre = models.ManyToManyField('Genre', blank=True, related_name='book_genres')
     target_audience = models.ManyToManyField('TargetAudience', blank=True, related_name='book_audiences')
     
+    expose_rest = True
+    
     def __str__(self):
         return self.name
     
@@ -20,10 +23,12 @@ class Book(models.Model):
         ordering = ['name']
     
 class Genre(models.Model):
+    puuid = str
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_genres')
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
 
     def __str__(self):
         return self.name
@@ -32,10 +37,12 @@ class Genre(models.Model):
         ordering = ['name']
     
 class TargetAudience(models.Model):
+    puuid = str
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_audience')
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -44,11 +51,13 @@ class TargetAudience(models.Model):
         ordering = ['name']
 
 class Plot(models.Model):
+    puuid = str
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_plots')
     title = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
     events_of_plot = models.ManyToManyField('PlotEvent', blank=True)
+    expose_rest = True
         
     def __str__(self):
         return self.name
@@ -57,6 +66,7 @@ class Plot(models.Model):
         ordering = ['title']
         
 class PlotEvent(models.Model):
+    puuid = str
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     subplot_of = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_events', null=True)
     description = models.TextField(blank=True)
@@ -66,6 +76,7 @@ class PlotEvent(models.Model):
     order_in_narrative_telling = models.IntegerField(blank=True, null=True)
     foreshadowing = models.ManyToManyField('PlotEvent', 'SubPlotEvent', blank=True)
     is_climax_of_plot = models.BooleanField(blank=True, null=True)
+    expose_rest = True
 
     def __str__(self):
         return self.description
@@ -94,6 +105,7 @@ class SubPlotEvent(PlotEvent):
 
 #Chapters, Outlines, Summaries
 class Chapter(models.Model):
+    puuid = str
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='book_characters')
     chapter_num = models.IntegerField()
@@ -101,6 +113,7 @@ class Chapter(models.Model):
     chapter_goals = models.TextField(blank=True, null=True)
     chapter_file = models.OneToOneField('File', on_delete=models.SET_NULL, blank=True, null=True)
     parts_for_chapter = models.ManyToManyField('ChapterPart', blank=True, related_name='chapters')
+    expose_rest = True
     
     def __str__(self):
         return f"ch.{self.chapter_num}"
@@ -110,6 +123,7 @@ class Chapter(models.Model):
 
 
 class ChapterPart(models.Model):
+    puuid = str
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     part_title = models.CharField(max_length=200, blank=True)
     part_num = models.IntegerField()
@@ -122,6 +136,7 @@ class ChapterPart(models.Model):
     factions = models.ManyToManyField('Faction', blank=True)
     chapter_part_summary = models.ManyToManyField('ChapterPartSummary', blank=True)
     for_chapter = models.ForeignKey('Chapter', on_delete=models.CASCADE, blank=True, null=True, related_name='chapter_parts')
+    expose_rest = True
 
     def __str__(self):
         return f"{self.chapter}.pt{self.part_num}"
@@ -138,6 +153,7 @@ class ChapterPartSummary(models.Model):
     pacing = models.ManyToManyField('Pacing', blank=True,)
     summary_items = models.ForeignKey('ChapterPartSummaryItem', on_delete=models.SET_NULL, blank=True, null=True, related_name='chapter_part_summary')
     summary_items = models.ManyToManyField('ChapterPartSummaryItem', related_name='chapter_part_summary_items')
+    expose_rest = True
     
     def __str__(self):
         return f"{self.for_chapter_part}"
@@ -147,10 +163,12 @@ class ChapterPartSummary(models.Model):
 
 
 class ChapterPartSummaryItem(models.Model):
+    puuid = str
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     for_chapter_part = models.ForeignKey('ChapterPartSummary', on_delete=models.SET_NULL, blank=True, null=True)
     content = models.TextField(blank=True)
     order_in_part = models.IntegerField(blank=True, default=0)
+    expose_rest = True
     
     def __str__(self):
         return f"{self.for_chapter_part}-{self.order_in_part}: {self.content}"
@@ -162,6 +180,7 @@ class Pacing(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200, blank=True)
     elaboration = models.TextField(blank=True)
+    expose_rest = True
     
     def __str__(self):
         return f"{self.name}"
@@ -179,6 +198,7 @@ class Setting(models.Model):
     factions = models.ManyToManyField('Faction', blank=True)
     bg_research = models.OneToOneField('BGResearch', on_delete=models.SET_NULL, blank=True, null=True)
     general_setting = models.TextField(blank=True)
+    expose_rest = True
    
     def __str__(self):
         return f"{self.name}"
@@ -192,6 +212,7 @@ class Location(models.Model):
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
     character_versions = models.ManyToManyField('CharacterVersion', blank=True, related_name='locations_in_character_version')
+    expose_rest = True
        
     def __str__(self):
         return self.name
@@ -203,6 +224,7 @@ class BGResearch(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     bg_research = models.TextField(blank=True)
     deeper_bg_research_topic = models.ManyToManyField('DeeperBGResearchTopic', blank=True)
+    expose_rest = True
    
 
     def __str__(self):
@@ -215,6 +237,7 @@ class DeeperBGResearchTopic(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     topic = models.CharField(max_length=200)
     notes = models.TextField(blank=True)
+    expose_rest = True
    
     def __str__(self):
         return self.topic
@@ -229,6 +252,7 @@ class BGEvent(models.Model):
     date_to = models.DateField(blank=True, null=True)
     order_in_story_events = models.IntegerField(blank=True, null=True)
     order_in_narrative_telling = models.IntegerField(blank=True, null=True)
+    expose_rest = True
         
     def __str__(self):
         return self.event
@@ -241,6 +265,7 @@ class Faction(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     members = models.ManyToManyField('CharacterVersion', blank=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -260,6 +285,7 @@ class CharacterRelatedSettingTopic(models.Model):
     food = models.TextField(blank=True, null=True)
     work = models.TextField(blank=True, null=True)
     social_life = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return f"Setting as it relates to {self.character}"
@@ -281,6 +307,7 @@ class Character(models.Model):
     versions = models.ManyToManyField('CharacterVersion', blank=True, related_name='+')
     character_arc = models.TextField(blank=True, null=True)
     elaboration = models.TextField(null=True, blank=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -313,6 +340,7 @@ class CharacterVersion(models.Model):
     subter = models.CharField(max_length=200, blank=True, null=True)
     elaboration = models.TextField(blank=True, null=True)
     lit_style_guides = models.ForeignKey('LitStyleGuide', blank=True, null=True, on_delete=models.SET_NULL)
+    expose_rest = True
 
     def __str__(self):
         return f"{self.for_character} v{self.version_num}"
@@ -329,6 +357,7 @@ class CharacterRelationship(models.Model):
     relationship_descriptors = models.TextField()
     elaboration = models.TextField(blank=True, null=True)
     character_version = models.ForeignKey('CharacterVersion', on_delete=models.CASCADE, null=True, related_name='character_versions')
+    expose_rest = True
     
     def __str__(self):
         return f"{self.character_version}'s relationship with {self.relationship_to}"
@@ -346,6 +375,7 @@ class Appearance(models.Model):
     movement = models.CharField(max_length=200, blank=True, null=True)
     elaboration = models.TextField(blank=True, null=True)
     character_version = models.OneToOneField('CharacterVersion', on_delete=models.CASCADE, null=True, related_name='appearance_for_character_version')
+    expose_rest = True
 
     def __str__(self):
         return f"{self.character_version}'s appearance"
@@ -362,6 +392,7 @@ class AppearanceModifiers(models.Model):
     shaving = models.CharField(max_length=200, blank=True, null=True)
     hygiene = models.CharField(max_length=200, blank=True, null=True)
     character_version = models.ForeignKey('CharacterVersion', on_delete=models.CASCADE, null=True)
+    expose_rest = True
     
     def __str__(self):
         return f"{self.character_version}'s appearance"
@@ -373,6 +404,7 @@ class CharacterTrait(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -384,6 +416,7 @@ class Drive(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -395,6 +428,7 @@ class Fear(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -406,6 +440,7 @@ class Belief(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -418,6 +453,7 @@ class InternalConflict(models.Model):
     name = models.CharField(max_length=200)
     rel = models.CharField(max_length=200)
     character_version = models.OneToOneField('CharacterVersion', on_delete=models.CASCADE, blank=True, null=True, related_name='internal_conflict_character_version')
+    expose_rest = True
 
     def __str__(self):
         return self.name
@@ -440,6 +476,7 @@ class LitStyleGuide(models.Model):
     tone = models.ManyToManyField('LiteraryTone', blank=True)
     imagery = models.ManyToManyField('LiteraryImagery', blank=True)
     symbolism = models.ManyToManyField('LiterarySymbolism', blank=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -452,6 +489,7 @@ class LiteraryInspirationPerson(models.Model):
     person = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
     sources = models.ManyToManyField('LiteraryInspirationSource', blank=True)
+    expose_rest = True
     
     def __str__(self):
         return self.person
@@ -463,6 +501,7 @@ class LiteraryInspirationSource(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     source = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.source
@@ -475,6 +514,7 @@ class StoryTeller(models.Model):
     character = models.ForeignKey('CharacterVersion', on_delete=models.CASCADE)
     style = models.ForeignKey('LitStyleGuide', on_delete=models.CASCADE)
     description = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return f"{self.character} style as a story teller"
@@ -486,6 +526,7 @@ class Theme(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -497,6 +538,7 @@ class Perspective(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -509,6 +551,7 @@ class LiteraryTraits(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -519,6 +562,7 @@ class LiteraryTraits(models.Model):
 class LiteraryTone(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
+    expose_rest = True
     elaboration = models.TextField(blank=True, null=True)
     
     def __str__(self):
@@ -531,6 +575,7 @@ class LiteraryMood(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -542,6 +587,7 @@ class LiteraryImagery(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -553,6 +599,7 @@ class LiterarySymbolism(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.name
@@ -566,7 +613,16 @@ class File(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     file_location = models.CharField(max_length=255)
     file_content = models.TextField(blank=True, null=True)
+    expose_rest = True
     
     def __str__(self):
         return self.file_location
     
+class NovellorModellor(models.Model):
+    user = models.CharField(max_length=255)
+    expose_rest = True
+    
+    def __str__(self):
+        return self.file_location
+    
+    pass

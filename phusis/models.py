@@ -43,10 +43,14 @@ class AbstractAgent(models.Model):
     roles = models.ManyToManyField('AgentRole', blank=True)
     personality = models.ManyToManyField('AgentTrait', blank=True)
     qualifications = models.ManyToManyField('AgentQualification', blank=True)
-    subtr = models.TextField(blank=True)
-    elaboration = models.TextField(blank=True)
+    impersonations = models.ManyToManyField('AgentImpersonation', blank=True)
     is_concerned_with =  models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_concerned_with_this')
     is_influenced_by =  models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_influenced_by_this')
+    embedding_of_self = models.TextField(blank=True)
+    elaboration = models.TextField(blank=True)
+    llelle = models.TextField(blank=True)
+    malig = models.TextField(blank=True)
+    subtr = models.TextField(blank=True)
     
     class Meta:
         abstract = True
@@ -149,6 +153,9 @@ class AgentTrait(AbstractAgentAttribute):
     
 class AgentQualification(AbstractAgentAttribute):
     agent_attribute_type = "agent_qualification" 
+    
+class AgentImpersonation(AbstractAgentAttribute):
+    agent_attribute_type = "agent_impersonation" 
 
 
 def get_instances_of_subclasses_of(base_class):

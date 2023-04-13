@@ -1,7 +1,9 @@
 import inspect, json, uuid
+from django.apps import apps
 from django.db import models
-from noveller.models import *
+from noveller.models import ConcreteNovellorModelDecorator
 from pprint import pprint
+
 
 #PROMPTS
 class PromptType(models.Model):
@@ -31,6 +33,8 @@ class AgentSwarm():
     def __str__(self):
         return self.name
 
+novellor_models = apps.all_models['noveller']
+
 class AbstractAgent(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=200, default="")
@@ -41,8 +45,8 @@ class AbstractAgent(models.Model):
     qualifications = models.ManyToManyField('AgentQualification', blank=True)
     subtr = models.TextField(blank=True)
     elaboration = models.TextField(blank=True)
-    
-    # concerned_with = models.ManyToManyField()
+    is_concerned_with =  models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_concerned_with_this')
+    is_influenced_by =  models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_influenced_by_this')
     
     class Meta:
         abstract = True
@@ -67,6 +71,13 @@ class AbstractAgent(models.Model):
         dict_str = json.dumps(self.dictionary(), indent=4)
         
         return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{dict_str}"
+
+class ConcreteAgent(AbstractAgent):
+    is_concerned_with = models.ForeignKey(ConcreteNovellorModelDecorator, on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_concerned_with_this')
+    is_influenced_by = models.ForeignKey(ConcreteNovellorModelDecorator, on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_influenced_by_this')
+    
+    class Meta:
+        db_table = 'phusis_concrete_agent'
 
 class OrchestrationAgent(AbstractAgent):
     agent_type = "orchestration_agent"
@@ -159,10 +170,13 @@ def get_instances_of_subclasses_of(base_class):
 
 #testing
 from django.db import transaction
+from noveller.models import Book
 
 def test_from_manager():
     with transaction.atomic():
         test_name_appendage = '_tst'
+        
+        book = Book.objects.create(name="Disco Inferno 2: Disco's Dead")
         
         agent = OrchestrationAgent.objects.create(name="Agent1")
         agent.save(using='default')

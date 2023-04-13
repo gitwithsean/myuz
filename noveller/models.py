@@ -2,17 +2,12 @@ from __future__ import annotations
 from django.db import models
 import uuid, re
 
-def rest_name(model):
-    return re.sub(r'(?<!^)(?=[A-Z])', '_', model.__class__.__name__).lower()
-
 class NovellorModelDecorator(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)  
     elaboration = models.TextField(blank=True, null=True)
     expose_rest = True
-    
-    def rest_name(model):
-        return re.sub(r'(?<!^)(?=[A-Z])', '_', model.__class__.__name__).lower()
+    expose_swarm = True
     
     class Meta:
         abstract = True
@@ -21,6 +16,9 @@ class NovellorModelDecorator(models.Model):
     def __str__(self):
         return self.name
 
+class ConcreteNovellorModelDecorator(NovellorModelDecorator):
+    class Meta:
+        db_table = 'noveller_concrete_novellor_model_decorator'
 
 class Book(NovellorModelDecorator):
     settings = models.ManyToManyField('Setting', blank=True, related_name='book_settings')
@@ -334,9 +332,7 @@ class File(NovellorModelDecorator):
 
  
 class NovellorModellor(NovellorModelDecorator):
-    
-    
-    
+        
     class __NovellorModellorSingleton:
         def __init__(self):
             self.instance = NovellorModellor()

@@ -3,6 +3,7 @@ from django.apps import apps
 from django.db import models
 from noveller.models import ConcreteNovellorModelDecorator
 from pprint import pprint
+from .swarm_engines import AbstractEngine
 
 
 #PROMPTS
@@ -67,8 +68,11 @@ class AbstractAgent(models.Model):
             "roles": list(self.roles.all().values_list('name', flat=True)),
             "personality": list(self.personality.all().values_list('name', flat=True)),
             "qualifications": list(self.qualifications.all().values_list('name', flat=True)),
-            "subtr": self.subtr,
-            "elaboration": self.elaboration
+            "impersonations": list(self.impersonations.all().values_list('name', flat=True)),
+            "elaboration": self.elaboration,
+            "llelle": self.llelle,
+            "malig": self.malig,
+            "subtr": self.subtr
         }
         
     def introduction(self):

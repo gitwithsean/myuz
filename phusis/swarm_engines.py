@@ -1,32 +1,40 @@
-import openai
-from abc import ABC, ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from phusis.models import *
+from . import *
 
-class OpenAi():
+class Script():
+    script_array = []
+    current_script_embedding = ""
+    agent_for_script = {}
+    is_master_script = False
     
-    def gpt_completion_response(prompt, completion_config, model="text-ada-001"):
-        response = openai.Completion.create(
-            engine=model,
-            prompt=prompt,
-            temperature=completion_config["temperature"],
-            max_tokens=completion_config["max_tokens"],
-            top_p=completion_config["top_p"],
-            frequency_penalty=completion_config["frequency_penalty"],
-            presence_penalty=completion_config["presence_penalty"]
-        )
-        return response
+    def __init__(self, agent):
+        self.agent_for_script = agent
+        pass
+    
+    def _n_print(self, txt):
+        self.script_array.append(txt)
+        print(txt)
+        
+    def _n_user(self):
+        if self.agent_for_script.auto_mode:
+            txt = input("")
+        else:
+            txt = self.agent_for_script.engage()
+        self.script_array.append(txt)
+        return txt
+    
+    def script_to_text(self):
+        txt = ""
+        for s in self.script_array:
+            txt = f"{txt}\n\n{s}"
+        return txt 
 
-    def gpt_embeddings_response(input, model="text-embedding-ada-002"):
-        response = openai.Embedding.create(
-            model=model,
-            input=input,
-        )
-        embeddings = response['data'][0]['embedding']
-        return embeddings
+    def loop_return_message_and_prompt(script):
+        script.script_n_print("You are currently in a prompt loop. Type `exit!` to break out of the cycle, `enter` to keep going, or type an instruction and we'll see if we can handle it!")
+        return script.user_n_script()
 
 def get_or_create_related_att_data(att_class, array_of_names):
-    pprint(att_class)
-    pprint(array_of_names)
     att_datas = []
     for n in array_of_names:
         obj, created = att_class.objects.get_or_create(name=n)
@@ -41,19 +49,79 @@ def complete_agent_definition(agent, agent_data):
     agent.qualifications.set(get_or_create_related_att_data(AgentQualification, agent_data["qualifications"])),
     agent.impersonations.set(get_or_create_related_att_data(AgentImpersonation, agent_data["impersonations"])),
     agent.personality.set(get_or_create_related_att_data(AgentTrait, agent_data["impersonations"])),
-    agent.llelle=agent_data.get("elaboration", "")
-    agent.malig=agent_data.get("elaboration", "")
-    agent.subtr=agent_data.get("elaboration", "")
+    agent.llelle=agent_data.get("llelle", "")
+    agent.malig=agent_data.get("malig", "")
+    agent.subtr=agent_data.get("subtr", "")
+    
+class PromptDecorator():
+    prompts_since_reminder = 0
+    max_prompts_between_reminders = 5
+    global_modifiers = {}
+    
+    def set_modifiers(self, modifiers):
+        self.global_modifiers['mood_modifier'] = modifiers.get('mood_modifier', 'helpful')
+        self.global_modifiers['self_awareness'] = modifiers.get('self_awareness', 'as_bot')
+    
+    def auto_reminder(self, prompt, modifiers):
+        self.set_modifiers(modifiers)
+        if self.prompts_since_reminder >= 5:
+            prompt = f"{prompt}\n\nJust Reminding you: {self.to_remind()}"
+            self.prompts_since_reminder = 0
+        return f"{prompt}\n\n"
+                        
+    def to_wake_up(self, modifiers):
+        if modifiers['self_awareness'] == 'as_bot':
+            self_awareness_modifier = f"a {self.agent_type}, part of a swarm of agents, each with a very defined set of attributes."
+        else:
+            self_awareness_modifier = "I'm glad to have your expertise on this project."
+        
+        prompt = f"""
+            You are {self.name}, {self_awareness_modifier}. You will use your skills to the BEST of your ability to serve me. {self.to_remind()}
+        """
+        return self.auto_reminder(prompt, )  
+    
+    def to_remind(self):
+        prompt = f"""
+            You are in a {self.modifiers.get('mood_modifier')} mood. Below is your character description in JSON form:\nYou: {self.dictionary()}
+        """
+        return self.auto_reminder(prompt)  
+    
+    def to_ask_opinion_about(self, it):
+        prompt = ""
+        
+        return self.auto_reminder(prompt) 
+    
+    def to_ask_next_step(self):
+        prompt = ""
+        
+        return self.auto_reminder(prompt)
+    
+    def to_ask_reflect_on(self, it):
+        prompt = ""
+        
+        return self.auto_reminder(prompt)
+        
+    
+    # def welcome_prompt_for_agent(self):
+    #     pass
+    
+    # def welcome_prompt_for_agent(self):
+    #     pass
+    
+    # def welcome_prompt_for_agent(self):
+    #     pass
+    
+    pass    
     
 class AbstractEngineMeta(type(AbstractAgent), type(ABC)):
     pass
 
-class AbstractEngine(AbstractAgent, ABC, metaclass=AbstractEngineMeta):
-    agent_data = models.JSONField(default=dict)
+class AbstractEngine(AbstractAgent, ABC, PromptDecorator, metaclass=AbstractEngineMeta):
+    script = {}
 
     def __init__(self, agent_data):
         self = AbstractEngine.objects.get_or_create(agent_data["name"])
-        self.agent_data = agent_data
+        script = Script.objects.create()
         
     def submit_prompt():
         pass
@@ -90,10 +158,23 @@ class AbstractEngine(AbstractAgent, ABC, metaclass=AbstractEngineMeta):
     def create_self_embedding():
         pass
 
-
-class StructuralEngine(AbstractEngine):
-    
+class StructuralEngine(StructuralAgent):
     pass
+
+class OrchestrationEngine(OrchestrationAgent):
+    auto_mode = False
+    
+    def pre_engagement():
+        pass
+    
+    def mid_engagement_with(agent):
+        pass
+    
+    def post_engagement():
+        pass
+
+
+
 
 
 def test_from_manager():

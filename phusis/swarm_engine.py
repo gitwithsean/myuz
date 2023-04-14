@@ -2,6 +2,28 @@ import openai
 from abc import ABC, ABCMeta, abstractmethod
 from phusis.models import *
 
+class OpenAi():
+    
+    def gpt_completion_response(prompt, completion_config, model="text-ada-001"):
+        response = openai.Completion.create(
+            engine=model,
+            prompt=prompt,
+            temperature=completion_config["temperature"],
+            max_tokens=completion_config["max_tokens"],
+            top_p=completion_config["top_p"],
+            frequency_penalty=completion_config["frequency_penalty"],
+            presence_penalty=completion_config["presence_penalty"]
+        )
+        return response
+
+    def gpt_embeddings_response(input, model="text-embedding-ada-002"):
+        response = openai.Embedding.create(
+            model=model,
+            input=input,
+        )
+        embeddings = response['data'][0]['embedding']
+        return embeddings
+
 def get_or_create_related_att_data(att_class, array_of_names):
     pprint(att_class)
     pprint(array_of_names)
@@ -13,24 +35,28 @@ def get_or_create_related_att_data(att_class, array_of_names):
     return att_datas
 
 def complete_agent_definition(agent, agent_data):
-    pprint(agent_data["goals"])
     goals = get_or_create_related_att_data(AgentGoal, agent_data["goals"])
-    pprint(goals)
     agent.goals.set(goals),
     agent.roles.set(get_or_create_related_att_data(AgentRole, agent_data["roles"])),
     agent.qualifications.set(get_or_create_related_att_data(AgentQualification, agent_data["qualifications"])),
     agent.impersonations.set(get_or_create_related_att_data(AgentImpersonation, agent_data["impersonations"])),
-    agent.elaboration=agent_data.get("elaboration", "")
+    agent.personality.set(get_or_create_related_att_data(AgentTrait, agent_data["impersonations"])),
+    agent.llelle=agent_data.get("elaboration", "")
+    agent.malig=agent_data.get("elaboration", "")
+    agent.subtr=agent_data.get("elaboration", "")
     
 class AbstractEngineMeta(type(AbstractAgent), type(ABC)):
     pass
 
 class AbstractEngine(AbstractAgent, ABC, metaclass=AbstractEngineMeta):
     agent_data = models.JSONField(default=dict)
-    
+
     def __init__(self, agent_data):
         self = AbstractEngine.objects.get_or_create(agent_data["name"])
         self.agent_data = agent_data
+        
+    def submit_prompt():
+        pass
 
     @abstractmethod
     def select_model_to_work_on():
@@ -46,10 +72,6 @@ class AbstractEngine(AbstractAgent, ABC, metaclass=AbstractEngineMeta):
         
     @abstractmethod
     def choose_model_for_prompt():
-        pass
-    
-    @abstractmethod
-    def submit_prompt():
         pass
      
     @abstractmethod   

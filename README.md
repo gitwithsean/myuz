@@ -1,6 +1,6 @@
 Backround docs on this project
 
-[*phusis* notes](https://github.com/gitwithsean/docs/phusis)
+https://github.com/gitwithsean/docs/blob/main/phusis/README.md
 
 [*myuz* notes coming soon...](https://github.com/gitwithsean/docs/)
 

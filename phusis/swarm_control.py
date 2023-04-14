@@ -47,8 +47,8 @@ def swarm_engage(api):
 def main():
     api = OpenAi()
     #orchestrator setup
-    orc = OrchestrationEngine.objects.get_or_create(name=orc_data["name"])
-    orc.auto_mode=False    
+    orc, create = OrchestrationAgent.objects.get_or_create(name=orc_data["name"])
+    orc.auto_mode=False
     orc.agent_type='orchestration_agent'
     orc.script.is_master_script=True
     complete_agent_definition(orc, orc_data)

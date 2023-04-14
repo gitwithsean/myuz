@@ -2,38 +2,6 @@ from abc import ABC, abstractmethod
 from phusis.models import *
 from . import *
 
-class Script():
-    script_array = []
-    current_script_embedding = ""
-    agent_for_script = {}
-    is_master_script = False
-    
-    def __init__(self, agent):
-        self.agent_for_script = agent
-        pass
-    
-    def _n_print(self, txt):
-        self.script_array.append(txt)
-        print(txt)
-        
-    def _n_user(self):
-        if self.agent_for_script.auto_mode:
-            txt = input("")
-        else:
-            txt = self.agent_for_script.engage()
-        self.script_array.append(txt)
-        return txt
-    
-    def script_to_text(self):
-        txt = ""
-        for s in self.script_array:
-            txt = f"{txt}\n\n{s}"
-        return txt 
-
-    def loop_return_message_and_prompt(script):
-        script.script_n_print("You are currently in a prompt loop. Type `exit!` to break out of the cycle, `enter` to keep going, or type an instruction and we'll see if we can handle it!")
-        return script.user_n_script()
-
 def get_or_create_related_att_data(att_class, array_of_names):
     att_datas = []
     for n in array_of_names:
@@ -112,11 +80,8 @@ class PromptDecorator():
     #     pass
     
     pass    
-    
-class AbstractEngineMeta(type(AbstractAgent), type(ABC)):
-    pass
 
-class AbstractEngine(AbstractAgent, ABC, PromptDecorator, metaclass=AbstractEngineMeta):
+class AbstractEngine(ABC, PromptDecorator):
     script = {}
 
     def __init__(self, agent_data):
@@ -158,10 +123,10 @@ class AbstractEngine(AbstractAgent, ABC, PromptDecorator, metaclass=AbstractEngi
     def create_self_embedding():
         pass
 
-class StructuralEngine(StructuralAgent):
+class StructuralEngine():
     pass
 
-class OrchestrationEngine(OrchestrationAgent):
+class OrchestrationEngine():
     auto_mode = False
     
     def pre_engagement():

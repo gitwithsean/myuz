@@ -3,8 +3,7 @@ from django.apps import apps
 from django.db import models
 from noveller.models import ConcreteNovellorModelDecorator
 from pprint import pprint
-from .swarm_engines import AbstractEngine
-
+from .swarm_engines import *
 
 #PROMPTS
 class PromptType(models.Model):
@@ -23,7 +22,44 @@ class Prompt(models.Model):
     def __str__(self):
         return self.name
 
+    
 
+#SCRIPTS
+class Script(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
+    name = models.CharField(max_length=200, auto_created=True)
+    string_array = models.JSONField(default=list, blank=True)
+    subtr = models.TextField(blank=True)
+    agent = models.ForeignKey('ConcreteAgent', on_delete=models.CASCADE, related_name='scripts_for_agent')
+    is_master_script = models.BooleanField(default=False)
+    
+    # def __init__(self, agent):
+    #     self.name = f"Script for {agent}"
+    #     self.agent_for_script.set(agent)
+    #     pass
+    
+    # def _n_print(self, txt):
+    #     self.script_array.append(txt)
+    #     print(txt)
+        
+    # def _n_user(self):
+    #     if self.agent_for_script.auto_mode:
+    #         txt = input("")
+    #     else:
+    #         txt = self.agent_for_script.engage()
+    #     self.script_array.append(txt)
+    #     return txt
+    
+    # def script_to_text(self):
+    #     txt = ""
+    #     for s in self.script_array:
+    #         txt = f"{txt}\n\n{s}"
+    #     return txt 
+
+    # def loop_return_message_and_prompt(script):
+    #     script.script_n_print("You are currently in a prompt loop. Type `exit!` to break out of the cycle, `enter` to keep going, or type an instruction and we'll see if we can handle it!")
+    #     return script.user_n_script()    
+    
 #AGENTS
 class AgentSwarm():
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
@@ -33,8 +69,6 @@ class AgentSwarm():
 
     def __str__(self):
         return self.name
-
-novellor_models = apps.all_models['noveller']
 
 class AbstractAgent(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
@@ -47,6 +81,7 @@ class AbstractAgent(models.Model):
     impersonations = models.ManyToManyField('AgentImpersonation', blank=True)
     is_concerned_with =  models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_concerned_with_this')
     is_influenced_by =  models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_influenced_by_this')
+    script = models.OneToOneField('Script', editable=False, on_delete=models.PROTECT)
     embedding_of_self = models.TextField(blank=True)
     elaboration = models.TextField(blank=True)
     llelle = models.TextField(blank=True)
@@ -84,16 +119,18 @@ class ConcreteAgent(AbstractAgent):
     is_concerned_with = models.ForeignKey(ConcreteNovellorModelDecorator, on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_concerned_with_this')
     is_influenced_by = models.ForeignKey(ConcreteNovellorModelDecorator, on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_influenced_by_this')
     
+    script = models.OneToOneField('Script', editable=False, on_delete=models.PROTECT, related_name='concrete_agent_for_script')
+    
     class Meta:
         db_table = 'phusis_concrete_agent'
 
-class OrchestrationAgent(AbstractAgent):
+class OrchestrationAgent(AbstractAgent, OrchestrationEngine):
     agent_type = "orchestration_agent"
     
 class PoeticsAgent(AbstractAgent):
     agent_type = "poetics_agent"
     
-class StructuralAgent(AbstractAgent):
+class StructuralAgent(AbstractAgent, StructuralEngine):
     agent_type = "structural_agent"
      
 class CharacterAgent(AbstractAgent):
@@ -122,6 +159,7 @@ class WebSearchAgent(AbstractAgent):
        
 class CompressionAgent(AbstractAgent):
     agent_type = "compression_agent"
+    
     
 #AGENT ATTRIBUTES
 

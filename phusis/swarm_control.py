@@ -50,12 +50,13 @@ def main():
     orc, create = OrchestrationAgent.objects.get_or_create(name=orc_data["name"])
     orc.auto_mode=False
     orc.agent_type='orchestration_agent'
+    master_script = Script(agent=orc)
+    orc.script.set(master_script)
     orc.script.is_master_script=True
     complete_agent_definition(orc, orc_data)
     print("do you want to let the machines run with no user input other than some inital prompting? y/n")
     answer = input("")
     if answer == 'y' : orc.auto_mode=True
-    master_script = Script.objects.create(orc)
     pprint(orc)
     
     #get all agent models

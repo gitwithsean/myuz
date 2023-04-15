@@ -80,7 +80,6 @@ class Chapter(NovellorModelDecorator):
     class Meta:
         ordering = ['chapter_num']
 
-
 class ChapterPart(NovellorModelDecorator):
     part_title = models.CharField(max_length=200, blank=True)
     part_num = models.IntegerField()
@@ -113,7 +112,6 @@ class ChapterPartSummary(NovellorModelDecorator):
     
     class Meta:
         ordering = ['for_chapter_part__chapter__chapter_num', 'for_chapter_part__part_num']
-
 
 class ChapterPartSummaryItem(NovellorModelDecorator):
     for_chapter_part = models.ForeignKey('ChapterPartSummary', on_delete=models.SET_NULL, blank=True, null=True)
@@ -212,7 +210,6 @@ class CharacterVersion(NovellorModelDecorator):
     
     class Meta:
         ordering = ['for_character__name',]
-
      
 class CharacterRelationship(NovellorModelDecorator):
     relationship_from = models.OneToOneField('CharacterVersion', on_delete=models.CASCADE, related_name='has_relationship')

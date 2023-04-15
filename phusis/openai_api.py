@@ -1,4 +1,5 @@
 import openai
+from pprint import pprint
 
 class OpenAi():
     
@@ -15,7 +16,7 @@ class OpenAi():
             frequency_penalty=data.get("frequency_penalty", 0),
             presence_penalty=data.get("presence_penalty", 0),
         )
-        return response['data'][0]['completion']
+        return response['choices'][0]['text']
 
     def gpt_embeddings_response(self, input, model="text-embedding-ada-002"):
         response = openai.Embedding.create(
@@ -23,3 +24,17 @@ class OpenAi():
             input=input,
         )
         return response['data'][0]['embedding']
+    
+    def gpt_chat_response(self, api_data):
+        completion = openai.ChatCompletion.create(
+            model=api_data.get('model', "gpt-3.5-turbo"),
+            messages=[
+                {
+                    "role": "user", 
+                    "content": api_data.get("prompt")
+                }
+            ]
+        )
+        return completion.choices[0].message
+    {
+}

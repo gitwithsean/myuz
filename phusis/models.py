@@ -1,5 +1,6 @@
 import json, uuid
 from django.db import models
+from django.apps import apps
 from abc import abstractmethod
 from noveller.models import ConcreteNovellorModelDecorator
 from .openai_api import OpenAi
@@ -9,9 +10,9 @@ from pprint import pprint
 #AGENT ENGINES
 class AbstractEngine():
     ai_api = OpenAi()
-    auto_mode = False
+    agent = {}
     awareness = 'as_ai'
-    #defaults
+    awake = False
     open_ai_data = {
         "role": "user",
         "content": "",
@@ -23,23 +24,84 @@ class AbstractEngine():
         "presence_penalty": 0,
     }
     
-    def start_engine(self, ):
+    def start_engine(self):
         request_data = self.open_ai_data
         request_data['content'] = PromptBuilder().to_wake_up(self)
-        return self.ai_api(request_data)
+        response = self.ai_api.gpt_chat_response(request_data)
+        self.awake = True
+        return request_data['content'], response
         
     def submit_chat_prompt(self, prompt, prompting_agent):
         request_data = self.open_ai_data
         request_data['content'] = PromptBuilder().complete_prompt(prompt, prompting_agent)
-        return self.ai_api(request_data)
-
+        return self.ai_api.gpt_chat_response(request_data)
+    
+    def compress_prompt(self, prompt, compression_ratio='', prompting_agent={}):
+        if prompting_agent == {}: prompting_agent = UserAgent()
+        request_data = self.open_ai_data
+        request_data['content'] = PromptBuilder().to_compress(prompt, compression_ratio)
+        return self.submit_chat_prompt(self, prompt, prompting_agent)
+    
+    def summarize():
+        pass
+    
+    def report_from(self):
+        return {
+            "agent_type": self.agent_type,
+            "name": self.name,
+            "goals": list(self.goals.all().values_list('name', flat=True)),
+            "roles": list(self.roles.all().values_list('name', flat=True)),
+            "personality_traits": list(self.personality.all().values_list('name', flat=True)),
+            "qualificatons": list(self.qualifications.all().values_list('name', flat=True)),
+            "impersonations": list(self.impersonations.all().values_list('name', flat=True)),
+            "self-summarization": self.summarize(),
+        }
+    
+    def recent_script_entries(self):
+        num_of_entries_to_return = 5
+        i = 0
+        recent_entries = []
+        for entry in reversed(self.script_content):
+            if i >= num_of_entries_to_return:
+                break
+            recent_entries.append(entry)
+        return recent_entries
+        
+    def report_for(self, agent):
+        report_for_orc = {}
+        if self.awake: 
+            report_for_orc = {
+                "report_from": self.report_from(),
+                "awake": True,
+                "report":{
+                    "recent_script_entries": self.recent_script_entries()
+                    
+                }
+            }
+        else:
+            report_for_orc = {
+                "report_from": self.report_from(),
+                "awake": True,
+            }
+        return report_for_orc
 
 class OrchestrationEngine(AbstractEngine):
+    auto_mode = False
     open_ai_data = {
        'model':"gpt-3.5-turbo",
        'max_tokens':1000
     }
     awareness = 'as_leader_of_ai_swarm'
+    
+    def assess_agent_swarm():
+        current_agent_states = []
+        #get every agent instance in the swarm
+        for agent in apps.get_app_config('phusis').get_models(subclass_of=AbstractAgent):
+            #retrieve their current state
+            current_agent_states.append(agent.review_current_state())
+            
+        
+        pass
 
 #ORCHESTRATION AGENT
 class OrchestrationAgent(OrchestrationEngine):
@@ -52,6 +114,7 @@ class OrchestrationAgent(OrchestrationEngine):
     roles = models.ManyToManyField('OrcAgentRole', blank=True)
     qualifications = models.ManyToManyField('OrcAgentQualification', blank=True)
     elaboration = models.TextField(blank=True)
+    script = models.OneToOneField('Script', null=True, blank=True, on_delete=models.PROTECT)
     
     #CHARACTER_TRAITS
     orc_character_age = models.IntegerField(null=True)
@@ -107,6 +170,7 @@ class AbstractAgent(models.Model, AbstractEngine):
     malig = models.TextField(blank=True)
     subtr = models.TextField(blank=True)  
     script = models.OneToOneField('Script', null=True, blank=True, on_delete=models.PROTECT)
+    awake = False
     
     class Meta:
         abstract = True
@@ -135,9 +199,20 @@ class AbstractAgent(models.Model, AbstractEngine):
         
         return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{dict_str}"
 
+#singleton
 class UserAgent(AbstractAgent):
     name = "user"
     agent_type = "user_agent"
+    _instance = None
+    def __new__(cls):
+        if cls._instance is None:
+            # print('Creating PromptBuilder singleton instance')
+            cls._instance = super().__new__(cls)
+            # Initialize the class attributes here
+            cls._instance.prompts_since_reminder = 0
+            cls._instance.max_prompts_between_reminders = 5
+        return cls._instance
+    
     
 class ConcreteAgent(AbstractAgent):
     is_concerned_with = models.ForeignKey(ConcreteNovellorModelDecorator, on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_concerned_with_this')
@@ -263,13 +338,18 @@ class Script(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=200, default="") 
     is_master_script = models.BooleanField(default=False)
+    in_debug_mode = True
     file_name = models.CharField(max_length=200)
     #script as list of tuples speaker/spoken 
     # [ { date_time, speaker_id, speaker_name, content } ]
-    content = models.JSONField(default=list, blank=True)
+    script_content = models.JSONField(default=list, blank=True)
+    agent_name = models.CharField(max_length=200, default="")
     
-    def __init__(self):
-        self.file_name = f"master_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.json"
+    def __init__(self, agent_name, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.name = f"{agent_name}_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}"
+        self.file_name = f"scripts/{self.name}.json"
+        self.agent_name = agent_name
            
     def script_to_text(self):
         txt = ""
@@ -283,14 +363,14 @@ class Script(models.Model):
         time_stamp = datetime.utcnow().strftime("%Y%m%d_%H:%M_%Z")
         prompt_entry = {
             "is_prompt": True,
-            "agent": sender.id,
+            "agent": f"{sender.id}",
             "speaker_name": sender.name,
             "time_stamp": time_stamp,
             "text": prompt
         }
         response_entry = {
             "is_prompt": False,
-            "agent": receiver.id,
+            "agent": f"{receiver.id}",
             "speaker_name": receiver.name,
             "time_stamp": time_stamp,
             "text": response
@@ -298,18 +378,20 @@ class Script(models.Model):
         self.content.append(prompt_entry)
         self.content.append(response_entry)
         self.save_script_to_file()
+        if self.in_debug_mode:
+            print(prompt_entry)
+            print(response_entry)
 
     def save_script_to_file(self):
-        file_name = f"master_script_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
-        with open(file_name, "w") as f:
-            json.dump({"script": {"script_entries": self.content}}, f)
+        with open(self.file_name, "w") as f:
+            json.dump({"script": {"script_entries": self.content}}, f, indent=4) 
 
 #singleton
 class PromptBuilder():
     _instance = None
     def __new__(cls):
         if cls._instance is None:
-            print('Creating PromptBuilder singleton instance')
+            # print('Creating PromptBuilder singleton instance')
             cls._instance = super().__new__(cls)
             # Initialize the class attributes here
             cls._instance.prompts_since_reminder = 0
@@ -318,15 +400,15 @@ class PromptBuilder():
     
     def complete_prompt(self, prompt, prompter):
         prompt = f"The following prompt comes from a {prompter.agent_type}:\n\n--------------------\n\n{prompt}"
-        return self.auto_reminder(prompt)
+        return self.auto_reminder(prompt, prompter)
     
-    def auto_reminder(self, prompt):
-        self.prompts_since_reminder = self.prompts_since_reminder + 1
-        if self.prompts_since_reminder >= 5:
-            prompt = f"{prompt} Just Reminding you: {self.to_remind()}"
-            self.prompts_since_reminder = 0
-        return f"{prompt}"
-                        
+    def auto_reminder(self, prompt, prompter):
+        # if self.prompts_since_reminder >= 5:
+        #     prompt = f"{prompt} Just Reminding you: {self.to_remind(prompter)}"
+        #     self.prompts_since_reminder = 0
+        # return f"{prompt}"
+        return prompt
+                    
     def to_wake_up(self, agent):
         if agent.awareness      =='as_bot':
             s=f"a {agent.agent_type}, part of a swarm of agents, each with a very defined set of attributes."
@@ -335,26 +417,30 @@ class PromptBuilder():
         else:                          
             s="I'm glad to have your expertise on this project."
         
-        prompt = f"You are {agent.name}, {s}. You will use your skills to the BEST of your ability to serve me, the human user, I will tell you our objective soon, but first, about you. {self.to_remind()}"
+        prompt = f"You are {agent.name}, {s}. You will use your skills to the BEST of your ability to serve me, the human user, I will tell you our objective soon, but first, about you. {self.to_remind(agent)}"
 
-        return self.auto_reminder(prompt)  
+        return self.auto_reminder(prompt, agent)  
     
     def to_remind(self, agent):      
         prompt = f"Here is your character description: {agent.dictionary()}"
         
-        return self.auto_reminder(prompt)  
+        return self.auto_reminder(prompt, agent)  
 
+    def to_compress(self, prompt, compression_ratio=0.25):
+        compression_prompt = f"Compression agent: compress the following text to a ratio <= {compression_ratio} so that another GPT agent will understand the full meaning of the original text. Use abbreviations, symbols, or emojis to assist. It does not need to be human-readable, but it should be easy for another GPT instance to interpret. Here is the text: {prompt}"
+        return compression_prompt
+        
     def to_ask_opinion_about(self, it, agent):
         prompt = ""
 
-        return self.auto_reminder(prompt) 
+        return self.auto_reminder(prompt, agent) 
     
     def to_ask_next_step(self, agent):
         prompt = ""
         
-        return self.auto_reminder(prompt)
+        return self.auto_reminder(prompt, agent)
     
     def to_ask_reflect_on(self, it):
         prompt = ""
         
-        return self.auto_reminder(prompt)
+        return self.auto_reminder(prompt, agent)

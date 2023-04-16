@@ -26,12 +26,13 @@ class OpenAi():
         return response['data'][0]['embedding']
     
     def gpt_chat_response(self, api_data):
+        # print(f"api_data =  {api_data}")
         completion = openai.ChatCompletion.create(
             model=api_data.get('model', "gpt-3.5-turbo"),
             messages=[
                 {
                     "role": "user", 
-                    "content": api_data.get("prompt")
+                    "content": api_data.get("content")
                 }
             ]
         )

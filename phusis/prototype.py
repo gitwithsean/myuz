@@ -24,7 +24,7 @@ def user_input_is_command(input):
 
 def user_init():
     global user
-    user = UserAgent()
+    user = UserAgentSingleton()
     new_script = Script.objects.create(agent_name=user.name)  
     user.script = new_script    
     

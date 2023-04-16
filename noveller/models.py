@@ -1,6 +1,6 @@
 from __future__ import annotations
 from django.db import models
-import uuid, re
+import uuid
 
 class NovellorModelDecorator(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -17,6 +17,7 @@ class NovellorModelDecorator(models.Model):
         return self.name
 
 class ConcreteNovellorModelDecorator(NovellorModelDecorator):
+    expose_rest = False
     class Meta:
         db_table = 'noveller_concrete_novellor_model_decorator'
 

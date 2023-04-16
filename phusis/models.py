@@ -1,20 +1,75 @@
 import json, uuid, os
 from django.db import models
 from django.apps import apps
-from abc import abstractmethod
 from noveller.models import ConcreteNovellorModelDecorator
 from .openai_api import OpenAi
 from datetime import datetime
 from termcolor import colored
-
 from pprint import pprint
+   
+#SCRIPTS
+class Script():
+    # id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    # name = models.CharField(max_length=200, default="") 
+    is_master_script = models.BooleanField(default=False)
+    in_debug_mode = True
+    #script as list of tuples speaker/spoken 
+    # [ { date_time, speaker_id, speaker_name, content } ]
+    script_content = models.JSONField(default=list, blank=True)
+    # agent = models.OneToOneField('AbstractAgent', null=True, blank=True, on_delete=models.PROTECT)
+    # expose_rest = False
+    
+    def script_file_name(self):
+        self.name = f"{self.agent.name}_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}"
+        return f"scripts/{self.agent_name}/{self.name}.json"
 
-#AGENT ENGINES
+    def script_to_text(self):
+        txt = ""
+        for entry in self.script_content:
+            s = f"speaker_name: {entry.get('speaker_name', '')}\n"
+            s = f"text: {entry.get('text', '')}\n\n"
+            txt = f"{txt}\n\n{s}"
+        return txt 
+    
+    def add_entry(self, sender, prompt, receiver, response):
+        time_stamp = datetime.utcnow().strftime("%Y%m%d_%H:%M_%Z")
+        prompt_entry = {
+            "is_prompt": True,
+            "agent": f"{sender.id}",
+            "speaker_name": sender.name,
+            "time_stamp": time_stamp,
+            "text": prompt
+        }
+        response_entry = {
+            "is_prompt": False,
+            "agent": f"{receiver.id}",
+            "speaker_name": receiver.name,
+            "time_stamp": time_stamp,
+            "text": response
+        }
+        print(colored("Adding script entry...", "green"))
+        self.script_content.append(prompt_entry)
+        self.script_content.append(response_entry)
+        self.save_script_to_file()
+        if self.in_debug_mode:
+            print(prompt_entry)
+            print(response_entry)
+
+    def save_script_to_file(self):
+        print(colored("Saving script to file...", "green"))
+        os.makedirs(os.path.dirname(self.file_name()), exist_ok=True)
+        with open(self.file_name, "w") as f:
+            json.dump({"script": {"script_entries": self.script_content}}, f, indent=4) 
+
+
+#ABSTRACTS
+
 class AbstractEngine():
     ai_api = OpenAi()
     agent = {}
     awareness = 'as_ai'
     awake = False
+    expose_rest = True
     most_recent_responses_to = {
         "start_engine": "",
         "thoughts_concerns_proposed_next_steps": "",
@@ -119,6 +174,58 @@ class AbstractEngine():
         print(colored("Report generated.", "green"))
         return report
 
+
+class AbstractAgent(models.Model, AbstractEngine, Script):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    name = models.CharField(max_length=200, default="")
+    agent_type = models.CharField(max_length=200, default="", editable=False)
+    goals = models.ManyToManyField('AgentGoal', blank=True)
+    roles = models.ManyToManyField('AgentRole', blank=True)
+    personality_traits = models.ManyToManyField('AgentTrait', blank=True)
+    qualifications = models.ManyToManyField('AgentQualification', blank=True)
+    impersonations = models.ManyToManyField('AgentImpersonation', blank=True)
+    is_concerned_with =  models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_concerned_with_this')
+    is_influenced_by =  models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_influenced_by_this')
+    embedding_of_self = models.TextField(blank=True)
+    elaboration = models.TextField(blank=True)
+    llelle = models.TextField(blank=True)
+    malig = models.TextField(blank=True)
+    subtr = models.TextField(blank=True)  
+    # script = models.OneToOneField('Script', null=True, blank=True, on_delete=models.PROTECT)
+    awake = False
+    # {"prompted_by", "step_taken", "result"}
+    steps_taken = models.JSONField(default=list, blank=True)
+    expose_rest = True
+    class Meta:
+        abstract = True
+
+    def __str__(self):
+        return self.name
+    
+    def dictionary(self):
+        return {
+            "id": str(self.id),
+            "name": self.name,
+            "agent_type": self.agent_type,
+            "goals": list(self.goals.all().values_list('name', flat=True)),
+            "roles": list(self.roles.all().values_list('name', flat=True)),
+            "personality": list(self.personality.all().values_list('name', flat=True)),
+            "qualifications": list(self.qualifications.all().values_list('name', flat=True)),
+            "impersonations": list(self.impersonations.all().values_list('name', flat=True)),
+            "elaboration": self.elaboration,
+            "llelle": self.llelle,
+            "malig": self.malig,
+            "subtr": self.subtr
+        }
+        
+    def introduction(self):
+        dict_str = json.dumps(self.dictionary(), indent=4)
+        
+        return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{dict_str}"
+
+
+#ENGINES
+
 class OrchestrationEngine(AbstractEngine):
     auto_mode = False
     open_ai_data = {
@@ -157,7 +264,7 @@ class OrchestrationEngine(AbstractEngine):
         
         compressed_prompt = CompressionAgent().compress_prompt(prompt, 0.7)
         print(colored("Assessing project...", "green"))
-        response = self.submit_chat_prompt(compressed_prompt, UserAgent())
+        response = self.submit_chat_prompt(compressed_prompt, UserAgentSingleton())
         self.most_recent_responses_to['assess_project'] = response
         return response
     
@@ -170,7 +277,7 @@ class OrchestrationEngine(AbstractEngine):
         
         compressed_prompt = CompressionAgent.compress_prompt(prompt, 0.5)
         print(colored("Amending project...", "green"))
-        response = self.ai_api.submit_chat_prompt(self, compressed_prompt, UserAgent())
+        response = self.ai_api.submit_chat_prompt(self, compressed_prompt, UserAgentSingleton())
         self.most_recent_responses_to['amend_project'] = response
         return compressed_prompt, response
         
@@ -193,13 +300,15 @@ class CompressionAgentEngine(AbstractEngine):
     }
     
     def compress_prompt(self, prompt, compression_ratio='', prompting_agent={}):
-        if prompting_agent == {}: prompting_agent = UserAgent()
+        if prompting_agent == {}: prompting_agent = UserAgentSingleton()
         request_data = self.open_ai_data
         request_data['content'] = PromptBuilder().to_compress(prompt, compression_ratio)
         print(colored("Compressing prompt...", "green"))
         return self.submit_chat_prompt(prompt, prompting_agent)
-    
-#ORCHESTRATION AGENT
+   
+
+#AGENTS
+
 class OrchestrationAgent(OrchestrationEngine):
     #OBJECTIVE ORIENTED TRAITS
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
@@ -211,7 +320,7 @@ class OrchestrationAgent(OrchestrationEngine):
     qualifications = models.ManyToManyField('OrcAgentQualification', blank=True)
     elaboration = models.TextField(blank=True)
     script = models.OneToOneField('Script', null=True, blank=True, on_delete=models.PROTECT)
-    
+    expose_rest = True
     #CHARACTER_TRAITS
     orc_character_age = models.IntegerField(null=True)
     orc_character_possible_locations = models.JSONField(default=list, blank=True)
@@ -229,7 +338,7 @@ class OrchestrationAgent(OrchestrationEngine):
     
     #AGENT CREATED DATA
     agent_created_traits = models.JSONField(default=list, blank=True)
-    
+    expose_rest = True
     def __str__(self):
         return self.name
     
@@ -248,59 +357,13 @@ class OrchestrationAgent(OrchestrationEngine):
             "elaboration": self.elaboration           
         }
 
-#AGENTS
-class AbstractAgent(models.Model, AbstractEngine):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, default="")
-    agent_type = models.CharField(max_length=200, default="", editable=False)
-    goals = models.ManyToManyField('AgentGoal', blank=True)
-    roles = models.ManyToManyField('AgentRole', blank=True)
-    personality_traits = models.ManyToManyField('AgentTrait', blank=True)
-    qualifications = models.ManyToManyField('AgentQualification', blank=True)
-    impersonations = models.ManyToManyField('AgentImpersonation', blank=True)
-    is_concerned_with =  models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_concerned_with_this')
-    is_influenced_by =  models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_influenced_by_this')
-    embedding_of_self = models.TextField(blank=True)
-    elaboration = models.TextField(blank=True)
-    llelle = models.TextField(blank=True)
-    malig = models.TextField(blank=True)
-    subtr = models.TextField(blank=True)  
-    script = models.OneToOneField('Script', null=True, blank=True, on_delete=models.PROTECT)
-    awake = False
-    # {"prompted_by", "step_taken", "result"}
-    steps_taken = models.JSONField(default=list, blank=True)
-    class Meta:
-        abstract = True
-
-    def __str__(self):
-        return self.name
-    
-    def dictionary(self):
-        return {
-            "id": str(self.id),
-            "name": self.name,
-            "agent_type": self.agent_type,
-            "goals": list(self.goals.all().values_list('name', flat=True)),
-            "roles": list(self.roles.all().values_list('name', flat=True)),
-            "personality": list(self.personality.all().values_list('name', flat=True)),
-            "qualifications": list(self.qualifications.all().values_list('name', flat=True)),
-            "impersonations": list(self.impersonations.all().values_list('name', flat=True)),
-            "elaboration": self.elaboration,
-            "llelle": self.llelle,
-            "malig": self.malig,
-            "subtr": self.subtr
-        }
-        
-    def introduction(self):
-        dict_str = json.dumps(self.dictionary(), indent=4)
-        
-        return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{dict_str}"
 
 #singleton
-class UserAgent(AbstractAgent):
+class UserAgentSingleton(AbstractAgent):
     name = "user"
     agent_type = "user_agent"
     _instance = None
+    expose_rest = False
     def __new__(cls):
         if cls._instance is None:
             # print('Creating PromptBuilder singleton instance')
@@ -309,16 +372,18 @@ class UserAgent(AbstractAgent):
             cls._instance.prompts_since_reminder = 0
             cls._instance.max_prompts_between_reminders = 5
         return cls._instance
-    
-    
+
+      
 class ConcreteAgent(AbstractAgent):
     is_concerned_with = models.ForeignKey(ConcreteNovellorModelDecorator, on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_concerned_with_this')
     is_influenced_by = models.ForeignKey(ConcreteNovellorModelDecorator, on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_influenced_by_this')
     
-    script = models.OneToOneField('Script', editable=False, on_delete=models.PROTECT, related_name='concrete_agent_for_script', null=True, blank=True,)
+    # script = models.OneToOneField('Script', editable=False, on_delete=models.PROTECT, related_name='concrete_agent_for_script', null=True, blank=True,)
     
+    expose_rest = False
     class Meta:
         db_table = 'phusis_concrete_agent'
+
 
 class PoeticsAgent(AbstractAgent):
     # narrative technique
@@ -328,16 +393,19 @@ class PoeticsAgent(AbstractAgent):
     # metaphoric / analogistic approaches to the content 
     agent_type = "poetics_agent"
 
+
 class StructuralAgent(AbstractAgent):
     # story plotting
     # story structure (r.g. experimental and/or tried and tested structures)
     # fleshing out the story structure and plotting based on the inputs from other agents in the swarm  
     agent_type = "structural_agent"
 
+
 class CharacterAgent(AbstractAgent):
     # agents that flesh out character profiles in various different genres, styles, target audience profiles, etc
     # also agents that become the character so that a user or other agents can talk to them, or to produce dialog
     agent_type = "character_agent"
+
  
 class ResearchAgent(AbstractAgent):
     # taking a subject area and a project goal, and thinking of research topics that could be researched for the book, 
@@ -345,9 +413,11 @@ class ResearchAgent(AbstractAgent):
     # like an expert librarian, knowing or knowing how to find the best sources for researching a topic
     # doing the background research on those specific topics to an expert degree
     agent_type = "research_agent"
+
     
 class WorldBuildingAgent(AbstractAgent):
     agent_type = "world_building_agent"
+
     
 class ThemeExploringAgent(AbstractAgent):
     agent_type = "theme_exploring_agent"
@@ -392,7 +462,7 @@ class AbstractAgentAttribute(models.Model):
     name = models.CharField(max_length=200, null=True)
     agent_attribute_type = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True)
-    
+    expose_rest = True
     class Meta:
         abstract = True
 
@@ -437,65 +507,11 @@ class OrcAgentQualification(AgentQualification):
     
 class OrcAgentImpersonation(AgentImpersonation):
     agent_attribute_type = "orchestration_agent_impersonation" 
-   
-#SCRIPTS
-class Script(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, default="") 
-    is_master_script = models.BooleanField(default=False)
-    in_debug_mode = True
-    file_name = models.CharField(max_length=200)
-    #script as list of tuples speaker/spoken 
-    # [ { date_time, speaker_id, speaker_name, content } ]
-    script_content = models.JSONField(default=list, blank=True)
-    agent_name = models.CharField(max_length=200, default="")
-    
-    def __init__(self, agent_name, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.agent_name = agent_name
-        self.name = f"{agent_name}_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}"
-        self.file_name = f"scripts/{self.agent_name}/{self.name}.json"
-           
-    def script_to_text(self):
-        txt = ""
-        for entry in self.script_content:
-            s = f"speaker_name: {entry.get('speaker_name', '')}\n"
-            s = f"text: {entry.get('text', '')}\n\n"
-            txt = f"{txt}\n\n{s}"
-        return txt 
-    
-    def add_entry(self, sender, prompt, receiver, response):
-        time_stamp = datetime.utcnow().strftime("%Y%m%d_%H:%M_%Z")
-        prompt_entry = {
-            "is_prompt": True,
-            "agent": f"{sender.id}",
-            "speaker_name": sender.name,
-            "time_stamp": time_stamp,
-            "text": prompt
-        }
-        response_entry = {
-            "is_prompt": False,
-            "agent": f"{receiver.id}",
-            "speaker_name": receiver.name,
-            "time_stamp": time_stamp,
-            "text": response
-        }
-        print(colored("Adding script entry...", "green"))
-        self.script_content.append(prompt_entry)
-        self.script_content.append(response_entry)
-        self.save_script_to_file()
-        if self.in_debug_mode:
-            print(prompt_entry)
-            print(response_entry)
 
-    def save_script_to_file(self):
-        print(colored("Saving script to file...", "green"))
-        os.makedirs(os.path.dirname(self.file_name), exist_ok=True)
-        with open(self.file_name, "w") as f:
-            json.dump({"script": {"script_entries": self.script_content}}, f, indent=4) 
 
 #singleton
 class PromptBuilder():
+    expose_rest = False
     _instance = None
     def __new__(cls):
         if cls._instance is None:

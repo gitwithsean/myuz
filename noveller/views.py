@@ -32,6 +32,8 @@ def novel_project(request):
                 form.save()
             return redirect('novel_project')  # Redirect to the same page or another page after saving the data
 
+    print(f"form_tuples: \n{form_tuples}")
+    
     context = {tuple['model_class'].__name__.lower() + '_form': tuple['form_class'](prefix=tuple['model_class'].__name__.lower()) for tuple in form_tuples}
     # context['model_names'] = model_names
     print(f"context \n: {context}")

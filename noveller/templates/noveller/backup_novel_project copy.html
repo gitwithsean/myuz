@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novellier - Phusis Application</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+    <div class="container mt-3">
+        <h1>Novellier - Phusis Application</h1>
+        <p>Create, read, update, and delete data for your novel project.</p>
+        <form method="post">
+            {% csrf_token %}
+            {% load string_utils %}
+            <form>
+                <div class="form-group">
+                    <label for="bookName">Book Name:</label>
+                    <input type="text" class="form-control" id="bookName" placeholder="Enter book name" name="bookName">
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Submit</button>
+            </form>
+
+            <div id="accordion">
+                <!-- Genres -->
+                <div class="card">
+                    <div class="card-header">
+                        <a class="card-link" data-toggle="collapse" href="#collapseGenres">
+                            Genres
+                        </a>
+                    </div>
+                    <div id="collapseGenres" class="collapse" data-parent="#accordion">
+                        <div class="card-body">
+                            {{ genre_form }}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-3">Save</button>
+                </div>
+    
+                <div id="accordion">
+
+                <div class="card">
+                    <div class="card-header">
+                        <a class="card-link" data-toggle="collapse" href="#collapseGenres">
+                            Genre
+                        </a>
+                    </div>
+                    <div id="collapseGenres" class="collapse" data-parent="#accordion">
+                        <div class="card-body">
+                            <form method="post" action="/api/novel_project/">
+                                <input type="hidden" name="csrfmiddlewaretoken" value="W3g0JeZZpJXGHsfCIMH1RAHpE7p40uckhTti1HFQu2HYO7C3IuYAf3ECDzgKsWHh">
+                                        <div class="form-group">
+                                            <label for="id_name">Name:</label>
+                                            <input type="text" name="name" maxlength="200" required id="id_name">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="id_elaboration">Elaboration:</label>
+                                            <textarea name="elaboration" cols="40" rows="10" id="id_elaboration">
+                                            </textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="id_book">Book:</label>
+                                            <select name="book" required id="id_book">
+                                            <option value="" selected>---------</option>
+                                            </select>
+                                        </div>
+                                <button type="submit" class="btn btn-primary">Save</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <!-- Target Audiences -->
+                {% with model_name="targetaudience" %}
+                    {% with CamelCaseVar=model_name|camel_case %}
+                        <div class="card">
+                            <div class="card-header">
+                                <a class="card-link" data-toggle="collapse" href="#collapse{{ CamelCaseVar }}s">
+                                    {{ CamelCaseVar }}
+                                </a>
+                            </div>
+                            <div id="collapse{{ CamelCaseVar }}s" class="collapse" data-parent="#accordion">
+                                <div class="card-body">
+                                    <form method="post" action="{% url 'novel_project' %}">
+                                        {% csrf_token %}
+                                        {% for field in targetaudience_form %}
+                                            <div class="form-group">
+                                                <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+                                                {{ field }}
+                                            </div>
+                                        {% endfor %}
+                                        <button type="submit" class="btn btn-primary">Save</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endwith %}
+                {% endwith %}
+    
+                <!-- Plots -->
+                <div class="card">
+                    <div class="card-header">
+                        <a class="card-link" data-toggle="collapse" href="#collapsePlots">
+                            Plots
+                        </a>
+                    </div>
+                    <div id="collapsePlots" class="collapse" data-parent="#accordion">
+                        <div class="card-body">
+                            {{ plot_form }}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-3">Submit</button>
+                </div>
+    
+                <!-- Chapters -->
+                <div class="card">
+                    <div class="card-header">
+                        <a class="card-link" data-toggle="collapse" href="#collapseChapters">
+                            Chapters
+                        </a>
+                    </div>
+                    <div id="collapseChapters" class="collapse" data-parent="#accordion">
+                        <div class="card-body">
+                            {{ chapter_form }}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-3">Submit</button>
+                </div>
+    
+                <!-- Pacing -->
+                <div class="card">
+                    <div class="card-header">
+                        <a class="card-link" data-toggle="collapse" href="#collapsePacing">
+                            Pacing
+                        </a>
+                    </div>
+                    <div id="collapsePacing" class="collapse" data-parent="#accordion">
+                        <div class="card-body">
+                            {{ pacing_form }}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-3">Submit</button>
+                </div>
+
+                <!-- Settings -->
+        <div class="card">
+            <div class="card-header">
+                <a class="card-link" data-toggle="collapse" href="#collapseSettings">
+                    Settings
+                </a>
+            </div>
+            <div id="collapseSettings" class="collapse" data-parent="#accordion">
+                <div class="card-body">
+                    {{ setting_form }}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Submit</button>
+        </div>
+
+        <!-- Research -->
+        <div class="card">
+            <div class="card-header">
+                <a class="card-link" data-toggle="collapse" href="#collapseResearch">
+                    Research
+                </a>
+            </div>
+            <div id="collapseResearch" class="collapse" data-parent="#accordion">
+                <div class="card-body">
+                    {{ bgresearch_form }}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Submit</button>
+        </div>
+
+        <!-- Characters -->
+        <div class="card">
+            <div class="card-header">
+                <a class="card-link" data-toggle="collapse" href="#collapseCharacters">
+                    Characters
+                </a>
+            </div>
+            <div id="collapseCharacters" class="collapse" data-parent="#accordion">
+                <div class="card-body">
+                    {{ character_form }}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Submit</button>
+        </div>
+
+        <!-- Literary Styles -->
+        <div class="card">
+            <div class="card-header">
+                <a class="card-link" data-toggle="collapse" href="#collapseLiteraryStyles">
+                    Literary Styles
+                </a>
+            </div>
+            <div id="collapseLiteraryStyles" class="collapse" data-parent="#accordion">
+                <div class="card-body">
+                    {{ litstyleguide_form }}
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Submit</button>
+        </div>
+        </form>
+    </div>
+</body>
+</html>

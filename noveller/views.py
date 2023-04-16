@@ -1,17 +1,51 @@
 from django.http import HttpResponse
 from django.apps import apps
+from django.shortcuts import redirect
 from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import *
 from .serializers import *
+from .forms import *
+from django.shortcuts import render
 # from pprint import pprint
   
 all_noveller_model_names = apps.all_models['noveller']
   
 def index(request):
     return HttpResponse("Hello, world. You're at the noveller index.")
+
+def novel_project(request):
+    model_names = ['book', 'genre', 'character', 'setting', 'targetaudience', 'plot', 'chapter', 'pacing', 'setting', 'bgresearch', 'character', 'litstyleguide']
+    
+    for name in all_noveller_model_names:
+        if '_' not in name:
+            print(f"{name}")
+    
+    form_tuples = get_noveller_model_form_tuples_for(model_names)
+
+    if request.method == 'POST':
+        forms = [tuple['form_class'](request.POST, prefix=tuple['model_class'].__name__.lower()) for tuple in form_tuples]
+        if all(form.is_valid() for form in forms):
+            for form in forms:
+                form.save()
+            return redirect('novel_project')  # Redirect to the same page or another page after saving the data
+
+    context = {tuple['model_class'].__name__.lower() + '_form': tuple['form_class'](prefix=tuple['model_class'].__name__.lower()) for tuple in form_tuples}
+    # context['model_names'] = model_names
+    print(f"context \n: {context}")
+    
+    forms_dict = {}
+    for form_tuple in all_noveller_model_form_tuples:
+        model_name = form_tuple["model_class"].__name__.lower()
+        forms_dict[f"{model_name}_form"] = form_tuple["form_class"]()
+
+    # Pass the forms dictionary to the template
+    return render(request, 'noveller/novel_project.html', {
+        'model_names': model_names,
+        'forms': forms_dict,
+    })
 
 def all_model_view_tuples_for(requested_models, view_class):
     model_create_view_tuples = []
@@ -92,4 +126,5 @@ class GetAllNovellorModelsViewMaker(APIView):
             response_data[model_name_insert] = model_serializer.data
 
         return Response(response_data)
-    
+  
+  

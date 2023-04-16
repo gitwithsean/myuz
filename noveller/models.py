@@ -306,7 +306,7 @@ class Theme(NovellorModelDecorator):
 class Perspective(NovellorModelDecorator):
     pass
 
-class LiteraryTraits(NovellorModelDecorator):
+class LiteraryTrait(NovellorModelDecorator):
     pass
 
 class LiteraryTone(NovellorModelDecorator):

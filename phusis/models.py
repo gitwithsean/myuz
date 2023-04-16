@@ -1,10 +1,12 @@
-import json, uuid
+import json, uuid, os
 from django.db import models
 from django.apps import apps
 from abc import abstractmethod
 from noveller.models import ConcreteNovellorModelDecorator
 from .openai_api import OpenAi
 from datetime import datetime
+from termcolor import colored
+
 from pprint import pprint
 
 #AGENT ENGINES
@@ -13,6 +15,11 @@ class AbstractEngine():
     agent = {}
     awareness = 'as_ai'
     awake = False
+    most_recent_responses_to = {
+        "start_engine": "",
+        "thoughts_concerns_proposed_next_steps": "",
+        "submit_report": ""
+    }
     open_ai_data = {
         "role": "user",
         "content": "",
@@ -25,65 +32,92 @@ class AbstractEngine():
     }
     
     def start_engine(self):
+        print(colored(f"Starting engine for {self.name}...", "green"))
         request_data = self.open_ai_data
         request_data['content'] = PromptBuilder().to_wake_up(self)
         response = self.ai_api.gpt_chat_response(request_data)
         self.awake = True
+        self.most_recent_responses_to['start_engine'] = response
+        print(colored("Engine started.", "green"))
         return request_data['content'], response
-        
+
     def submit_chat_prompt(self, prompt, prompting_agent):
+        print(colored("Submitting chat prompt...", "green"))
         request_data = self.open_ai_data
         request_data['content'] = PromptBuilder().complete_prompt(prompt, prompting_agent)
-        return self.ai_api.gpt_chat_response(request_data)
-    
-    def compress_prompt(self, prompt, compression_ratio='', prompting_agent={}):
-        if prompting_agent == {}: prompting_agent = UserAgent()
+        response = self.ai_api.gpt_chat_response(request_data)
+        print(colored("Chat prompt submitted.", "green"))
+        return prompt, response
+
+    def thoughts_concerns_proposed_next_steps(self, agent_to_share_with):
+        print(colored("Sharing thoughts, concerns, and proposed next steps...", "green"))
         request_data = self.open_ai_data
-        request_data['content'] = PromptBuilder().to_compress(prompt, compression_ratio)
-        return self.submit_chat_prompt(self, prompt, prompting_agent)
-    
-    def summarize():
+        request_data['content'] = PromptBuilder().thoughts_concerns_proposed_next_steps(self, agent_to_share_with)
+        response = self.submit_chat_prompt(self, request_data['content'], agent_to_share_with)
+        self.most_recent_responses_to['thoughts_concerns_proposed_next_steps'] = response
+        print(colored("Thoughts, concerns, and proposed next steps shared.", "green"))
+        return request_data['content'], response
+
+    def submit_report(self, agent):
+        print(colored("Submitting report...", "green"))
+        request_data = self.open_ai_data
+        report = self.report()
+        request_data['content'] = self.compress_prompt(self, report, agent)
+        response = self.submit_chat_prompt(self, request_data['content'], agent)
+        self.most_recent_responses_to['report_to'] = response
+        print(colored("Report submitted.", "green"))
+        return request_data['content'], response
+
+    def summarize_self():
         pass
-    
+
     def report_from(self):
         return {
-            "agent_type": self.agent_type,
+            "agent_type": (self.agent_type, 'unknown_agent_type'),
             "name": self.name,
             "goals": list(self.goals.all().values_list('name', flat=True)),
             "roles": list(self.roles.all().values_list('name', flat=True)),
             "personality_traits": list(self.personality.all().values_list('name', flat=True)),
             "qualificatons": list(self.qualifications.all().values_list('name', flat=True)),
             "impersonations": list(self.impersonations.all().values_list('name', flat=True)),
-            "self-summarization": self.summarize(),
+            "self-summarization": (self.summarize_self(), ''),
         }
-    
-    def recent_script_entries(self):
-        num_of_entries_to_return = 5
+
+    def recent_script_entries(self, num_of_entries_to_return=5):
+        print(colored(f"Retrieving {num_of_entries_to_return} most recent script entries...", "green"))
         i = 0
         recent_entries = []
-        for entry in reversed(self.script_content):
+        if num_of_entries_to_return > len(self.script.script_content):
+            num_of_entries_to_return = len(self.script.script_content)
+        for entry in reversed(self.script.script_content):
             if i >= num_of_entries_to_return:
                 break
             recent_entries.append(entry)
+        print(colored(f"Retrieved {len(recent_entries)} recent script entries.", "green"))
         return recent_entries
         
-    def report_for(self, agent):
-        report_for_orc = {}
-        if self.awake: 
-            report_for_orc = {
+    def report(self):
+        print(colored("Generating report...", "green"))
+        report = {}
+        if self.awake:
+            report = {
                 "report_from": self.report_from(),
                 "awake": True,
                 "report":{
-                    "recent_script_entries": self.recent_script_entries()
-                    
+                    "conext":{
+                        "recent_script_entries": self.recent_script_entries(),
+                        "steps_taken": self.list(self.steps_taken.all().values_list('name', flat=True))
+                    },
+                    "thoughts_concerns_proposed_next_steps": self.thoughts_concerns_proposed_next_steps()
                 }
             }
         else:
-            report_for_orc = {
+            report = {
                 "report_from": self.report_from(),
-                "awake": True,
+                "awake": False,
             }
-        return report_for_orc
+        print(colored("Report generated.", "green"))
+        return report
 
 class OrchestrationEngine(AbstractEngine):
     auto_mode = False
@@ -92,17 +126,79 @@ class OrchestrationEngine(AbstractEngine):
        'max_tokens':1000
     }
     awareness = 'as_leader_of_ai_swarm'
-    
-    def assess_agent_swarm():
-        current_agent_states = []
-        #get every agent instance in the swarm
-        for agent in apps.get_app_config('phusis').get_models(subclass_of=AbstractAgent):
-            #retrieve their current state
-            current_agent_states.append(agent.review_current_state())
-            
-        
-        pass
+    current_agent_states = []
 
+    def assess_agent_swarm(self):
+        print(colored("Assessing agent swarm...", "green"))
+
+        # Get all the models from the phusis app
+        phusis_models = apps.get_app_config('phusis').get_models()
+
+        # Filter the models that are subclasses of AbstractAgent
+        agent_models = [model for model in phusis_models if issubclass(model, AbstractAgent)]
+
+        # Iterate over the agent models and get their reports
+        for agent_model in agent_models:
+            agent_instances = agent_model.objects.all()
+            for agent_instance in agent_instances:
+                print(colored(f"Getting report from agent: {agent_instance.name}", "green"))
+                self.current_agent_states.append(agent_instance.report_from())
+        print(colored("Finished assessing agent swarm.", "green"))
+        
+    def assess_project(self, project_details):
+        self.assess_agent_swarm()
+        recent_script = self.recent_script_entries(10)
+        recent_responses = self.most_recent_responses_to
+        prompt = f"What is your current assessment of the project?\n\n"
+        prompt = prompt + f"recent chats: {recent_script}\n\n"
+        prompt = prompt + f"project details: {project_details}"
+        prompt = prompt + f"recent responses: {recent_responses}"
+        prompt = prompt + f"reports from agents: {self.current_agent_states}" 
+        
+        compressed_prompt = CompressionAgent().compress_prompt(prompt, 0.7)
+        print(colored("Assessing project...", "green"))
+        response = self.submit_chat_prompt(compressed_prompt, UserAgent())
+        self.most_recent_responses_to['assess_project'] = response
+        return response
+    
+    def amend_project(self, project_details):
+        prompt = prompt + f"\n\nHere is your most recent assessment of the project:\n\n{self.most_recent_responses_to['assess_project']}"
+        prompt = prompt + f"\n\nHere is a user created introduction to the project: {project_details}"
+        prompt = prompt + "\n\nGiven your most recent assessment of the project above, what do you think, given your expertise as an orchestrations agent, we need to do next? You have a variety of options, including, but not limited to.\nRequesting to wake up an agent and tasking them\nGiving new tasks to already awake agents\nAsking the User for more input\nWhatever else it is you think we could be doing to further the project\n"
+        
+        prompt = prompt + f"And as a reminder, this is who you are:\n\n{self.original_data}"
+        
+        compressed_prompt = CompressionAgent.compress_prompt(prompt, 0.5)
+        print(colored("Amending project...", "green"))
+        response = self.ai_api.submit_chat_prompt(self, compressed_prompt, UserAgent())
+        self.most_recent_responses_to['amend_project'] = response
+        return compressed_prompt, response
+        
+    def continue_project(self):
+        print(colored("Continuing project...", "green"))
+        #for now, just print the data so we can assess it!
+        print(self.most_recent_responses_to['amend_project'])
+
+
+class CompressionAgentEngine(AbstractEngine):
+    open_ai_data = {
+        "role": "user",
+        "content": "",
+        "model": "gpt-3.5-turbo",
+        "temperature": 0,
+        "max_tokens": 1000,
+        "top_p": 1,
+        "frequency_penalty": 0,
+        "presence_penalty": 0,
+    }
+    
+    def compress_prompt(self, prompt, compression_ratio='', prompting_agent={}):
+        if prompting_agent == {}: prompting_agent = UserAgent()
+        request_data = self.open_ai_data
+        request_data['content'] = PromptBuilder().to_compress(prompt, compression_ratio)
+        print(colored("Compressing prompt...", "green"))
+        return self.submit_chat_prompt(prompt, prompting_agent)
+    
 #ORCHESTRATION AGENT
 class OrchestrationAgent(OrchestrationEngine):
     #OBJECTIVE ORIENTED TRAITS
@@ -171,7 +267,8 @@ class AbstractAgent(models.Model, AbstractEngine):
     subtr = models.TextField(blank=True)  
     script = models.OneToOneField('Script', null=True, blank=True, on_delete=models.PROTECT)
     awake = False
-    
+    # {"prompted_by", "step_taken", "result"}
+    steps_taken = models.JSONField(default=list, blank=True)
     class Meta:
         abstract = True
 
@@ -277,10 +374,18 @@ class AgentCreatedAgents(AbstractAgent):
 #UTILITY AGENTS  
 class WebSearchAgent(AbstractAgent):
     agent_type = "web_search_agent"
-       
-class CompressionAgent(AbstractAgent):
+      
+#COMPRESSION AGENT singleton 
+class CompressionAgent(CompressionAgentEngine):
     agent_type = "compression_agent"
- 
+    _instance = None
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance.prompts_since_reminder = 0
+            cls._instance.max_prompts_between_reminders = 5
+        return cls._instance
+
 #AGENT ATTRIBUTES
 class AbstractAgentAttribute(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
@@ -332,7 +437,7 @@ class OrcAgentQualification(AgentQualification):
     
 class OrcAgentImpersonation(AgentImpersonation):
     agent_attribute_type = "orchestration_agent_impersonation" 
-        
+   
 #SCRIPTS
 class Script(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
@@ -347,13 +452,13 @@ class Script(models.Model):
     
     def __init__(self, agent_name, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.name = f"{agent_name}_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}"
-        self.file_name = f"scripts/{self.name}.json"
         self.agent_name = agent_name
+        self.name = f"{agent_name}_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}"
+        self.file_name = f"scripts/{self.agent_name}/{self.name}.json"
            
     def script_to_text(self):
         txt = ""
-        for entry in self.content:
+        for entry in self.script_content:
             s = f"speaker_name: {entry.get('speaker_name', '')}\n"
             s = f"text: {entry.get('text', '')}\n\n"
             txt = f"{txt}\n\n{s}"
@@ -375,16 +480,19 @@ class Script(models.Model):
             "time_stamp": time_stamp,
             "text": response
         }
-        self.content.append(prompt_entry)
-        self.content.append(response_entry)
+        print(colored("Adding script entry...", "green"))
+        self.script_content.append(prompt_entry)
+        self.script_content.append(response_entry)
         self.save_script_to_file()
         if self.in_debug_mode:
             print(prompt_entry)
             print(response_entry)
 
     def save_script_to_file(self):
+        print(colored("Saving script to file...", "green"))
+        os.makedirs(os.path.dirname(self.file_name), exist_ok=True)
         with open(self.file_name, "w") as f:
-            json.dump({"script": {"script_entries": self.content}}, f, indent=4) 
+            json.dump({"script": {"script_entries": self.script_content}}, f, indent=4) 
 
 #singleton
 class PromptBuilder():
@@ -421,6 +529,10 @@ class PromptBuilder():
 
         return self.auto_reminder(prompt, agent)  
     
+    def thoughts_concerns_proposed_next_steps(self, agent, agent_to_share_with):
+        prompt = f"{agent_to_share_with}, {agent_to_share_with.agent_type} of the swarm you are a member of, has requested for you to report back. They want you to reflect on what you have done so far, and respond in the following format as concisely as possible:\n\nTHOUGHTS:\n\nCONCERNS\n\nWHAT YOU THINK YOUR NEXT STEPS SHOULD BE:\n\n"
+        return self.auto_reminder(prompt, agent) 
+    
     def to_remind(self, agent):      
         prompt = f"Here is your character description: {agent.dictionary()}"
         
@@ -436,11 +548,6 @@ class PromptBuilder():
         return self.auto_reminder(prompt, agent) 
     
     def to_ask_next_step(self, agent):
-        prompt = ""
-        
-        return self.auto_reminder(prompt, agent)
-    
-    def to_ask_reflect_on(self, it):
         prompt = ""
         
         return self.auto_reminder(prompt, agent)

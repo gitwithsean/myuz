@@ -2,7 +2,6 @@ from phusis.models import *
 from noveller.models import *
 import json
 from pprint import pprint
-import gc
 
 #globals
 commands = ['exit!', 'go!', 'update!', 'switch_orc!', 'new_agent!', '.intro!']
@@ -10,7 +9,7 @@ commands_str = f"\nCOMMANDS: {commands[0]}, {commands[0]}, {commands[0]}\n"
 agent_types = ['structural_agents']
 user = {}
 orc = {}
-story_details = {}
+project_details = []
 orcs = []
 agent_classes = []
 agents = []
@@ -104,8 +103,8 @@ def main():
     global orcs
     global agent_classes
     global agents
-    global story_details
-    
+    global project_details
+    current_prompt = ""
     print("Select your Orchestration Agents.")
     orcs_init()
     user_init()
@@ -115,47 +114,59 @@ def main():
 
     user_input = input(f"\nOK, {orc} is ready for your input:\n\n[or prompt! to receive a list of prompts that will get you started]\n\n")
     
-    if user_input == 'prompt!':
-        user_input = ""
-        for init_prompt in init_prompts:
-            user_input = user_input + {init_prompt} + input(f"tell us about the {init_prompt} of the story") + "\n"
-        user_input = user_input + input(f"Anything else you want to add?") + "\n"
-    else:
-        while user_input_is_command(user_input) == False:
-            user_input = input(f"Enter input. Tell {orc} more about your story...\nCOMMANDS: 'go!' 'exit!' 'update!'") 
+    # current_prompt = user_input
     
-    orc.submit_chat_prompt(user_input, user)
+    # if user_input == 'prompt!':
+    #     user_input = ""
+    #     for init_prompt in init_prompts:
+    #         user_input = user_input + {init_prompt} + input(f"tell us about the {init_prompt} of the story") + "\n"
+    #         user_input = user_input + input(f"Anything else you want to add?") + "\n"\
+        
+    #     project_details.append(user_input.__str__())
+    # else:
+    #     while user_input_is_command(user_input) == False:
+    #         project_details.append(user_input.__str__())
+    #         user_input = input(f"Enter input. Tell {orc} more about your story...\nCOMMANDS: 'go!' 'exit!' 'update!'") 
+    #         if not user_input_is_command: project_details.append(user_input.__str__())
+    
+    # user_input
+    
+    prompt, response = orc.submit_chat_prompt(user_input, user)
     interaction_to_script(user, prompt, orc, response)
     
     iteration = 0
     while True:
         iteration = iteration+1
-        if user_input == "exit!":
-            break
-        elif user_input == "go!":
-            pass
-        elif user_input == "update!":
-            orc.script
-        else:
-            orc.submit_prompt(user_input)
+        print(f"=================ITERATION {iteration}=================")
+        # if user_input == "exit!":
+        #     break
+        # elif user_input == "go!":
+        #     pass
+        # elif user_input == "update!":
+        #     orc.script
+        # else:
+        #     orc.submit_prompt(user_input)
 
-        orc.assess_project(orc.master_script)
-        orc.assess_agents()
-        orc.next_steps()
+        prompt, response = orc.assess_project(project_details)
+        interaction_to_script(user, prompt, orc, response)
+        prompt, response = orc.amend_project()
+        interaction_to_script(user, prompt, orc, response)
+        orc.continue_project()
 
-        new_agent = orc.create_agents()
-        agents.append(new_agent)
+        # new_agent = orc.create_agents()
+        # agents.append(new_agent)
 
-        for agent in agents:
-            prompt = orc.generate_prompt(agent)
-            response = agent.respond(prompt)
+        # for agent in agents:
+        #     prompt = orc.generate_prompt(agent)
+        #     response = agent.respond(prompt)
 
-            orc.master_script.add_entry(orc, prompt)
-            orc.master_script.add_entry(agent, response)
+        #     orc.master_script.add_entry(orc, prompt)
+        #     orc.master_script.add_entry(agent, response)
 
-        if not orc.auto_mode and iteration >=5:
+        if not orc.auto_mode:
             print("Project status update:")
             user_input = input(f"Enter input, tell {orc} more about your story:\n{commands_str}")
+            project_details.append(user_input.__str__)
 
 
 if __name__ == "__main__":

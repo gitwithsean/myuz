@@ -1,5 +1,5 @@
 
-. venv/myuz/bin/activate
+. venv/bin/activate
 
 python manage.py check
 python manage.py makemigrations

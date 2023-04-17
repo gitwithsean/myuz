@@ -17,11 +17,13 @@ class FormMaker:
     agent_model_classes.append(OrchestrationAgent) #OrchestrationAgent is not a subclass of abstract agent so needs to be added
     # print(f"FORMS: looping through the following list of models in phusis {agent_model_classes}") 
     # print(f"FORMS: looping through the following list of models in phusis {apps.all_models['phusis']}")
-    for agent_model_class in agent_model_classes:
-        # Omit relationship model classes and Singletons
-        if '_' not in agent_model_class.__name__ and 'singleton' not in agent_model_class.__name__:
-                      
-            # print(f"FORMS: Creating form class for {agent_model_class.__name__}")
+    for agent_model_class in agent_model_classes:       
+        # Omit relationship classes, Singletons and classes who are not to be exposed
+        if agent_model_class.expose_rest and '_' not in agent_model_class.__name__ and 'Singleton' not in agent_model_class.__name__:          
+            print(f"FORMS: Creating form class for {agent_model_class.__name__}")
+            model_class = apps.get_model('phusis', agent_model_class.__name__)
+            pprint(vars(model_class))
+            
             form_class = type(
                     f'{agent_model_class.__name__}Form', 
                     (forms.ModelForm,), 

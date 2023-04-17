@@ -1,0 +1,196 @@
+{
+    "executables_for_all_agents":
+    [   
+        {   
+            "exec_id":-1,
+            "exec_name": "",
+            "exec_description": "",
+            "exec_parameters": [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":0,
+            "exec_name": "wake_up",
+            "exec_description": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":1,
+            "exec_name": "consider",
+            "exec_description": "",
+            "exec_parameters": [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":2,
+            "exec_name": "produce",
+            "exec_description": "",
+            "exec_parameters":  [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":3,
+            "exec_name": "reflect_on",
+            "exec_description": "",
+            "exec_parameters": [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":4,
+            "exec_name": "question_critisize",
+            "exec_description": "",
+            "exec_parameters": [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":5,
+            "exec_name": "offer_prompts",
+            "exec_description": "",
+            "exec_parameters": [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":6,
+            "exec_name": "thoughts_concerns_propose_next_steps",
+            "exec_description": "",
+            "exec_parameters": [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":7,
+            "exec_name": "submit_state_report_to",
+            "exec_description": "",
+            "exec_parameters": [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":8,
+            "exec_name": "list_productions",
+            "exec_description": "",
+            "exec_parameters": [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":9,
+            "exec_name": "return_production_content",
+            "exec_description": "",
+            "exec_parameters": [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":10,
+            "exec_name": "executive_summary_of",
+            "exec_description": "",
+            "exec_parameters": ["self", "products", "product, index"],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":11,
+            "exec_name": "delve_into",
+            "exec_description": "",
+            "exec_parameters": [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":12,
+            "exec_name": "improvise_on",
+            "exec_description": "",
+            "exec_parameters": [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":12,
+            "exec_name": "dwell_on",
+            "exec_description": "",
+            "exec_parameters": [],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":13,
+            "exec_name": "add_script_entry",
+            "exec_description": "",
+            "exec_parameters": ["sender", "prompt", "receiver", "response"],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":13,
+            "exec_name": "add_script_entry",
+            "exec_description": "",
+            "exec_parameters": ["sender", "prompt", "receiver", "response"],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":14,
+            "exec_name": "recent_script_entries",
+            "exec_description": "",
+            "exec_parameters": ["num_entries"],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":15,
+            "exec_name": "introduce_yourself",
+            "exec_description": "",
+            "exec_parameters": ["is_brief"],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": ""
+        },
+        {   
+            "exec_id":100,
+            "exec_name": "assess_project",
+            "exec_description": "",
+            "exec_output_schema": "",
+            "exec_prompt_adjst": "",
+            "exec_for_agents": ["Orchestration"]
+        },
+        {   
+            "exec_id":101,
+            "exec_name": "assess_agent_swarm",
+            "exec_description": "",
+            "exec_output_schema": "",
+            "exec_prompt_adjst": "",
+            "exec_for_agents": ["Orchestration"]
+        },
+        {   
+            "exec_id":102,
+            "exec_name": "amend_project",
+            "exec_description": "",
+            "exec_output_schema": "",
+            "exec_prompt_adjst": "",
+            "exec_for_agents": ["Orchestration"]
+        },
+        {   
+            "exec_id":103,
+            "exec_name": "resume_project",
+            "exec_description": "",
+            "exec_output_schema": "",
+            "exec_prompt_adjst": "",
+            "exec_for_agents": ["Orchestration"]
+        },
+        {   
+            "exec_id":103,
+            "exec_name": "compress_prompt",
+            "exec_description": "",
+            "exec_parameters": ["prompt"],
+            "exec_output_schema": "",
+            "exec_prompt_adjst": "",
+            "exec_for_agents": ["CompressionAgent"]
+        }
+    ]
+}

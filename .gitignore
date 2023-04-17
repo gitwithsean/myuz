@@ -3,3 +3,4 @@
 **scratch**
 ./scripts/*script*.json
 **sqlite3**
+venv/*

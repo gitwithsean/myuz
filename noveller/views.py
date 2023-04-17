@@ -19,9 +19,7 @@ def index(request):
 def novel_project(request):
     model_names = ['book', 'genre', 'character', 'setting', 'targetaudience', 'plot', 'chapter', 'pacing', 'setting', 'bgresearch', 'character', 'litstyleguide']
     
-    for name in all_noveller_model_names:
-        if '_' not in name:
-            print(f"{name}")
+    # for name in all_noveller_model_names: if '_' not in name: print(f"{name}")
     
     form_tuples = get_noveller_model_form_tuples_for(model_names)
 
@@ -32,11 +30,11 @@ def novel_project(request):
                 form.save()
             return redirect('novel_project')  # Redirect to the same page or another page after saving the data
 
-    print(f"form_tuples: \n{form_tuples}")
+    # print(f"form_tuples: \n{form_tuples}")
     
-    context = {tuple['model_class'].__name__.lower() + '_form': tuple['form_class'](prefix=tuple['model_class'].__name__.lower()) for tuple in form_tuples}
+    # context = {tuple['model_class'].__name__.lower() + '_form': tuple['form_class'](prefix=tuple['model_class'].__name__.lower()) for tuple in form_tuples}
     # context['model_names'] = model_names
-    print(f"context \n: {context}")
+    # print(f"context \n: {context}")
     
     forms_dict = {}
     for form_tuple in all_noveller_model_form_tuples:

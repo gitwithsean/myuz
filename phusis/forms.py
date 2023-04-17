@@ -1,7 +1,7 @@
 from django import forms
 from django.apps import apps
 from phusis.models import *
-from phusis.models import AbstractAgent, OrchestrationAgent, Script
+from phusis.models import AbstractAgent, OrchestrationAgent
 
 all_phusis_model_form_tuples = []
 
@@ -44,15 +44,14 @@ class FormMaker:
 
 def get_phusis_model_form_tuples_for(model_names):
     global all_phusis_model_form_tuples
-    
+    pprint(all_phusis_model_form_tuples)
     result = []
     for tuple in all_phusis_model_form_tuples:
         # print(f"FORMS: tuple {tuple}")
         for model_name in model_names:
-            # print(f"FORMS: model_name: {model_name}")
-            if tuple['model_class'].class_display_name == model_name:
-                # print(f"FORMS: if {tuple['model_class']} == {model_name}:")
-                # print(f"FORMS: tuple['model_class'].__name__.lower() {tuple['model_class'].__name__.lower()}")
+            # print(f"FORMS:  tuple['model_class'].class_display_name: { tuple['model_class'].class_display_name} \nmodel_name: {model_name}")
+            if tuple['model_class'].__name__ == model_name:
+                # print(f"FORMS: tuple['model_class'].__name__.lower() {tuple['model_class'].__name__.lower()}")``
                 result.append(tuple)
     # print(f"FORMS: get_phusis_model_form_tuples_for.result {result}")            
     return result

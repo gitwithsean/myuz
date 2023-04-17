@@ -18,7 +18,7 @@
             {% csrf_token %}
             {% load string_utils %}
             {% for model_name in model_names %}
-                {% with CamelCaseVar=model_name|camel_case %}                   
+                {% with CamelCaseVar=model_name|camel_case %}
                     <div id="accordion">
                         <div class="card">
                             <div class="card-header">

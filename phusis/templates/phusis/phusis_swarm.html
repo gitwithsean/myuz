@@ -12,25 +12,26 @@
 
 <body>
     <div class="container mt-3">
-        <h1>Novellier - Phusis Application</h1>
-        <p>Create, read, update, and delete data for your novel project.</p>
+        <h1>the phusis swarm</h1>
+        <p>Connect with your swarm</p>
         <form method="post">
             {% csrf_token %}
             {% load string_utils %}
             {% for model_name in model_names %}
-                {% with CamelCaseVar=model_name|camel_case %}                   
+                {% with lowerCaseVar=model_name|lowercase %}                   
                     <div id="accordion">
                         <div class="card">
                             <div class="card-header">
-                                <a class="card-link" data-toggle="collapse" href="#collapse{{ CamelCaseVar }}s">
-                                    {{ CamelCaseVar }}
+                                <a class="card-link" data-toggle="collapse" href="#collapse{{ model_name }}s">
+                                    {{ model_name }}
+                                    {{ model_name|add:"Form" }}
                                 </a>
                             </div>
-                            <div id="collapse{{ CamelCaseVar }}s" class="collapse" data-parent="#accordion">
+                            <div id="collapse{{ model_name }}s" class="collapse" data-parent="#accordion">
                                 <div class="card-body">
                                     <form method="post" action="{% url 'phusis_swarm' %}">
                                         {% csrf_token %}
-                                        {% with form_key=model_name|add:"_form" %}
+                                        {% with form_key=lowerCaseVar|add:"form" %}
                                             {% for field in forms|get_item:form_key %}
                                                 <div class="form-group">
                                                     <label for="{{ field.id_for_label }}">{{ field.label }}:</label>

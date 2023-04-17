@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>phusis</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+    <div class="container mt-3">
+        <h1>the phusis swarm</h1>
+        <p>Connect with your swarm</p>
+        <form method="post">
+            {% csrf_token %}
+            {% load string_utils %}
+            {% for model_name in model_names %}
+                {% with lowerCaseVar=model_name|lowercase %}                   
+                    <div id="accordion">
+                        <div class="card">
+                            <div class="card-header">
+                                <a class="card-link" data-toggle="collapse" href="#collapse{{ model_name }}s">
+                                    {{ model_name }}
+                                </a>
+                            </div>
+                            <div id="collapse{{ model_name }}s" class="collapse" data-parent="#accordion">
+                                <div class="card-body">
+                                    <form method="post" action="{% url 'phusis_swarm' %}">
+                                        {% csrf_token %}
+                                        {% with form_key=lowerCaseVar|add:"form" %}
+                                            {% for field in forms|get_item:form_key %}
+                                                <div class="form-group">
+                                                    <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+                                                    <br>
+                                                    {{ field }}
+                                                </div>
+                                            {% endfor %}
+                                        {% endwith %}
+                                        <button type="submit" class="btn btn-primary">Save</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endwith %}
+            {% endfor %}
+        </form>
+    </div>
+</body>
+
+</html>

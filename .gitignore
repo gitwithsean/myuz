@@ -1,4 +1,6 @@
-db*
 **/__pycache__/*
-**/schemas
 **/projects
+**scratch**
+./scripts/*script*.json
+**sqlite3**
+venv/*

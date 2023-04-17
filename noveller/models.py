@@ -1,18 +1,13 @@
 from __future__ import annotations
 from django.db import models
-import uuid, re
-
-def rest_name(model):
-    return re.sub(r'(?<!^)(?=[A-Z])', '_', model.__class__.__name__).lower()
+import uuid
 
 class NovellorModelDecorator(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
     name = models.CharField(max_length=200)  
     elaboration = models.TextField(blank=True, null=True)
     expose_rest = True
-    
-    def rest_name(model):
-        return re.sub(r'(?<!^)(?=[A-Z])', '_', model.__class__.__name__).lower()
+    expose_swarm = True
     
     class Meta:
         abstract = True
@@ -21,6 +16,10 @@ class NovellorModelDecorator(models.Model):
     def __str__(self):
         return self.name
 
+class ConcreteNovellorModelDecorator(NovellorModelDecorator):
+    expose_rest = False
+    class Meta:
+        db_table = 'noveller_concrete_novellor_model_decorator'
 
 class Book(NovellorModelDecorator):
     settings = models.ManyToManyField('Setting', blank=True, related_name='book_settings')
@@ -82,7 +81,6 @@ class Chapter(NovellorModelDecorator):
     class Meta:
         ordering = ['chapter_num']
 
-
 class ChapterPart(NovellorModelDecorator):
     part_title = models.CharField(max_length=200, blank=True)
     part_num = models.IntegerField()
@@ -115,7 +113,6 @@ class ChapterPartSummary(NovellorModelDecorator):
     
     class Meta:
         ordering = ['for_chapter_part__chapter__chapter_num', 'for_chapter_part__part_num']
-
 
 class ChapterPartSummaryItem(NovellorModelDecorator):
     for_chapter_part = models.ForeignKey('ChapterPartSummary', on_delete=models.SET_NULL, blank=True, null=True)
@@ -214,7 +211,6 @@ class CharacterVersion(NovellorModelDecorator):
     
     class Meta:
         ordering = ['for_character__name',]
-
      
 class CharacterRelationship(NovellorModelDecorator):
     relationship_from = models.OneToOneField('CharacterVersion', on_delete=models.CASCADE, related_name='has_relationship')
@@ -282,8 +278,8 @@ class LitStyleGuide(NovellorModelDecorator):
     tone = models.ManyToManyField('LiteraryTone', blank=True)
     imagery = models.ManyToManyField('LiteraryImagery', blank=True)
     symbolism = models.ManyToManyField('LiterarySymbolism', blank=True)
-    traits = models.ManyToManyField('LiteraryTraits', related_name='litstyleguide_traits', blank=True)
-    avoid = models.ManyToManyField('LiteraryTraits', related_name='litstyleguide_avoid', blank=True)
+    traits = models.ManyToManyField('LiteraryTrait', related_name='litstyleguide_traits', blank=True)
+    avoid = models.ManyToManyField('LiteraryTrait', related_name='litstyleguide_avoid', blank=True)
     style_guide = models.TextField(blank=True, null=True)
     compressed_sg = models.TextField(blank=True, null=True)
     writing_samples = models.TextField(blank=True, null=True)
@@ -311,7 +307,7 @@ class Theme(NovellorModelDecorator):
 class Perspective(NovellorModelDecorator):
     pass
 
-class LiteraryTraits(NovellorModelDecorator):
+class LiteraryTrait(NovellorModelDecorator):
     pass
 
 class LiteraryTone(NovellorModelDecorator):
@@ -334,9 +330,7 @@ class File(NovellorModelDecorator):
 
  
 class NovellorModellor(NovellorModelDecorator):
-    
-    
-    
+        
     class __NovellorModellorSingleton:
         def __init__(self):
             self.instance = NovellorModellor()

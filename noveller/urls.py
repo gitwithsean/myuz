@@ -20,6 +20,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('', views.index, name='index'),
+    path('novel_project/', views.novel_project, name='novel_project'),
     path('update_all_models/', UpdateAllNovellorModelsViewMaker.as_view(), name='update_all_models'),
     path('get_all_models/', GetAllNovellorModelsViewMaker.as_view(), name='get_all_models'),
 ]

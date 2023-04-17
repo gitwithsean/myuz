@@ -1,7 +1,7 @@
 import json, uuid, os
 from django.db import models
 from django.apps import apps
-from noveller.models import ConcreteNovellorModelDecorator
+from noveller.models import ConcreteNovellerModelDecorator
 from .openai_api import OpenAi
 from datetime import datetime
 from termcolor import colored
@@ -246,16 +246,15 @@ class AbstractAgent(models.Model, AbstractEngine):
     personality_traits = models.ManyToManyField('AgentTrait', blank=True)
     qualifications = models.ManyToManyField('AgentQualification', blank=True)
     impersonations = models.ManyToManyField('AgentImpersonation', blank=True)
-    is_concerned_with =  models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_concerned_with_this')
-    is_influenced_by =  models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_influenced_by_this')
+    is_concerned_with =  models.ForeignKey('noveller.ConcreteNovellerModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_concerned_with_this')
+    is_influenced_by =  models.ForeignKey('noveller.ConcreteNovellerModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_influenced_by_this')
     embedding_of_self = models.TextField(blank=True)
     elaboration = models.TextField(blank=True)
     llelle = models.TextField(blank=True)
     malig = models.TextField(blank=True)
     subtr = models.TextField(blank=True)  
     script = models.OneToOneField('Script', null=True, blank=True, on_delete=models.PROTECT)
-    awake = False
-    capabilities = models.ManyToManyField('AgentCapabilities', blank=True)
+    capabilities = models.ManyToManyField('AgentAction', blank=True)
     # {"prompted_by", "step_taken", "result"}
     steps_taken = models.JSONField(default=list, blank=True)
     expose_rest = True
@@ -286,7 +285,18 @@ class AbstractAgent(models.Model, AbstractEngine):
         
         return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{dict_str}"
 
-
+   
+class ConcreteAgent(AbstractAgent):
+    is_concerned_with = models.ForeignKey('noveller.ConcreteNovellerModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_concerned_with_this')
+    is_influenced_by = models.ForeignKey('noveller.ConcreteNovellerModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_influenced_by_this')
+    
+    class_display_name = "Concrete Agent (you shouldn't be seeing this)"
+    script = models.OneToOneField('Script', editable=False, on_delete=models.PROTECT, related_name='concrete_agent_for_script', null=True, blank=True,)
+    expose_rest = False
+    
+    class Meta:
+        db_table = 'phusis_concrete_agent'
+        
 #ENGINES
 
 class OrchestrationEngine(AbstractEngine):
@@ -441,17 +451,6 @@ class UserAgentSingleton(AbstractAgent):
             cls._instance.max_prompts_between_reminders = 5
         return cls._instance
 
-      
-class ConcreteAgent(AbstractAgent):
-    is_concerned_with = models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_concerned_with_this')
-    is_influenced_by = models.ForeignKey('noveller.ConcreteNovellorModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_influenced_by_this')
-    
-    class_display_name = "Concrete Agent (you shouldn't be seeing this)"
-    script = models.OneToOneField('Script', editable=False, on_delete=models.PROTECT, related_name='concrete_agent_for_script', null=True, blank=True,)
-    expose_rest = False
-    class Meta:
-        db_table = 'phusis_concrete_agent'
-
 
 class PoeticsAgent(AbstractAgent):
     """
@@ -578,8 +577,9 @@ class AgentQualification(AbstractAgentAttribute):
 class AgentImpersonation(AbstractAgentAttribute):
     agent_attribute_type = "agent_impersonation" 
 
-class AgentExecutable(AbstractAgentAttribute):
+class AgentAction(AbstractAgentAttribute):
     agent_attribute_type = "agent_executable" 
+    action_id = models.IntegerField(blank=False, null=False)
 
 #ORCHESTRATION AGENT ATTRIBUTES
 class OrcAgentGoal(AgentGoal):

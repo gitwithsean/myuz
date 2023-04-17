@@ -5,24 +5,21 @@ from phusis.models import AbstractAgent, OrchestrationAgent
 
 all_phusis_model_form_tuples = []
 
-class FormMaker:
+class AgentFormMaker:
     global all_phusis_model_form_tuples
     # for every model in the app, create a form and store it 
     # as a tuple with its model in a list of those tuples
     
     agent_model_classes = AbstractAgent.__subclasses__()
-    # print(f"FORMS: looping through the following list of models in phusis {agent_model_classes}")  
     # agent_model_classes.append(AbstractAgent)
-    # agent_model_classes.append(Script)
     agent_model_classes.append(OrchestrationAgent) #OrchestrationAgent is not a subclass of abstract agent so needs to be added
     # print(f"FORMS: looping through the following list of models in phusis {agent_model_classes}") 
-    # print(f"FORMS: looping through the following list of models in phusis {apps.all_models['phusis']}")
     for agent_model_class in agent_model_classes:       
         # Omit relationship classes, Singletons and classes who are not to be exposed
         if agent_model_class.expose_rest and '_' not in agent_model_class.__name__ and 'Singleton' not in agent_model_class.__name__:          
-            print(f"FORMS: Creating form class for {agent_model_class.__name__}")
+            # print(f"FORMS: Creating form class for {agent_model_class.__name__}")
             model_class = apps.get_model('phusis', agent_model_class.__name__)
-            pprint(vars(model_class))
+            # pprint(vars(model_class))
             
             form_class = type(
                     f'{agent_model_class.__name__}Form', 

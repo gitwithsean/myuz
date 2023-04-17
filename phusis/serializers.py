@@ -2,6 +2,7 @@ from django.apps import apps
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
 from .models import *
+from .models import OrchestrationAgent
 # from pprint import pprint
 
 all_phusis_model_serializer_tuples = []
@@ -10,16 +11,23 @@ class SerializerMaker:
     global all_phusis_model_serializer_tuples
     # for every model in the app, create a serializer and store it 
     # as a tuple with it's model in a list of those tuples
-    print(f"looping through the following list of models in phusis {apps.all_models['phusis']}")
-    for agent_model_class in AbstractAgent.__subclasses__():
+    
+    
+    agent_model_classes = AbstractAgent.__subclasses__()    
+    agent_model_classes.append(AbstractAgent)
+    # agent_model_classes.append(Script)
+    agent_model_classes.append(OrchestrationAgent) #OrchestrationAgent is not a subclass of abstract agent so needs to be added
+    # print(f"looping through the following list of models in phusis {apps.all_models['phusis']}")
+    for agent_model_class in agent_model_classes:
         # Omit relationship model classes and Singletons
         if '_' not in agent_model_class.__name__ and 'singleton' not in agent_model_class.__name__:
             try:
-                model_class = apps.get_model('phusis', agent_model_class.__name__)
-                if model_class.expose_rest == True: 
+                # print(f"{agent_model_class.__name__ }")
+                # print(f"{agent_model_class}")
+                if agent_model_class.expose_rest == True: 
                     class_name = agent_model_class.__name__ + 'Serializer'
                     meta_attrs = {
-                        'model': model_class,
+                        'model': agent_model_class,
                         'fields': '__all__'
                     }
                     
@@ -32,9 +40,9 @@ class SerializerMaker:
                     
                     )
                     globals()[class_name] = serializer_class
-                    all_phusis_model_serializer_tuples.append({"model_class":model_class, "serializer_class": serializer_class})
+                    all_phusis_model_serializer_tuples.append({"model_class":agent_model_class, "serializer_class": serializer_class})
             except ObjectDoesNotExist as e:
-                print(f"Could not retrieve model {model_name} from the app. Error: {e}")
+                print(f"Could not retrieve model {agent_model_class.__name__} from the app. Error: {e}")
             
 def get_phusis_model_serializer_tuples_for(model_names):
     global all_phusis_model_serializer_tuples

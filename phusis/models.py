@@ -8,7 +8,7 @@ from termcolor import colored
 from pprint import pprint
    
 #SCRIPTS
-class Script():
+class Script(models.Model):
     # id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     # name = models.CharField(max_length=200, default="") 
     is_master_script = models.BooleanField(default=False)
@@ -16,10 +16,15 @@ class Script():
     #script as list of tuples speaker/spoken 
     # [ { date_time, speaker_id, speaker_name, content } ]
     script_content = models.JSONField(default=list, blank=True)
-    # agent = models.OneToOneField('AbstractAgent', null=True, blank=True, on_delete=models.PROTECT)
-    # expose_rest = False
-    
-    def script_file_name(self):
+    agent = {}
+    expose_rest = True
+    class_display_name = 'Script'
+        
+    def script_file_name(self, agent={}):
+        if agent=={}:
+            agent=self.agent
+        else:
+            self.agent = agent    
         self.name = f"{self.agent.name}_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}"
         return f"scripts/{self.agent_name}/{self.name}.json"
 
@@ -58,7 +63,7 @@ class Script():
     def save_script_to_file(self):
         print(colored("Saving script to file...", "green"))
         os.makedirs(os.path.dirname(self.file_name()), exist_ok=True)
-        with open(self.file_name, "w") as f:
+        with open(self.file_name(), "w") as f:
             json.dump({"script": {"script_entries": self.script_content}}, f, indent=4) 
 
 
@@ -175,10 +180,11 @@ class AbstractEngine():
         return report
 
 
-class AbstractAgent(models.Model, AbstractEngine, Script):
+class AbstractAgent(models.Model, AbstractEngine):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=200, default="")
-    agent_type = models.CharField(max_length=200, default="", editable=False)
+    agent_type = models.CharField(max_length=200, default="phusis_agent", editable=False)
+    class_display_name = models.CharField(max_length=200, editable=False, default=f"Phusis {agent_type} Agent")
     goals = models.ManyToManyField('AgentGoal', blank=True)
     roles = models.ManyToManyField('AgentRole', blank=True)
     personality_traits = models.ManyToManyField('AgentTrait', blank=True)
@@ -191,7 +197,7 @@ class AbstractAgent(models.Model, AbstractEngine, Script):
     llelle = models.TextField(blank=True)
     malig = models.TextField(blank=True)
     subtr = models.TextField(blank=True)  
-    # script = models.OneToOneField('Script', null=True, blank=True, on_delete=models.PROTECT)
+    script = models.OneToOneField('Script', null=True, blank=True, on_delete=models.PROTECT)
     awake = False
     # {"prompted_by", "step_taken", "result"}
     steps_taken = models.JSONField(default=list, blank=True)
@@ -308,10 +314,10 @@ class CompressionAgentEngine(AbstractEngine):
    
 
 #AGENTS
-
-class OrchestrationAgent(OrchestrationEngine):
+class OrchestrationAgent(models.Model, OrchestrationEngine):
     #OBJECTIVE ORIENTED TRAITS
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    class_display_name = "Orchestration Agent"
     name = models.CharField(max_length=200, default="")
     agent_type = "orchestration_agent"
     original_data = {}
@@ -362,6 +368,7 @@ class OrchestrationAgent(OrchestrationEngine):
 class UserAgentSingleton(AbstractAgent):
     name = "user"
     agent_type = "user_agent"
+    class_display_name = 'User'
     _instance = None
     expose_rest = False
     def __new__(cls):
@@ -378,7 +385,7 @@ class ConcreteAgent(AbstractAgent):
     is_concerned_with = models.ForeignKey(ConcreteNovellorModelDecorator, on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_concerned_with_this')
     is_influenced_by = models.ForeignKey(ConcreteNovellorModelDecorator, on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_influenced_by_this')
     
-    # script = models.OneToOneField('Script', editable=False, on_delete=models.PROTECT, related_name='concrete_agent_for_script', null=True, blank=True,)
+    script = models.OneToOneField('Script', editable=False, on_delete=models.PROTECT, related_name='concrete_agent_for_script', null=True, blank=True,)
     
     expose_rest = False
     class Meta:
@@ -392,6 +399,7 @@ class PoeticsAgent(AbstractAgent):
     # exploring themes
     # metaphoric / analogistic approaches to the content 
     agent_type = "poetics_agent"
+    class_display_name = "Poetics Agent"
 
 
 class StructuralAgent(AbstractAgent):
@@ -399,12 +407,14 @@ class StructuralAgent(AbstractAgent):
     # story structure (r.g. experimental and/or tried and tested structures)
     # fleshing out the story structure and plotting based on the inputs from other agents in the swarm  
     agent_type = "structural_agent"
+    class_display_name = "Structural Agent"
 
 
 class CharacterAgent(AbstractAgent):
     # agents that flesh out character profiles in various different genres, styles, target audience profiles, etc
     # also agents that become the character so that a user or other agents can talk to them, or to produce dialog
     agent_type = "character_agent"
+    class_display_name = "Character Agent"
 
  
 class ResearchAgent(AbstractAgent):
@@ -413,41 +423,50 @@ class ResearchAgent(AbstractAgent):
     # like an expert librarian, knowing or knowing how to find the best sources for researching a topic
     # doing the background research on those specific topics to an expert degree
     agent_type = "research_agent"
+    class_display_name = "Research Agent"
 
     
 class WorldBuildingAgent(AbstractAgent):
     agent_type = "world_building_agent"
+    class_display_name = "World Building Agent"
 
     
 class ThemeExploringAgent(AbstractAgent):
     agent_type = "theme_exploring_agent"
+    class_display_name = "Theme Exploring Agent"
     
 class ConflictAndResolutionAgent(AbstractAgent):
     agent_type = "conflict_and_resolution_agent"
+    class_display_name = "Conflict And Resolution Agent"
     
 class InterdisciplinaryAgent(AbstractAgent):
     # These are relatively neutral agents that would consider the output from all agents in a swarm and make sure they are not deviating from each other, making sure that each of them are serving towards a common goal in a cohesive way, that research informs setting, informs themes, informs style etc. Not quite like a director of a film, more like assistant directors
     # They will provide 'grades' to what is produced, but less about quality and more about how close they are to cohering with the work of the other agents working in different disciplines. With 0.5 being neutral, 1 being exemplary and 0 meaning heading in the wrong direction.
     # 'impersonations' is less important with these agents, however let's add a field for 'personality' here, with personality traits that would help with their goals. These personality traits can be similar across each agent    
     agent_type = "interdisciplinary_agent"
+    class_display_name = "Interdisciplinary Agent"
 
 class QualityEvaluationAgent(AbstractAgent):
     # evaluating the output and work of each of the agents.
     # here is a list of each agent
     agent_type = "qualitye_valuation_agent"
+    class_display_name = "Quality Evaluation Agent"
 
 class AgentCreatedAgents(AbstractAgent):
     # If any of the 'manager' agents feels there is a class of agent missing that they need
     #A list of tuples: { trait_field, trait_valuess [] }
     agent_created_attributes = []
+    class_display_name = "Agent Created Agent"
         
 #UTILITY AGENTS  
 class WebSearchAgent(AbstractAgent):
     agent_type = "web_search_agent"
+    class_display_name = "Web Search Agent"
       
 #COMPRESSION AGENT singleton 
 class CompressionAgent(CompressionAgentEngine):
     agent_type = "compression_agent"
+    class_display_name = "Compression Agent"
     _instance = None
     def __new__(cls):
         if cls._instance is None:
@@ -507,7 +526,6 @@ class OrcAgentQualification(AgentQualification):
     
 class OrcAgentImpersonation(AgentImpersonation):
     agent_attribute_type = "orchestration_agent_impersonation" 
-
 
 #singleton
 class PromptBuilder():

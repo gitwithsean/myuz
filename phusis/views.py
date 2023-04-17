@@ -11,24 +11,24 @@ from .forms import *
 from django.shortcuts import render
 # from pprint import pprint
   
-  
 def index(request):
     return HttpResponse("Hello, world. You're at the phusis index.")
 
 def phusis_swarm(request):
     all_agent_model_class_names = []
-    all_agent_model_classes = AbstractAgent.__subclasses__()
-    
+    all_agent_model_classes = AbstractAgent.__subclasses__()  
+    all_agent_model_classes.append(OrchestrationAgent)
     for agent_class in all_agent_model_classes:
-        all_agent_model_class_names.append(agent_class.__name__)
-        
-    # model_names = ['TO DO FILL IN']
-    model_names = all_agent_model_class_names
-    for name in all_agent_model_class_names:
-        if '_' not in name and 'singleton' not in name:
-            print(f"{name}")
+        # print(f"VIEWS: agent_model_class: {agent_class}")
+        all_agent_model_class_names.append(f"{agent_class.class_display_name}")
+        # print(f"VIEWS: agent_class.class_display_name: {agent_class.class_display_name}")
+    # for agent_model_class_name in all_agent_model_class_names:
+    #     if '_' not in name and 'singleton' not in name:
+    #         print(f"VIEWS:  agent_model_class_name: {agent_model_class_name}")
     
-    form_tuples = get_phusis_model_form_tuples_for(model_names)
+    form_tuples = get_phusis_model_form_tuples_for(all_agent_model_class_names)
+
+    # for tuple in form_tuples: print(f"VIEWS: tuple {tuple}")
 
     if request.method == 'POST':
         forms = [tuple['form_class'](request.POST, prefix=tuple['model_class'].__name__.lower()) for tuple in form_tuples]
@@ -37,7 +37,9 @@ def phusis_swarm(request):
                 form.save()
             return redirect('phusis_swarm')  # Redirect to the same page or another page after saving the data
 
-    print(f"form_tuples: \n{form_tuples}")
+
+    print(f"form_tuples:")
+    pprint(form_tuples)
     
     # context = {tuple['model_class'].__name__.lower() + '_form': tuple['form_class'](prefix=tuple['model_class'].__name__.lower()) for tuple in form_tuples}
     # print(f"context \n: {context}")
@@ -45,12 +47,12 @@ def phusis_swarm(request):
     forms_dict = {}
     for form_tuple in all_phusis_model_form_tuples:
         model_name = form_tuple["model_class"].__name__.lower()
-        print(f"form_tuple['form_class']: {form_tuple['form_class']}")
+        # print(f"form_tuple['form_class']: {form_tuple['form_class']}")
         forms_dict[f"{model_name}_form"] = form_tuple["form_class"]()
 
     # Pass the forms dictionary to the template
     return render(request, 'phusis/phusis_swarm.html', {
-        'model_names': model_names,
+        'model_names': all_agent_model_class_names,
         'forms': forms_dict,
     })
 

@@ -4,8 +4,11 @@ from termcolor import colored
 from django.apps import apps
 
 class OpenAi():
+    openai.api_key
     
     def __init__(self):
+        with open('./secrets/openai_api_key', 'r') as f:
+            openai.api_key = f.read()
         pass
     
     def gpt_completion_response(self, prompt, data):

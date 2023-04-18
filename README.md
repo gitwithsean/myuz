@@ -1,14 +1,18 @@
-Create a virtual environment and activate it:
+
+<img src="./myuz/logos/phusis.png" width="200"> 
+
+# *phusis*
 
 ```
+
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+./dev_startup.sh
+
 ```
 
 Backround docs on this project
-
-<img src="./myuz//logos/phusis.png" width="200"> 
 
 [*phusis* notes](https://github.com/gitwithsean/docs/)
 

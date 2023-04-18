@@ -565,6 +565,7 @@ class EmbeddingsAgentSingleton(AbstractAgent, EmbeddingsAgentEngine):
             cls._instance.max_prompts_between_reminders = 5
         return cls._instance
 
+
 class UserAgentSingleton(AbstractAgent):
     name = "user"
     agent_type = "user_agent"

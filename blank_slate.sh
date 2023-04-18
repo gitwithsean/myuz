@@ -1,19 +1,21 @@
 
 . venv/bin/activate
 
+#delete the db and migrations
 rm -rf db.sqlite3
-rm -rf **/migrations
+rm -rf **/migrations/*.py
+rm -rf requirements.txt
 
+#delete the pinecone index
+read -r PINECONE_ENV < ./secrets/pinecone_api_region
+read -r PINECONE_API_KEY < ./secrets/pinecone_api_key
+INDEX='phusis'
+curl -i -X DELETE https://controller.${PINECONE_ENV}.pinecone.io/databases/${INDEX} \
+  -H "Api-Key: ${PINECONE_API_KEY}"
+
+#re-init base db
+pip freeze > requirements.txt
 python manage.py check
 python manage.py makemigrations
 python manage.py migrate
-
-dateTime=$(date +"%y.%m.%d_%H:%M")
-cp db.sqlite3 phusis/migrations/db_backups/db${dateTime}.sqlite3.bckup
-
-# Delete db backups older than 5 days but always keep the last 10
-while [ "$(find phusis/migrations/db_backups -type f -mtime +5 | wc -l)" -gt "10" ]; do find noveller/migrations/db_backups -type f -mtime +5 -exec rm {} \;; done
-
-cp db.sqlite3 phusis/migrations/db_backups/db${dateTime}.sqlite3
-
-python manage.py runserver
+python manage.py check

@@ -3,6 +3,9 @@
 **scratch**
 ./scripts/*script*.json
 **sqlite3**
-venv/*
+venv/
 *.sqlite3
 phusis/files_to_embed
+phusis/migrations/db_backups
+secrets/**
+venv

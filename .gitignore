@@ -1,11 +1,10 @@
-**/__pycache__/*
+# **/__pycache__
 **/projects
 **scratch**
 ./scripts/*script*.json
-**sqlite3**
 venv/
 *.sqlite3
-phusis/files_to_embed
+phusis/files_to_embed/*
 phusis/migrations/db_backups
 secrets/**
 venv

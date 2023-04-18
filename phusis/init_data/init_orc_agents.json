@@ -1,5 +1,6 @@
 {
-"orchestration_agents": [
+    "class_name":"OrchestrationAgent",
+    "list_of_objects": [
     {
       "name": "Harmonia",
       "goals": [

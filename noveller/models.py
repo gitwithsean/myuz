@@ -1,5 +1,6 @@
 from __future__ import annotations
 from django.db import models
+from phusis.models import AbstractPhusisProject
 import uuid
 
 class NovellerModelDecorator(models.Model):
@@ -21,7 +22,7 @@ class ConcreteNovellerModelDecorator(NovellerModelDecorator):
     class Meta:
         db_table = 'noveller_concrete_noveller_model_decorator'
 
-class Book(NovellerModelDecorator):
+class Book(AbstractPhusisProject, NovellerModelDecorator):
     settings = models.ManyToManyField('Setting', blank=True, related_name='book_settings')
     plot = models.ManyToManyField('PlotEvent', blank=True, related_name='books_events')
     chapters = models.ManyToManyField('Chapter', blank=True, related_name='books_chapters')

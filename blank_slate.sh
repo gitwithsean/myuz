@@ -1,6 +1,9 @@
 
 . venv/bin/activate
 
+rm -rf db.sqlite3
+rm -rf **/migrations
+
 python manage.py check
 python manage.py makemigrations
 python manage.py migrate

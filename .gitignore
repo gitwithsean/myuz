@@ -4,3 +4,5 @@
 ./scripts/*script*.json
 **sqlite3**
 venv/*
+*.sqlite3
+phusis/files_to_embed

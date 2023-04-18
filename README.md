@@ -4,9 +4,13 @@
 # *phusis*
 
 ```
+mkdir ./secrets/
+touch ./secrets/openai_api_key
+touch ./secrets/pinecone_api_key
+touch ./secrets/pinecone_api_region
 
-python3 -m venv venv
-. venv/bin/activate
+python3 -m venv myuz
+. myuz/bin/activate
 pip install -r requirements.txt
 ./dev_startup.sh
 

@@ -14,7 +14,7 @@ class SerializerMaker:
     
     
     agent_model_classes = AbstractAgent.__subclasses__()    
-    agent_model_classes.append(AbstractAgent)
+    # agent_model_classes.append(AbstractAgent)
     # agent_model_classes.append(Script)
     agent_model_classes.append(OrchestrationAgent) #OrchestrationAgent is not a subclass of abstract agent so needs to be added
     # print(f"looping through the following list of models in phusis {apps.all_models['phusis']}")

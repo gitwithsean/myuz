@@ -1,10 +1,12 @@
 **/__pycache__
 **/projects
 **scratch**
-./scripts/*script*.json
+scripts/data_to_load/**
 venv/
 *.sqlite3
 phusis/files_to_embed/*
 phusis/migrations/db_backups
-secrets/**
+.secrets/**
 venv
+.vscode/
+**/fixtures/

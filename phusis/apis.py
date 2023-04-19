@@ -7,7 +7,7 @@ class OpenAi():
     openai.api_key
     
     def __init__(self):
-        with open('./secrets/openai_api_key', 'r') as f:
+        with open('./.secrets/openai_api_key', 'r') as f:
             openai.api_key = f.read()
         pass
     
@@ -48,26 +48,26 @@ class OpenAi():
 class PineconeApi():
     index = {}
     
-    print(colored(f"PineconeApi.init(): Initializing pinecone api...", "green"))
-    def __init__(self):
-        with open('./secrets/pinecone_api_key', 'r') as f:
-            pinecone_api_key = f.read()
-        with open('./secrets/pinecone_api_region', 'r') as f:
-            pinecone_api_region = f.read()
+    # print(colored(f"PineconeApi.init(): Initializing pinecone api...", "green"))
+    # def __init__(self):
+    #     with open('./.secrets/pinecone_api_key', 'r') as f:
+    #         pinecone_api_key = f.read()
+    #     with open('./.secrets/pinecone_api_region', 'r') as f:
+    #         pinecone_api_region = f.read()
 
-        pinecone.init(api_key=pinecone_api_key, environment=pinecone_api_region)
-        dimension = 1536
-        metric = "cosine"
-        pod_type = "p1"
-        table_name = "phusis"
+    #     pinecone.init(api_key=pinecone_api_key, environment=pinecone_api_region)
+    #     dimension = 1536
+    #     metric = "cosine"
+    #     pod_type = "p1"
+    #     table_name = "phusis"
     
-        print(colored(f"PineconeApi.init(): Looking for {table_name} pinecone index...", "green"))
-        if table_name not in pinecone.list_indexes():
-            print(colored(f"PineconeApi.init(): Initializing new {table_name} pinecone index...", "green"))
-            pinecone.create_index(
-                table_name, dimension=dimension, metric=metric, pod_type=pod_type
-            )
-        self.index = pinecone.Index(table_name)
+    #     print(colored(f"PineconeApi.init(): Looking for {table_name} pinecone index...", "green"))
+    #     if table_name not in pinecone.list_indexes():
+    #         print(colored(f"PineconeApi.init(): Initializing new {table_name} pinecone index...", "green"))
+    #         pinecone.create_index(
+    #             table_name, dimension=dimension, metric=metric, pod_type=pod_type
+    #         )
+    #     self.index = pinecone.Index(table_name)
     
     def upsert_embedding(self, text_data):
         print(colored(f"PineconeApi.upsert_embedding(): Beginning upsert ...\"", "green"))

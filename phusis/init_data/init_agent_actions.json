@@ -1,5 +1,5 @@
 {
-    "class_name": "AgentAction",
+    "class_name": "AgentCapability",
     "list_of_objects":
     [   {       
             "capabillity_id":0,
@@ -33,7 +33,7 @@
         },
         {   
             "capabillity_id":4,
-            "name": "question_critisize",
+            "name": "question_criticize",
             "elaboration": "",
             "parameters": [],
             "output_schema": "",
@@ -81,7 +81,7 @@
         },
         {   
             "capabillity_id":10,
-            "name": "actutive_summary_of",
+            "name": "executive_summary_of",
             "elaboration": "",
             "parameters": ["self", "products", "product, index"],
             "output_schema": "",
@@ -120,14 +120,6 @@
             "prompt_adjst": ""
         },
         {   
-            "capabillity_id":13,
-            "name": "add_script_entry",
-            "elaboration": "",
-            "parameters": ["sender", "prompt", "receiver", "response"],
-            "output_schema": "",
-            "prompt_adjst": ""
-        },
-        {   
             "capabillity_id":14,
             "name": "recent_script_entries",
             "elaboration": "",
@@ -152,15 +144,7 @@
             "prompt_adjst": ""
         },
         {   
-            "capabillity_id":16,
-            "name": "create_embedding_for",
-            "elaboration": "",
-            "parameters": ["files"],
-            "output_schema": "",
-            "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":100,
+            "capabillity_id":17,
             "name": "embed_files_from_dir",
             "elaboration": "",
             "parameters": ["dir"],
@@ -168,7 +152,7 @@
             "prompt_adjst": ""
         },
         {   
-            "capabillity_id":101,
+            "capabillity_id":100,
             "name": "assess_agent_swarm",
             "elaboration": "",
             "output_schema": "",
@@ -189,7 +173,7 @@
             "prompt_adjst": ""
         },
         {   
-            "capabillity_id":103,
+            "capabillity_id":18,
             "name": "compress_prompt",
             "elaboration": "",
             "parameters": ["prompt"],

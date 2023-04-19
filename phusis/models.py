@@ -155,7 +155,7 @@ class AbstractEngine():
         capability_id=3
         pass
     
-    def question_critisize(self, objs=[], prompt_adj=''):
+    def question_criticize (self, objs=[], prompt_adj=''):
         capability_id=4
         pass
     
@@ -273,10 +273,11 @@ class AbstractAgent(models.Model, AbstractEngine):
     
     class Meta:
         abstract = True
-
-    def __str__(self):
-        return self.name
+        ordering = ['name']
     
+    def __str__(self):
+        return f"{self.class_display_name} for {self.name}"
+
     def dictionary(self):
         return {
             "id": str(self.id),
@@ -408,6 +409,7 @@ class OrchestrationAgent(AbstractAgent, OrchestrationEngine):
     
     def __str__(self):
         return self.name
+        ordering = ['name']
     
     def introduction(self):
         return AbstractAgent.introduce_yourself(self)
@@ -548,7 +550,7 @@ class EmbeddingsAgentEngine(AbstractEngine):
         file_list = [os.path.join(dir_path, f) for f in os.listdir(dir_path)]
         self.create_embeddings_for({'files': file_list})
     
-#Singleton    
+   
 class EmbeddingsAgentSingleton(AbstractAgent, EmbeddingsAgentEngine):
     name = "Embeddings Agent"
     agent_type = "embeddings_agent"
@@ -564,6 +566,10 @@ class EmbeddingsAgentSingleton(AbstractAgent, EmbeddingsAgentEngine):
             cls._instance.prompts_since_reminder = 0
             cls._instance.max_prompts_between_reminders = 5
         return cls._instance
+    
+    class Meta:
+        ordering = None
+
 
 
 class UserAgentSingleton(AbstractAgent):
@@ -580,6 +586,9 @@ class UserAgentSingleton(AbstractAgent):
             cls._instance.prompts_since_reminder = 0
             cls._instance.max_prompts_between_reminders = 5
         return cls._instance
+    
+    class Meta:
+        ordering = None
 
 
 class PoeticsAgent(AbstractAgent):
@@ -654,6 +663,10 @@ class AgentCreatedAgents(AbstractAgent):
     agent_created_attributes = []
     class_display_name = "Agent Created Agent"
  
+ 
+class WritingAgent(AbstractAgent):
+    agent_type = "writing_agent"
+    class_display_name = "Writing Agent"
         
 #UTILITY AGENTS  
 class WebSearchAgent(AbstractAgent):
@@ -704,11 +717,18 @@ class AgentImpersonation(AbstractAgentAttribute):
 
 
 class AgentCapability(AbstractAgentAttribute):
-    agent_attribute_type = "agent_executable" 
+    agent_attribute_type = "agent_capability" 
     capability_id = models.IntegerField(blank=False, null=False)
     prompt_adjst = models.TextField(blank=True, null=True)
     parameters = models.JSONField(blank=True, default=list)
     output_schema = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['capability_id']
+        
+    def __str__(self):
+        return f"{self.capability_id}: {self.name}"
+
 
 
 #ORCHESTRATION AGENT ATTRIBUTES

@@ -1,3 +1,4 @@
+cd ..
 
 #re-init python env
 rm -rf venv

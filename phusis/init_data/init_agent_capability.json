@@ -1,184 +1,279 @@
-{
-    "class_name": "AgentCapability",
-    "list_of_objects":
-    [   {       
-            "capabillity_id":0,
+[
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 0,
             "name": "wake_up",
             "elaboration": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":1,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 1,
             "name": "consider",
             "elaboration": "",
             "parameters": [],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":2,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 2,
             "name": "produce",
             "elaboration": "",
-            "parameters":  [],
+            "parameters": [],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":3,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 3,
             "name": "reflect_on",
             "elaboration": "",
             "parameters": [],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":4,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 4,
             "name": "question_criticize",
             "elaboration": "",
             "parameters": [],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":5,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 5,
             "name": "offer_prompts",
             "elaboration": "",
             "parameters": [],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":6,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 6,
             "name": "thoughts_concerns_propose_next_steps",
             "elaboration": "",
             "parameters": [],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":7,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 7,
             "name": "submit_state_report_to",
             "elaboration": "",
             "parameters": [],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":8,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 8,
             "name": "list_productions",
             "elaboration": "",
             "parameters": [],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":9,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 9,
             "name": "return_production_content",
             "elaboration": "",
             "parameters": [],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":10,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 10,
             "name": "executive_summary_of",
             "elaboration": "",
-            "parameters": ["self", "products", "product, index"],
+            "parameters": [
+                "self",
+                "products",
+                "product, index"
+            ],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":11,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 11,
             "name": "delve_into",
             "elaboration": "",
             "parameters": [],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":12,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 12,
             "name": "improvise_on",
             "elaboration": "",
             "parameters": [],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":12,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 13,
             "name": "dwell_on",
             "elaboration": "",
             "parameters": [],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":13,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 14,
             "name": "add_script_entry",
             "elaboration": "",
-            "parameters": ["sender", "prompt", "receiver", "response"],
+            "parameters": [
+                "sender",
+                "prompt",
+                "receiver",
+                "response"
+            ],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":14,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 15,
             "name": "recent_script_entries",
             "elaboration": "",
-            "parameters": ["num_entries"],
+            "parameters": [
+                "num_entries"
+            ],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":15,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 17,
             "name": "introduce_yourself",
             "elaboration": "",
-            "parameters": ["is_brief"],
+            "parameters": [
+                "is_brief"
+            ],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":16,
-            "name": "create_embedding_for",
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 16,
+            "name": "create_embeddings_for",
             "elaboration": "",
-            "parameters": ["files"],
+            "parameters": [
+                "files"
+            ],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":17,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 17,
             "name": "embed_files_from_dir",
             "elaboration": "",
-            "parameters": ["dir"],
+            "parameters": [
+                "dir"
+            ],
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":100,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 18,
+            "name": "compress_prompt",
+            "elaboration": "",
+            "parameters": [
+                "prompt"
+            ],
+            "output_schema": "",
+            "prompt_adjst": ""
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 100,
+            "name": "assess_project",
+            "elaboration": "",
+            "output_schema": "",
+            "prompt_adjst": ""
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 101,
             "name": "assess_agent_swarm",
             "elaboration": "",
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":102,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 102,
             "name": "amend_project",
             "elaboration": "",
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":103,
+        }
+    },
+    {
+        "class_name": "AgentCapability",
+        "properties": {
+            "capability_id": 103,
             "name": "resume_project",
             "elaboration": "",
             "output_schema": "",
             "prompt_adjst": ""
-        },
-        {   
-            "capabillity_id":18,
-            "name": "compress_prompt",
-            "elaboration": "",
-            "parameters": ["prompt"],
-            "output_schema": "",
-            "prompt_adjst": ""
         }
-    ]
-}
+    }
+]

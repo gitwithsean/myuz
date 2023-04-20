@@ -11,3 +11,4 @@ phusis/migrations/db_backups
 venv
 .vscode
 **/fixtures/
+phusis/phusis_projects/**

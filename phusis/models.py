@@ -11,10 +11,62 @@ from pprint import pprint
 from django.db import models
 
 
-def standard_agent_capabilities():
-    # see init_data/init_agent_capability.json
-    ids = [{"capability_id":0},{"capability_id":1},{"capability_id":2},{"capability_id":3},{"capability_id":4},{"capability_id":5},{"capability_id":6},{"capability_id":7},{"capability_id":8},{"capability_id":9},{"capability_id":10},{"capability_id":11},{"capability_id":12},{"capability_id":13},{"capability_id":14},{"capability_id":15}]
-    return ids
+class AbstractAgentAttribute(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    name = models.CharField(max_length=200, null=True)
+    agent_attribute_type = models.CharField(max_length=200)
+    elaboration = models.TextField(blank=True)
+    expose_rest = True
+    
+    class Meta:
+        abstract = True
+
+    def __str__(self):
+        return self.name
+    
+    def dictionary(self):
+        return {
+            "id": str(self.id),
+            "name": self.name,
+            "agent_attribute_type": self.agent_attribute_type,
+            "elaboration": self.elaboration
+        }
+        
+
+
+class AgentCapability(AbstractAgentAttribute):
+    capability_id = models.IntegerField(blank=False, null=False, default=-1)
+    agent_attribute_type = "agent_capability" 
+    prompt_adjst = models.TextField(blank=True, null=True)
+    parameters = models.JSONField(blank=True, default=list)
+    output_schema = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['capability_id']
+        
+    def __str__(self):
+        return f"{self.id}: {self.name}"
+
+    def set_data(self, properties_json):
+        self.name = properties_json.get('name', self.name)
+        self.capability_id = properties_json.get('capability_id', self.capability_id)
+        self.elaboration = properties_json.get('elaboration', self.elaboration)
+        self.prompt_adjst = properties_json.get('prompt_adjst', self.prompt_adjst)
+        self.parameters = properties_json.get('parameters', self.parameters)
+        self.output_schema = properties_json.get('output_schema', self.output_schema)
+
+
+# see init_data/init_agent_capability.json
+def get_agent_capabilities_by_capability_ids(capability_ids=
+                                             [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]):
+
+    capabilities = []
+    for id in capability_ids:
+        capability = AgentCapability.objects.get(capability_id=id)
+        capabilities.append(capability)
+ 
+    return capabilities
+
 
 
 def camel_case_to_underscore(name):
@@ -32,13 +84,38 @@ def camel_case_to_spaced(name):
 
 def is_valid(json_data):
     
-    if not 'class_name' in json_data or not 'properties' in json_data or 'name' in json_data['properties']:
+    # print("HER LOOK HERE")
+    # pprint(json_data)
+    
+    # print(f"{json_data['class_name']}")
+    # print(f"{json_data['properties']}")
+    # print(f"{json_data['properties']['name']}")
+    if not 'class_name' in json_data or not 'properties' in json_data or not 'name' in json_data['properties']:
         return False
     else:
         return True
 
 
-def agent_model_and_instance_from(json_data):
+def load_agent_capabilities_from(json_data):
+    new_capability_obj = {}
+    expected_json = {
+        "class_name": "AgentCapability",
+        "properties": {
+            "name": "Agent Capability name"
+        }
+    }
+    
+
+    model_class = apps.get_model("phusis", f"{json_data['class_name']}")
+    new_capability_obj, created = model_class.objects.get_or_create(name=json_data['properties']['name'])
+    new_capability_obj.set_data(json_data['properties'])
+    s = "found and updated"
+    if created: s = "created"
+    print(colored(f"load_agent_capabilities_from(): {new_capability_obj.name} with capability_id {new_capability_obj.capability_id} {s}", "green")) 
+    new_capability_obj.save()
+    
+
+def load_agent_model_and_return_instance_from(json_data):
     new_agent_obj = {}
     expected_json = {
         "class_name": "AgentsClassName",
@@ -47,22 +124,26 @@ def agent_model_and_instance_from(json_data):
         }
     }
  
-    if is_valid(json_data['properties']):
+    if is_valid(json_data):
         model_class = {}
-        if json_data['ClassName'] in globals():
-            model_class = apps.get_model("phusis", f"{json_data['ClassName']}")
+        if json_data['class_name'] in globals():
+            model_class = apps.get_model("phusis", f"{json_data['class_name']}")
         else: 
             model_class = DynamicAgent
-            json_data['properties']['agent_type'] = camel_case_to_underscore(json_data['ClassName'])
-            json_data['properties']['class_display_name'] = camel_case_to_spaced(json_data['ClassName'])
-        new_agent_obj = model_class(name=json_data['properties']['name'])
-        new_agent_obj.add_to_class(json_data['properties'])
-        new_agent_obj.add_to_class(json_data['properties'])  
+            json_data['properties']['agent_type'] = camel_case_to_underscore(json_data['class_name'])
+            json_data['properties']['class_display_name'] = camel_case_to_spaced(json_data['class_name'])
+        
+        new_agent_obj, created = model_class.objects.get_or_create(name=json_data['properties']['name'])
+        new_agent_obj.set_data(json_data['properties'])
         new_agent_obj.save()
+        s = "found and updated"
+        if created: s = "created"
+        print(colored(f"load_agent_model_and_return_instance_from: {new_agent_obj.name} {s}", "green"))
+        
     else:
         print(colored(f"models.create_agent_model_from_instance: JSON data for agent not valid, expected schema below","red"))
-        pprint(colored(f"data received: {json_data}", "red"))
-        pprint(colored(f"minimum expected: {expected_json}", "red"))
+        print(colored(f"Data received: {json_data}", "red"))
+        print(colored(f"Minimum expected: {expected_json}", "yellow"))
 
     return new_agent_obj
 
@@ -162,7 +243,7 @@ class PhusisScript(models.Model):
             json.dump({"script": {"script_entries": self.script_content}}, f, indent=4) 
         
     def add_script_entry(self, prompter, prompt, responder, response):
-        capability_id=13
+        capability_id=14
         time_stamp = datetime.utcnow().strftime("%Y.%m.%d.%H.%M.%s_%Z")
         prompt_and_response = {
             "time_stamp" : time_stamp,
@@ -188,7 +269,7 @@ class PhusisScript(models.Model):
             pprint(prompt_and_response)
             
     def recent_script_entries(self, num_entries=5):
-        capability_id=14
+        capability_id=15
         print(colored(f"Retrieving {num_entries} most recent prompt_and_response script entries...", "green"))
         i = 0
         recent_entries = []
@@ -298,29 +379,29 @@ class AbstractEngine():
         return request_data['content'], response
 
     def list_productions(self):
-        exec=8
+        capability_id=8
         pass
 
     def return_production_content(self):
-        exec=9
+        capability_id=9
         pass
 
     def executive_summary_of(self, obj=[]):
-        exec=10
+        capability_id=10
         if obj.len()==0: obj.append(self)
         pass
     
-    def delve(self):
-        exec=11
+    def delve_into(self):
+        capability_id=11
         pass
     
     def improvise_on(self, obj=[]):
-        exec=12
+        capability_id=12
         if obj.len()==0: obj.append(self)
         pass
     
     def dwell_on(self, obj=[]):
-        exec=13
+        capability_id=13
         if obj.len()==0: obj.append(self)
         pass
     
@@ -407,29 +488,40 @@ class AbstractAgent(models.Model, AbstractEngine):
         return f"{self.class_display_name} for {self.name}"        
 
     def set_data(self, properties_dict):
-        self.name = properties_dict.get('name')
-        self.agent_type = properties_dict.get('agent_type', camel_case_to_underscore(self.__class__.__name__))
-        self.class_display_name = properties_dict.get('class_display_name', camel_case_to_spaced(self.__class__.__name__))
-        self.capabilities.set(properties_dict.get('capability_ids'), standard_agent_capabilities())
-        self.goals.set(properties_dict.get('goals'), [])
-        self.roles.set(properties_dict.get('roles'), [])
-        self.personality_traits.set(properties_dict.get('personality_traits'), [])
-        self.qualifications.set(properties_dict.get('qualifications'), [])
-        self.impersonations.set(properties_dict.get('impersonations'), [])
-        self.strengths.set(properties_dict.get('strengths'), [])
-        self.possible_locations.set(properties_dict.get('possible_locations'), [])
-        self.attitudes.set(properties_dict.get('attitudes'), [])
-        self.drives.set(properties_dict.get('drives'), [])
-        self.fears.set(properties_dict.get('fears'), [])
-        self.beliefs.set(properties_dict.get('beliefs'), [])
-        self.age = properties_dict.get('age', )
-        self.origin_story = properties_dict.get('origin_story', '')
-        self.elaboration = properties_dict.get('elaboration', '')
-        self.llelle = properties_dict.get('llelle', '')
-        self.malig = properties_dict.get('malig', '')
-        self.subtr = properties_dict.get('subtr', '') 
-        # [{"trait_name":"", "trait_values": ["",""]}]
-        self.agent_created_traits.set(properties_dict.get('agent_created_traits', []))
+        for key, value in properties_dict.items():
+            attr_type = type(getattr(self, key))
+            if key == 'capabilities':
+                self.capabilities.set(get_agent_capabilities_by_capability_ids())
+                
+            elif attr_type == list:
+                getattr(self, key).append(value)
+            else:
+                setattr(self, key, value)
+            
+        # self.name = properties_dict.get('name')
+        # self.agent_type = properties_dict.get('agent_type', camel_case_to_underscore(self.__class__.__name__))
+        # self.class_display_name = properties_dict.get('class_display_name', camel_case_to_spaced(self.__class__.__name__))
+        # self.capabilities.set(standard_agent_capabilities())
+        # # self.capabilities.add(properties_dict.get('capability_ids'), self.capabilities)
+        # self.goals.append(properties_dict.get('goals'))
+        # self.roles.append(properties_dict.get('roles'), [])
+        # self.personality_traits.append(properties_dict.get('personality_traits'), [])
+        # self.qualifications.append(properties_dict.get('qualifications'), [])
+        # self.impersonations.append(properties_dict.get('impersonations'), [])
+        # self.strengths.append(properties_dict.get('strengths'), [])
+        # self.possible_locations.append(properties_dict.get('possible_locations'), [])
+        # self.attitudes.append(properties_dict.get('attitudes'), [])
+        # self.drives.append(properties_dict.get('drives'), [])
+        # self.fears.append(properties_dict.get('fears'), [])
+        # self.beliefs.append(properties_dict.get('beliefs'), [])
+        # self.age = properties_dict.get('age', self.age)
+        # self.origin_story = properties_dict.get('origin_story', '')
+        # self.elaboration = properties_dict.get('elaboration', '')
+        # self.llelle = properties_dict.get('llelle', '')
+        # self.malig = properties_dict.get('malig', '')
+        # self.subtr = properties_dict.get('subtr', '') 
+        # # [{"trait_name":"", "trait_values": ["",""]}]
+        # self.agent_created_traits.set(properties_dict.get('agent_created_traits', []))
     
     def embed(self):
         if self.embedding_of_self == '':
@@ -454,6 +546,7 @@ class AbstractAgent(models.Model, AbstractEngine):
         }
         
     def introduce_yourself(self, is_brief=True):
+        capability_id=17
         dict_str = json.dumps(self.dictionary(), indent=4)
         
         return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{dict_str}"
@@ -569,7 +662,7 @@ class OrchestrationEngine(AbstractEngine):
 class OrchestrationAgent(AbstractAgent, OrchestrationEngine):
     class_display_name = "Orchestration Agent"
     agent_type = "orchestration_agent"
-    capabilities = standard_agent_capabilities().append([{"capability_id":100},{"capability_id":102},{"capability_id":103}])
+    capabilities =  get_agent_capabilities_by_capability_ids([100,101,102,103])
 
 
 
@@ -581,7 +674,11 @@ class WritingAgentEngine(AbstractEngine):
 class WritingAgent(AbstractAgent, WritingAgentEngine):
     agent_type = "writing_agent"
     class_display_name = "Writing Agent"
-
+    favored_themes = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    favored_genres = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    favored_genre_combinations = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    inspirational_sources = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    preferred_writing_style = ArrayField(models.CharField(max_length=50), blank=True, default=list)
 
 #SINGLETON AGENTS WITH ENGINES
 class CompressionAgentEngine(AbstractEngine):
@@ -597,6 +694,7 @@ class CompressionAgentEngine(AbstractEngine):
     }
     
     def compress_prompt(self, prompt, compression_ratio='', prompting_agent={}):
+        capability_id=18
         if prompting_agent == {}: prompting_agent = UserAgentSingleton()
         request_data = self.open_ai_data
         request_data['content'] = PromptBuilderSingleton().to_compress(prompt, compression_ratio)
@@ -693,8 +791,8 @@ class EmbeddingsAgentEngine(AbstractEngine):
             texts_to_embed = (data['texts'])   
         else:
             error_msg = """
-            ERROR in EmbeddingAgentEngine.create_embedding_for()
-            Incorrect input type for function create_embedding_for
+            ERROR in EmbeddingAgentEngine.create_embeddings_for()
+            Incorrect input type for function create_embeddings_for
             Accepted inputs:
                 data : { files : ["list", "of", "file", "paths", "for", "embedding"] }
                 data : { texts : ["list", "of", "texts", "for", "embedding"] }
@@ -753,44 +851,6 @@ class WebSearchAgentSingleton(AbstractAgent, WebSearchAgentEngine):
     class_display_name = "Web Search Agent"
 
 
-#AGENT ATTRIBUTES THAT SHOULD BE OBJECTS
-class AbstractAgentAttribute(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, null=True)
-    agent_attribute_type = models.CharField(max_length=200)
-    elaboration = models.TextField(blank=True)
-    expose_rest = True
-    
-    class Meta:
-        abstract = True
-
-    def __str__(self):
-        return self.name
-    
-    def dictionary(self):
-        return {
-            "id": str(self.id),
-            "name": self.name,
-            "agent_attribute_type": self.agent_attribute_type,
-            "elaboration": self.elaboration
-        }
-        
-
-        
-class AgentCapability(AbstractAgentAttribute):
-    capability_id = models.IntegerField(blank=False, null=False, default=-1)
-    agent_attribute_type = "agent_capability" 
-    prompt_adjst = models.TextField(blank=True, null=True)
-    parameters = models.JSONField(blank=True, default=list)
-    output_schema = models.TextField(blank=True, null=True)
-
-    class Meta:
-        ordering = ['capability_id']
-        
-    def __str__(self):
-        return f"{self.id}: {self.name}"
-
-
 
 #Available Agents for dynamic creation
 class PoeticsAgent(AbstractAgent):
@@ -834,6 +894,7 @@ class WorldBuildingAgent(AbstractAgent):
 class ThemeExploringAgent(AbstractAgent):
     agent_type = "theme_exploring_agent"
     class_display_name = "Theme Exploring Agent"
+    themes = ArrayField(models.CharField(max_length=50), blank=True, default=list)
     
     
 class ConflictAndResolutionAgent(AbstractAgent):

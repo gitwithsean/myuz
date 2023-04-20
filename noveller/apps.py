@@ -5,7 +5,7 @@ from django.apps import apps
 class NovellerConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "noveller"
-    
+
     def ready(self):
         from phusis.models import AbstractAgent
         for model in apps.get_models():

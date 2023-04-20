@@ -5,8 +5,10 @@ scripts/data_to_load/**
 venv/
 *.sqlite3
 phusis/files_to_embed/*
+phusis/secret_sauce/*
 phusis/migrations/db_backups
 .secrets/**
 venv
-.vscode/
+.vscode
 **/fixtures/
+.vscode/settings.json

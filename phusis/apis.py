@@ -47,6 +47,16 @@ class OpenAi():
 
 class PineconeApi():
     index = {}
+        
+    # _instance = None
+    # def __new__(cls):
+    #     if cls._instance is None:
+    #         # print('Creating PineconeApi singleton instance')
+    #         cls._instance = super().__new__(cls)
+    #         # Initialize the class attributes here
+    #         cls._instance.prompts_since_reminder = 0
+    #         cls._instance.max_prompts_between_reminders = 5
+    #     return cls._instance
     
     # print(colored(f"PineconeApi.init(): Initializing pinecone api...", "green"))
     # def __init__(self):
@@ -76,10 +86,11 @@ class PineconeApi():
         print_to_console_content = ""
         if 'local_file_path' in text_data:
             # If it's a file, there's a chance it's so big it will hinder performance of the db
-            # so we'll just copy the file to the 'loaded' dir of the directory it's in
+            # so we'll just copy the file to a 'pinecone_loaded' sub dir of the directory it's in
+            # and give the db entry the path to the file in its loaded dir to load on demand
             current_file_dir = os.path.dirname(text_data['local_file_path'])
             file_name = os.path.basename(text_data['local_file_path'])            
-            loaded_files_dir = os.path.join(current_file_dir, "loaded")
+            loaded_files_dir = os.path.join(current_file_dir, "pinecone_loaded")
             path_to_loaded_file = os.path.join(loaded_files_dir, file_name)
             
             os.makedirs(loaded_files_dir, exist_ok=True)

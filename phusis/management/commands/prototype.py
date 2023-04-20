@@ -25,7 +25,7 @@ def user_input_is_command(input):
 def user_init():
     global user
     user = UserAgentSingleton()
-    new_script = Script.objects.create(agent_name=user.name)  
+    new_script = PhusisScript.objects.create(agent_name=user.name)  
     user.script = new_script    
     
 def orcs_init():
@@ -41,7 +41,7 @@ def orcs_init():
         new_orc = DynamicOrchestrationAgent()
         new_orc.auto_mode = True
         new_orc.init_data=orc_data
-        new_script = Script.objects.create(agent_name=orc_data['name']) 
+        new_script = PhusisScript.objects.create(agent_name=orc_data['name']) 
         new_orc.script = new_script    
         orc_names = new_orc.name + ", " + orc_names
         orcs.append(new_orc)
@@ -85,7 +85,7 @@ def agents_init():
             agent_data['__module__'] = 'phusis.models'
             agent_class = globals()[agent_type_class_name]
             new_agent = agent_class(agent_data)
-            new_script = Script.objects.create(agent_name=agent_data['name'])  
+            new_script = PhusisScript.objects.create(agent_name=agent_data['name'])  
             new_agent.script = new_script                     
             agents.append(new_agent)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 from django.db import models
-from phusis.models import AbstractPhusisProject
+from django.contrib.contenttypes.models import ContentType
+from phusis.models import AbstractPhusisProject, AgentBookRelationship
 import uuid
 
 class NovellerModelDecorator(models.Model):
@@ -8,7 +9,6 @@ class NovellerModelDecorator(models.Model):
     name = models.CharField(max_length=200)  
     elaboration = models.TextField(blank=True, null=True)
     expose_rest = True
-    expose_swarm = True
     
     class Meta:
         abstract = True
@@ -17,22 +17,35 @@ class NovellerModelDecorator(models.Model):
     def __str__(self):
         return self.name
 
-class ConcreteNovellerModelDecorator(NovellerModelDecorator):
-    expose_rest = False
-    class Meta:
-        db_table = 'noveller_concrete_noveller_model_decorator'
-
-class Book(AbstractPhusisProject, NovellerModelDecorator):
+class Book(AbstractPhusisProject):
+    elaboration = models.TextField(blank=True, null=True)
     settings = models.ManyToManyField('Setting', blank=True, related_name='book_settings')
     plot = models.ManyToManyField('PlotEvent', blank=True, related_name='books_events')
     chapters = models.ManyToManyField('Chapter', blank=True, related_name='books_chapters')
     characters = models.ManyToManyField('Character', blank=True, related_name='characters_book_characters')
     themes = models.ManyToManyField('Theme', blank=True, related_name='book_themes')
     genre = models.ManyToManyField('Genre', blank=True, related_name='book_genres')
-    target_audience = models.ManyToManyField('TargetAudience', blank=True, related_name='book_audiences')
+    target_audiences = models.ManyToManyField('TargetAudience', blank=True, related_name='book_audiences')  
+    expose_rest = models.BooleanField(default=True)
+    agents_for_project = models.ManyToManyField(
+        ContentType,
+        related_name="projects_assigned_to",
+        through=AgentBookRelationship,
+        limit_choices_to=models.Q(app_label='phusis', model='characteragent') |
+                         models.Q(app_label='phusis', model='poeticsagent') |
+                         models.Q(app_label='phusis', model='writingagent') |
+                         models.Q(app_label='phusis', model='researchagent')
+    )
+    
+    # def add_agent_for_book(self, agent):
+    #     AgentBookRelationship(agent=agent, book=self)
+    
+    # def agents_for_book(self):
+    #     self.agents_for_project.all()
     
 class Genre(NovellerModelDecorator):
     book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_genres')
+    genre_combos = models.TextField(blank=True, null=True)
     
 class TargetAudience(NovellerModelDecorator):
     book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_audience')

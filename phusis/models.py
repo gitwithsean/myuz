@@ -1,22 +1,135 @@
-import json, uuid, os, mimetypes, sys, PyPDF2, nltk, spacy
+import json, uuid, os, mimetypes, sys, PyPDF2, nltk, spacy, re
+from django.contrib.postgres.fields import ArrayField
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.apps import apps
 from .apis import *
 from datetime import datetime
 from termcolor import colored
 from pprint import pprint
+from django.db import models
+
+
+def standard_agent_capabilities():
+    # see init_data/init_agent_capability.json
+    ids = [{"capability_id":0},{"capability_id":1},{"capability_id":2},{"capability_id":3},{"capability_id":4},{"capability_id":5},{"capability_id":6},{"capability_id":7},{"capability_id":8},{"capability_id":9},{"capability_id":10},{"capability_id":11},{"capability_id":12},{"capability_id":13},{"capability_id":14},{"capability_id":15}]
+    return ids
+
+
+def camel_case_to_underscore(name):
+    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+
+
+def camel_case_to_spaced(name):
+    # insert space before every capital letter
+    name = re.sub(r'(?<!^)(?=[A-Z])', ' ', name)
+    # convert to lowercase
+    name = name.lower()
+    return name
+
+
+def is_valid(json_data):
+    
+    if not 'class_name' in json_data or not 'properties' in json_data or 'name' in json_data['properties']:
+        return False
+    else:
+        return True
+
+
+def agent_model_and_instance_from(json_data):
+    new_agent_obj = {}
+    expected_json = {
+        "class_name": "AgentsClassName",
+        "properties": {
+            "name": "Agent name"
+        }
+    }
  
- 
-class AbstractPhusisProject(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)    
-    class Meta:
-        abstract = True
-   
-   
-#SCRIPTS
-class Script(models.Model):
+    if is_valid(json_data['properties']):
+        model_class = {}
+        if json_data['ClassName'] in globals():
+            model_class = apps.get_model("phusis", f"{json_data['ClassName']}")
+        else: 
+            model_class = DynamicAgent
+            json_data['properties']['agent_type'] = camel_case_to_underscore(json_data['ClassName'])
+            json_data['properties']['class_display_name'] = camel_case_to_spaced(json_data['ClassName'])
+        new_agent_obj = model_class(name=json_data['properties']['name'])
+        new_agent_obj.add_to_class(json_data['properties'])
+        new_agent_obj.add_to_class(json_data['properties'])  
+        new_agent_obj.save()
+    else:
+        print(colored(f"models.create_agent_model_from_instance: JSON data for agent not valid, expected schema below","red"))
+        pprint(colored(f"data received: {json_data}", "red"))
+        pprint(colored(f"minimum expected: {expected_json}", "red"))
+
+    return new_agent_obj
+
+
+class PromptBuilderSingleton():
+    expose_rest = False
+    _instance = None
+    def __new__(cls):
+        if cls._instance is None:
+            # print('Creating PromptBuilder singleton instance')
+            cls._instance = super().__new__(cls)
+            # Initialize the class attributes here
+            cls._instance.prompts_since_reminder = 0
+            cls._instance.max_prompts_between_reminders = 5
+        return cls._instance
+    
+    def complete_prompt(self, prompt, prompter):
+        prompt = f"The following prompt comes from a {prompter.agent_type}:\n\n--------------------\n\n{prompt}"
+        return self.auto_reminder(prompt, prompter)
+    
+    def auto_reminder(self, prompt, prompter):
+        # if self.prompts_since_reminder >= 5:
+        #     prompt = f"{prompt} Just Reminding you: {self.to_remind(prompter)}"
+        #     self.prompts_since_reminder = 0
+        # return f"{prompt}"
+        return prompt
+                    
+    def to_wake_up(self, agent):
+        if agent.awareness      =='as_bot':
+            s=f"a {agent.agent_type}, part of a swarm of agents, each with a very defined set of attributes."
+        elif agent.awareness    =='as_orc':
+            s=f"the master orchestrator of a swarm of GPT agents, all working towards a common objective." 
+        else:                          
+            s="I'm glad to have your expertise on this project."
+        
+        prompt = f"You are {agent.name}, {s}. You will use your skills to the BEST of your ability to serve me, the human user, I will tell you our objective soon, but first, about you. {self.to_remind(agent)}"
+
+        return self.auto_reminder(prompt, agent)  
+    
+    def thoughts_concerns_proposed_next_steps(self, agent, agent_to_share_with):
+        prompt = f"{agent_to_share_with}, {agent_to_share_with.agent_type} of the swarm you are a member of, has requested for you to report back. They want you to reflect on what you have done so far, and respond in the following format as concisely as possible:\n\nTHOUGHTS:\n\nCONCERNS\n\nWHAT YOU THINK YOUR NEXT STEPS SHOULD BE:\n\n"
+        return self.auto_reminder(prompt, agent) 
+    
+    def to_remind(self, agent):      
+        prompt = f"Here is your character description: {agent.dictionary()}"
+        
+        return self.auto_reminder(prompt, agent)  
+
+    def to_compress(self, prompt, compression_ratio=0.25):
+        compression_prompt = f"Compression agent: compress the following text to a ratio <= {compression_ratio} so that another GPT agent will understand the full meaning of the original text. Use abbreviations, symbols, or emojis to assist. It does not need to be human-readable, but it should be easy for another GPT instance to interpret. Here is the text: {prompt}"
+        return compression_prompt
+        
+    def to_ask_opinion_about(self, it, agent):
+        prompt = ""
+
+        return self.auto_reminder(prompt, agent) 
+    
+    def to_ask_next_step(self, agent):
+        prompt = ""
+        
+        return self.auto_reminder(prompt, agent)
+
+
+
+class PhusisScript(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, default="") 
+    name = models.CharField(max_length=200) 
     is_master_script = models.BooleanField(default=False)
     in_debug_mode = True
     #script as list of tuples speaker/spoken 
@@ -89,7 +202,7 @@ class Script(models.Model):
         return recent_entries
 
 
-#VECTORS
+
 class Vector(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     content = models.TextField(blank=False)
@@ -99,7 +212,7 @@ class Vector(models.Model):
         return os.path.isfile(self.data)
 
 
-#ABSTRACTS
+
 class AbstractEngine():
     ai_api = OpenAi()
     agent = {}
@@ -247,28 +360,43 @@ class AbstractEngine():
         return report
 
 
+
 class AbstractAgent(models.Model, AbstractEngine):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, default="")
+    name = models.CharField(max_length=200)
+    script_for_agent = models.OneToOneField('PhusisScript', null=True, blank=True, on_delete=models.PROTECT)
     agent_type = models.CharField(max_length=200, default="phusis_agent", editable=False)
     class_display_name = models.CharField(max_length=200, editable=False, default=f"Phusis {agent_type} Agent")
-    goals = models.ManyToManyField('AgentGoal', blank=True)
-    roles = models.ManyToManyField('AgentRole', blank=True)
-    personality_traits = models.ManyToManyField('AgentTrait', blank=True)
-    qualifications = models.ManyToManyField('AgentQualification', blank=True)
-    impersonations = models.ManyToManyField('AgentImpersonation', blank=True)
-    is_concerned_with =  models.ForeignKey('noveller.ConcreteNovellerModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_concerned_with_this')
-    is_influenced_by =  models.ForeignKey('noveller.ConcreteNovellerModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_influenced_by_this')
+        
+    expose_rest = True
+    # [{"prompted_by":"", "AgentCapability":{}, "result":""}]
+    steps_taken = models.JSONField(default=list, blank=True)
+    capabilities = models.ManyToManyField('AgentCapability', blank=True)
+    # is_concerned_with =  models.ForeignKey('noveller.ConcreteNovellerModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_concerned_with_this')
+    # is_influenced_by =  models.ForeignKey('noveller.ConcreteNovellerModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)s_influenced_by_this')
     embedding_of_self = models.TextField(blank=True)
+    
+    #Traits
+    goals = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    roles = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    personality_traits = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    qualifications = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    impersonations = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    strengths = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    possible_locations = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    attitudes = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    drives = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    fears = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    beliefs = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    
+    #Character
+    age = models.IntegerField(null=True)
+    origin_story = models.TextField(blank=True)
     elaboration = models.TextField(blank=True)
     llelle = models.TextField(blank=True)
     malig = models.TextField(blank=True)
     subtr = models.TextField(blank=True)  
-    script = models.OneToOneField('Script', null=True, blank=True, on_delete=models.PROTECT)
-    capabilities = models.ManyToManyField('AgentCapability', blank=True)
-    # {"prompted_by", "AgentCapability", "result"}
-    steps_taken = models.JSONField(default=list, blank=True)
-    expose_rest = True
+    # [{"trait_name":"", "trait_values": ["",""]}]
     agent_created_traits = models.JSONField(default=list, blank=True)
     
     class Meta:
@@ -276,8 +404,39 @@ class AbstractAgent(models.Model, AbstractEngine):
         ordering = ['name']
     
     def __str__(self):
-        return f"{self.class_display_name} for {self.name}"
+        return f"{self.class_display_name} for {self.name}"        
 
+    def set_data(self, properties_dict):
+        self.name = properties_dict.get('name')
+        self.agent_type = properties_dict.get('agent_type', camel_case_to_underscore(self.__class__.__name__))
+        self.class_display_name = properties_dict.get('class_display_name', camel_case_to_spaced(self.__class__.__name__))
+        self.capabilities.set(properties_dict.get('capability_ids'), standard_agent_capabilities())
+        self.goals.set(properties_dict.get('goals'), [])
+        self.roles.set(properties_dict.get('roles'), [])
+        self.personality_traits.set(properties_dict.get('personality_traits'), [])
+        self.qualifications.set(properties_dict.get('qualifications'), [])
+        self.impersonations.set(properties_dict.get('impersonations'), [])
+        self.strengths.set(properties_dict.get('strengths'), [])
+        self.possible_locations.set(properties_dict.get('possible_locations'), [])
+        self.attitudes.set(properties_dict.get('attitudes'), [])
+        self.drives.set(properties_dict.get('drives'), [])
+        self.fears.set(properties_dict.get('fears'), [])
+        self.beliefs.set(properties_dict.get('beliefs'), [])
+        self.age = properties_dict.get('age', )
+        self.origin_story = properties_dict.get('origin_story', '')
+        self.elaboration = properties_dict.get('elaboration', '')
+        self.llelle = properties_dict.get('llelle', '')
+        self.malig = properties_dict.get('malig', '')
+        self.subtr = properties_dict.get('subtr', '') 
+        # [{"trait_name":"", "trait_values": ["",""]}]
+        self.agent_created_traits.set(properties_dict.get('agent_created_traits', []))
+    
+    def embed(self):
+        if self.embedding_of_self == '':
+            self.embedding_of_self = EmbeddingsAgentSingleton.embed_agent(self)   
+        
+        return self.embedding_of_self
+        
     def dictionary(self):
         return {
             "id": str(self.id),
@@ -298,21 +457,49 @@ class AbstractAgent(models.Model, AbstractEngine):
         dict_str = json.dumps(self.dictionary(), indent=4)
         
         return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{dict_str}"
- 
- 
-class ConcreteAgent(AbstractAgent):
-    is_concerned_with = models.ForeignKey('noveller.ConcreteNovellerModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_concerned_with_this')
-    is_influenced_by = models.ForeignKey('noveller.ConcreteNovellerModelDecorator', on_delete=models.CASCADE, null=True, blank=True, related_name='%(class)sagents_influenced_by_this')
+
+
+
+class AbstractPhusisProject(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    name = models.CharField(max_length=200)
+    project_type = models.CharField(max_length=200, default='Book')
+    project_user_inputs = ArrayField(models.TextField(), blank=True, default=list)
+    project_local_directory = models.CharField(max_length=200, null=True)
+    project_files_added_paths = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    project_files_produced_paths = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    agents_for_project = models.ManyToManyField(
+        AbstractAgent, related_name='projects_for_agent', blank=True
+    )
+    script_for_project = models.OneToOneField(PhusisScript, on_delete=models.PROTECT)
     
-    class_display_name = "Concrete Agent (you shouldn't be seeing this)"
-    script = models.OneToOneField('Script', editable=False, on_delete=models.PROTECT, related_name='concrete_agent_for_script', null=True, blank=True,)
-    expose_rest = False
+    project_embedding = models.TextField(blank=True)
     
-    class Meta:
-        db_table = 'phusis_concrete_agent'
+    def __str__(self):
+        return f"{self.project_type}: {self.project_name}"
        
+    class Meta:
+        abstract = True
+        ordering = ['name']
+    
+    def embed(self):
+        if self.project_embedding == '':
+            self.project_embedding = EmbeddingsAgentSingleton.embed_project(self)   
         
-#ENGINES AND AGENTS
+        return self.project_embedding
+   
+
+
+class CharacterAgent(AbstractAgent):
+    # agents that flesh out character profiles in various different genres, styles, target audience profiles, etc
+    # also agents that become the character so that a user or other agents can talk to them, or to produce dialog
+    agent_type = "character_agent"
+    class_display_name = "Character Agent"
+  
+  
+  
+ 
+#AGENTS WITH ENGINES
 class OrchestrationEngine(AbstractEngine):
     auto_mode = False
     open_ai_data = {
@@ -333,7 +520,7 @@ class OrchestrationEngine(AbstractEngine):
         prompt = prompt + f"recent responses: {recent_responses}"
         prompt = prompt + f"reports from agents: {self.current_agent_states}" 
         
-        compressed_prompt = CompressionAgent().compress_prompt(prompt, 0.7)
+        compressed_prompt = CompressionAgentSingleton().compress_prompt(prompt, 0.7)
         print(colored("Assessing project...", "green"))
         response = self.submit_chat_prompt(compressed_prompt, UserAgentSingleton())
         self.most_recent_responses_to['assess_project'] = response
@@ -365,7 +552,7 @@ class OrchestrationEngine(AbstractEngine):
         
         prompt = prompt + f"And as a reminder, this is who you are:\n\n{self.original_data}"
         
-        compressed_prompt = CompressionAgent.compress_prompt(prompt, 0.5)
+        compressed_prompt = CompressionAgentSingleton().compress_prompt(prompt, 0.5)
         print(colored("Amending project...", "green"))
         response = self.ai_api.submit_chat_prompt(self, compressed_prompt, UserAgentSingleton())
         self.most_recent_responses_to['amend_project'] = response
@@ -378,55 +565,25 @@ class OrchestrationEngine(AbstractEngine):
         print(self.most_recent_responses_to['amend_project'])
 
 
+
 class OrchestrationAgent(AbstractAgent, OrchestrationEngine):
-    #OBJECTIVE ORIENTED TRAITS
-    # id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     class_display_name = "Orchestration Agent"
-    # name = models.CharField(max_length=200, default="")
     agent_type = "orchestration_agent"
-    # original_data = {}
-    goals = models.ManyToManyField('OrcAgentGoal', blank=True)
-    roles = models.ManyToManyField('OrcAgentRole', blank=True)
-    qualifications = models.ManyToManyField('OrcAgentQualification', blank=True)
-    elaboration = models.TextField(blank=True)
-    # script = models.OneToOneField('Script', null=True, blank=True, on_delete=models.PROTECT)
-    
-    #CHARACTER_TRAITS
-    orc_character_age = models.IntegerField(null=True)
-    orc_character_possible_locations = models.JSONField(default=list, blank=True)
-    orc_character_personality_traits = models.ManyToManyField('OrcAgentTrait', blank=True, related_name='orc_character_personality_traits')
-    orc_character_impersonations = models.ManyToManyField('OrcAgentImpersonation', blank=True, related_name='orc_character_impersonations')
-    orc_character_attitudes = models.JSONField(default=list, blank=True)
-    orc_character_strengths = models.JSONField(default=list, blank=True)
-    orc_character_drives = models.JSONField(default=list, blank=True)
-    orc_character_fears = models.JSONField(default=list, blank=True)
-    orc_character_beliefs = models.JSONField(default=list, blank=True)
-    orc_character_origin_story = models.TextField(blank=True)
-    orc_character_llelle = models.TextField(blank=True)
-    orc_character_malig = models.TextField(blank=True)
-    orc_character_subtr = models.TextField(blank=True)
-    expose_rest = True
-    
-    def __str__(self):
-        return self.name
-        ordering = ['name']
-    
-    def introduction(self):
-        return AbstractAgent.introduce_yourself(self)
-    
-    def dictionary(self):
-        return {
-            "name": self.name,
-            "agent_type": self.agent_type,
-            "goals": self.goals,
-            "roles": self.roles,
-            "personality_traits": self.personality_traits,
-            "qualifications": self.qualifications,
-            "impersonations": self.impersonations,
-            "elaboration": self.elaboration           
-        }
+    capabilities = standard_agent_capabilities().append([{"capability_id":100},{"capability_id":102},{"capability_id":103}])
 
 
+
+class WritingAgentEngine(AbstractEngine):
+    pass
+
+
+
+class WritingAgent(AbstractAgent, WritingAgentEngine):
+    agent_type = "writing_agent"
+    class_display_name = "Writing Agent"
+
+
+#SINGLETON AGENTS WITH ENGINES
 class CompressionAgentEngine(AbstractEngine):
     open_ai_data = {
         "role": "user",
@@ -447,10 +604,22 @@ class CompressionAgentEngine(AbstractEngine):
         return self.submit_chat_prompt(prompt, prompting_agent)
 
 
-class CompressionAgent(AbstractAgent, CompressionAgentEngine):
+
+class CompressionAgentSingleton(AbstractAgent, CompressionAgentEngine):
     agent_type = "compression_agent"
     class_display_name = "Compression Agent"
+    _instance = None
     expose_rest = False
+    capabilities = [18]
+    def __new__(cls):
+        if cls._instance is None:
+            # print('Creating PromptBuilder singleton instance')
+            cls._instance = super().__new__(cls)
+            # Initialize the class attributes here
+            cls._instance.prompts_since_reminder = 0
+            cls._instance.max_prompts_between_reminders = 5
+        return cls._instancee
+
 
 
 class EmbeddingsAgentEngine(AbstractEngine):
@@ -550,17 +719,19 @@ class EmbeddingsAgentEngine(AbstractEngine):
         file_list = [os.path.join(dir_path, f) for f in os.listdir(dir_path)]
         self.create_embeddings_for({'files': file_list})
     
-   
+ 
+ 
 class EmbeddingsAgentSingleton(AbstractAgent, EmbeddingsAgentEngine):
     name = "Embeddings Agent"
     agent_type = "embeddings_agent"
     class_display_name = "Embeddings Agent"
-    _instance = None
     expose_rest = False
+    capabilities = [{"capability_id":16},{"capability_id":17}]
     
+    _instance = None
     def __new__(cls):
         if cls._instance is None:
-            # print('Creating PromptBuilder singleton instance')
+            # print('Creating EmbeddingsAgentSingleton singleton instance')
             cls._instance = super().__new__(cls)
             # Initialize the class attributes here
             cls._instance.prompts_since_reminder = 0
@@ -572,25 +743,56 @@ class EmbeddingsAgentSingleton(AbstractAgent, EmbeddingsAgentEngine):
 
 
 
-class UserAgentSingleton(AbstractAgent):
-    name = "user"
-    agent_type = "user_agent"
-    class_display_name = 'User'
-    _instance = None
-    expose_rest = False
-    def __new__(cls):
-        if cls._instance is None:
-            # print('Creating PromptBuilder singleton instance')
-            cls._instance = super().__new__(cls)
-            # Initialize the class attributes here
-            cls._instance.prompts_since_reminder = 0
-            cls._instance.max_prompts_between_reminders = 5
-        return cls._instance
+class WebSearchAgentEngine(AbstractEngine):
+    pass       
+
+
+
+class WebSearchAgentSingleton(AbstractAgent, WebSearchAgentEngine):
+    agent_type = "web_search_agent"
+    class_display_name = "Web Search Agent"
+
+
+#AGENT ATTRIBUTES THAT SHOULD BE OBJECTS
+class AbstractAgentAttribute(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    name = models.CharField(max_length=200, null=True)
+    agent_attribute_type = models.CharField(max_length=200)
+    elaboration = models.TextField(blank=True)
+    expose_rest = True
     
     class Meta:
-        ordering = None
+        abstract = True
+
+    def __str__(self):
+        return self.name
+    
+    def dictionary(self):
+        return {
+            "id": str(self.id),
+            "name": self.name,
+            "agent_attribute_type": self.agent_attribute_type,
+            "elaboration": self.elaboration
+        }
+        
+
+        
+class AgentCapability(AbstractAgentAttribute):
+    capability_id = models.IntegerField(blank=False, null=False, default=-1)
+    agent_attribute_type = "agent_capability" 
+    prompt_adjst = models.TextField(blank=True, null=True)
+    parameters = models.JSONField(blank=True, default=list)
+    output_schema = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['capability_id']
+        
+    def __str__(self):
+        return f"{self.id}: {self.name}"
 
 
+
+#Available Agents for dynamic creation
 class PoeticsAgent(AbstractAgent):
     """
     Agent class concerned with:
@@ -601,7 +803,10 @@ class PoeticsAgent(AbstractAgent):
     """
     agent_type = "poetics_agent"
     class_display_name = "Poetics Agent"
-
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+    object_id = models.UUIDField(null=True, blank=True)  # id of the project it is assigned to
+    projects_assigned_to = GenericForeignKey('content_type', 'object_id')
+    
 
 class StructuralAgent(AbstractAgent):
     # story plotting
@@ -610,12 +815,6 @@ class StructuralAgent(AbstractAgent):
     agent_type = "structural_agent"
     class_display_name = "Structural Agent"
 
-
-class CharacterAgent(AbstractAgent):
-    # agents that flesh out character profiles in various different genres, styles, target audience profiles, etc
-    # also agents that become the character so that a user or other agents can talk to them, or to produce dialog
-    agent_type = "character_agent"
-    class_display_name = "Character Agent"
 
  
 class ResearchAgent(AbstractAgent):
@@ -657,109 +856,19 @@ class QualityEvaluationAgent(AbstractAgent):
     class_display_name = "Quality Evaluation Agent"
 
 
-class AgentCreatedAgents(AbstractAgent):
+class DynamicAgent(AbstractAgent):
     # If any of the 'manager' agents feels there is a class of agent missing that they need
     #A list of tuples: { trait_field, trait_valuess [] }
     agent_created_attributes = []
     class_display_name = "Agent Created Agent"
- 
- 
-class WritingAgent(AbstractAgent):
-    agent_type = "writing_agent"
-    class_display_name = "Writing Agent"
-        
-#UTILITY AGENTS  
-class WebSearchAgent(AbstractAgent):
-    agent_type = "web_search_agent"
-    class_display_name = "Web Search Agent"
 
 
-#AGENT ATTRIBUTES
-class AbstractAgentAttribute(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, null=True)
-    agent_attribute_type = models.CharField(max_length=200)
-    elaboration = models.TextField(blank=True)
-    expose_rest = True
-    class Meta:
-        abstract = True
-
-    def __str__(self):
-        return self.name
-    
-    def dictionary(self):
-        return {
-            "id": str(self.id),
-            "name": self.name,
-            "agent_attribute_type": self.agent_attribute_type,
-            "elaboration": self.elaboration
-        }
-
-
-class AgentGoal(AbstractAgentAttribute):
-    agent_attribute_type = "agent_goal"
-   
-    
-class AgentRole(AbstractAgentAttribute):
-    agent_attribute_type = "agent_role"
-
-
-class AgentTrait(AbstractAgentAttribute):
-    agent_attribute_type = "agent_trait"
- 
-    
-class AgentQualification(AbstractAgentAttribute):
-    agent_attribute_type = "agent_qualification" 
- 
-    
-class AgentImpersonation(AbstractAgentAttribute):
-    agent_attribute_type = "agent_impersonation" 
-
-
-class AgentCapability(AbstractAgentAttribute):
-    agent_attribute_type = "agent_capability" 
-    capability_id = models.IntegerField(blank=False, null=False)
-    prompt_adjst = models.TextField(blank=True, null=True)
-    parameters = models.JSONField(blank=True, default=list)
-    output_schema = models.TextField(blank=True, null=True)
-
-    class Meta:
-        ordering = ['capability_id']
-        
-    def __str__(self):
-        return f"{self.capability_id}: {self.name}"
-
-
-
-#ORCHESTRATION AGENT ATTRIBUTES
-class OrcAgentGoal(AgentGoal):
-    agent_attribute_type = "orchestration_agent_goal"
-  
-    
-class OrcAgentRole(AgentRole):
-    agent_attribute_type = "orchestration_agent_role"
-
-
-class OrcAgentTrait(AgentTrait):
-    agent_attribute_type = "orchestration_agent_trait"
-  
-    
-class OrcAgentQualification(AgentQualification):
-    agent_attribute_type = "orchestration_agent_qualification" 
-   
-    
-class OrcAgentImpersonation(AgentImpersonation):
-    agent_attribute_type = "orchestration_agent_impersonation" 
-
-
-class OrcAgentCapability(AgentCapability):
-    agent_attribute_type = "orchestration_agent_capability" 
-
-
-#singleton
-class PromptBuilderSingleton():
-    expose_rest = False
+class UserAgentSingleton(AbstractAgent):
+    name = "user"
+    agent_type = "user_agent"
+    class_display_name = 'User'
     _instance = None
+    expose_rest = False
     def __new__(cls):
         if cls._instance is None:
             # print('Creating PromptBuilder singleton instance')
@@ -769,49 +878,12 @@ class PromptBuilderSingleton():
             cls._instance.max_prompts_between_reminders = 5
         return cls._instance
     
-    def complete_prompt(self, prompt, prompter):
-        prompt = f"The following prompt comes from a {prompter.agent_type}:\n\n--------------------\n\n{prompt}"
-        return self.auto_reminder(prompt, prompter)
-    
-    def auto_reminder(self, prompt, prompter):
-        # if self.prompts_since_reminder >= 5:
-        #     prompt = f"{prompt} Just Reminding you: {self.to_remind(prompter)}"
-        #     self.prompts_since_reminder = 0
-        # return f"{prompt}"
-        return prompt
-                    
-    def to_wake_up(self, agent):
-        if agent.awareness      =='as_bot':
-            s=f"a {agent.agent_type}, part of a swarm of agents, each with a very defined set of attributes."
-        elif agent.awareness    =='as_orc':
-            s=f"the master orchestrator of a swarm of GPT agents, all working towards a common objective." 
-        else:                          
-            s="I'm glad to have your expertise on this project."
-        
-        prompt = f"You are {agent.name}, {s}. You will use your skills to the BEST of your ability to serve me, the human user, I will tell you our objective soon, but first, about you. {self.to_remind(agent)}"
+    class Meta:
+        ordering = None
 
-        return self.auto_reminder(prompt, agent)  
-    
-    def thoughts_concerns_proposed_next_steps(self, agent, agent_to_share_with):
-        prompt = f"{agent_to_share_with}, {agent_to_share_with.agent_type} of the swarm you are a member of, has requested for you to report back. They want you to reflect on what you have done so far, and respond in the following format as concisely as possible:\n\nTHOUGHTS:\n\nCONCERNS\n\nWHAT YOU THINK YOUR NEXT STEPS SHOULD BE:\n\n"
-        return self.auto_reminder(prompt, agent) 
-    
-    def to_remind(self, agent):      
-        prompt = f"Here is your character description: {agent.dictionary()}"
-        
-        return self.auto_reminder(prompt, agent)  
 
-    def to_compress(self, prompt, compression_ratio=0.25):
-        compression_prompt = f"Compression agent: compress the following text to a ratio <= {compression_ratio} so that another GPT agent will understand the full meaning of the original text. Use abbreviations, symbols, or emojis to assist. It does not need to be human-readable, but it should be easy for another GPT instance to interpret. Here is the text: {prompt}"
-        return compression_prompt
-        
-    def to_ask_opinion_about(self, it, agent):
-        prompt = ""
-
-        return self.auto_reminder(prompt, agent) 
-    
-    def to_ask_next_step(self, agent):
-        prompt = ""
-        
-        return self.auto_reminder(prompt, agent)
-
+class AgentBookRelationship(models.Model):
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    agent = GenericForeignKey('content_type', 'object_id')
+    book = models.ForeignKey("noveller.Book", on_delete=models.CASCADE)

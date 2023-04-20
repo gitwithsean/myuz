@@ -11,4 +11,3 @@ phusis/migrations/db_backups
 venv
 .vscode
 **/fixtures/
-.vscode/settings.json

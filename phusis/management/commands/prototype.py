@@ -9,7 +9,7 @@ from pprint import pprint
 commands = ['exit!', 'go!', 'update!', 'switch_orc!', 'new_agent!', '.intro!']
 commands_str = f"\nCOMMANDS: {commands[0]}, {commands[0]}, {commands[0]}\n"
 agent_types = ['structural_agents']
-user = {}
+user = UserAgentSingleton()
 orc = {}
 project_details = []
 orcs = []
@@ -17,7 +17,7 @@ agent_classes = []
 agents = []
 init_prompts = ['genre(s)', 'character(s)', 'setting', 'target audiences', 'conflicts and resolutions', 'themes', 'style']
 user_selected_agents = []
-current_project = {}
+project = {}
 
 def user_input_is_command(input):
     global commands
@@ -71,37 +71,42 @@ def orcs_init():
 
 def agents_init():
     global user_selected_agents
-    
+    # instances_for_agent_class = []
     all_agent_classes = AbstractAgent.__subclasses__()
     agent_classes_with_their_instances = []
     
     for agent_class in all_agent_classes:
-        instances_for_agent_class = agent_class.get_instances()
+        instances_for_agent_class = agent_class.objects.filter()
         if instances_for_agent_class:
-            class_with_instances = {"agent_class": f"{agent_class.__name__()}", "agent_instances": [instances_for_agent_class]}
+            class_with_instances = {"agent_class": f"{agent_class.__name__}", "agent_instances": instances_for_agent_class}
             agent_classes_with_their_instances.append(class_with_instances)
         else:
             print(colored(f"Message for dev/admin: No instances yet loaded for {agent_class}", "yellow"))    
     
     print("You will now be asked to select the other agents you want to work on this project, there will be these types of agents:")
     for item in agent_classes_with_their_instances:
-         print(item['agent_class'].__name__())
+         print(item['agent_class'])
          
     for agent_class_with_instances in agent_classes_with_their_instances:
-        print(f"First, the {agent_class_with_instances['agent_class'].__name__()} type")
-        i = 1
-        for agent in agent_class_with_instances:
-            print(f"{i} {agent}")
-            i = i + 1
-    
-        user_input = input(f"\nPlease enter the number that corresponds to the agent you wish to assign to this project\n")
-        i = 1
-        for agent in agent_class_with_instances:
-            if i == user_input: 
-                user_selected_agent = agent 
-                break
-            else: 
+        
+        if agent_class_with_instances['agent_class'] != "OrchestrationAgent":
+            print(f"\nThe {agent_class_with_instances['agent_class']} type:")
+            i = 1
+            for agent in agent_class_with_instances['agent_instances']:
+                print(f"{i} {agent}")
                 i = i + 1
+    
+        if agent_class_with_instances['agent_class'] != "OrchestrationAgent":
+            user_input = input(f"\nPlease enter the number that corresponds to the agent you wish to assign to this project\n")
+
+            i = 1
+            for agent in agent_class_with_instances['agent_instances']:
+                if f"{i}" == user_input: 
+                    user_selected_agent = agent 
+                    print(f"You have selected {user_selected_agent.name}")
+                    break
+                else: 
+                    i = i + 1
         
         user_selected_agents.append(user_selected_agent)
                 
@@ -109,15 +114,15 @@ def agents_init():
 def project_init(): 
     user_init()
     print("Define your Project.")
-    project_name = input("Give your project a name")
-    project_type = input("What type of project is it? Book, script, short story. Hit enter to set it as Book")
+    project_name = input("Give your project a name\n")
+    project_type = input("What type of project is it? Book, script, short story. \nHit enter to set it as Book\n")
     if project_type.strip == '':
         project_type = Book
 
     new_project = Book()
     new_project.name = project_name
     project_type = new_project.class_display_name
-    new_project.agents_for_project(user)
+    new_project.agents_for_project.add(UserAgentSingleton())
     new_project.save()
     
     add_agents_to_project(new_project)
@@ -126,53 +131,31 @@ def project_init():
 
 def add_agents_to_project(project):
 
-    project.save
-
-    pprint(project)
-
     print("Select your Agents.")
-    orcs_init()
-    # orc.save()
     
-    
-    # from django.db import connection
-    relationship = AgentBookRelationship(agent=orc, book=project)
-    # try:
-    relationship.save()
-    # except:
-    #     print(connection.queries[-1])
-    
-    # relationship = AgentBookRelationship(agent=orc, book=project)
-    # relationship.save()
-    
-    # project.agents_for_project.add(orc)
-    # project.save()
-    
+    orcs_init()   
     agents_init()
-    for agent in user_selected_agents:
-        relationship = AgentBookRelationship(agent=agent, book=project)
-        relationship.save()
-        # project.add_agent_for_book(agent)
     
-    project.save()
-    
+    user_selected_agents.append(orc)
+    project.add_agents_to_book(user_selected_agents)
+        
     print("Waking up agents...\n")
     
     print(f"While we wait, think about the story you want to work on today.\nWhat do you want to tell {orc} to get started? Think about {init_prompts}, etc.\n")
 
     prompt, response = orc.wake_up()
-    interaction_to_script(user, prompt, orc, response)
+    project.add_script_entry(UserAgentSingleton(), prompt, orc, response)
 
     for agent in user_selected_agents:
         prompt, response = agent.wake_up()
-        interaction_to_script(user, prompt, agent, response)
+        project.add_script_entry(UserAgentSingleton(), prompt, agent, response)
 
     user_input = input(f"\nOK, {orc} is ready for your input...")
                        
                     #    \n\n[or type prompt! to receive a list of prompts that will get you started]\n\n")
             
-    prompt, response = orc.submit_chat_prompt(user_input, user)
-    interaction_to_script(user, prompt, orc, response)
+    prompt, response = orc.submit_chat_prompt(user_input, UserAgentSingleton())
+    project.add_script_entry(UserAgentSingleton(), prompt, orc, response)
     
     
     # current_prompt = user_input
@@ -194,14 +177,16 @@ def add_agents_to_project(project):
 
 
 def retrieve_and_load_project():
+    global orc
     projects_available = Book.objects.all()
+    # pprint(projects_available)
     user_selected_project = {}
     print("Projects available to load:")
     i = 1
     for project in projects_available:
         print(f"{i}: {project.name}")
         
-    user_input = input(f"\nPlease enter the number that corresponds to the agent you wish to assign to this project\n")
+    user_input = input(f"\nPlease enter the number that corresponds to the project you wish to load\n")
     i = 1
     for project in projects_available:
         if f"{i}" == user_input: 
@@ -213,20 +198,23 @@ def retrieve_and_load_project():
             i = i + 1
     
     change_agents = input("Do you want to change or add the agents in your project?\n(y/n)\n")
-    
+    project_content_type = ContentType.objects.get_for_model(project)
     if change_agents == 'y':
         add_agents_to_project(user_selected_project)
     else:
-        for agent in project.agents_for_project:
-            if agent.type == "orchestration_agent": orc = agent
-            else: user_selected_agents.append(agent)
+        print("loading_data_from_book")
+        pprint(user_selected_project.to_dict())
+        for agent in user_selected_project.get_agents_for_book():
+            user_selected_agents.append(agent)
+            if agent.agent_type == "orchestration_agent":
+                orc = agent
     
     return user_selected_project        
 
 
 def interaction_to_script(sender, prompt, receiver, response):
     print(f"Sender: {sender.name}\n\"{prompt}\"\n{receiver.name}\n\"{response}\"")
-    user.script.add_entry
+    UserAgentSingleton().script.add_entry
     if sender.agent_type != 'user' : sender.script.add_entry(sender, prompt, receiver, response)
     if receiver.agent_type != 'user' : receiver.script.add_entry(sender, prompt, receiver, response)
   
@@ -234,21 +222,28 @@ def interaction_to_script(sender, prompt, receiver, response):
 def main():
     print("========================= NOVELIER - a phusis application =========================\n\n")
     global user
+    user = UserAgentSingleton()
     global orc
     global orcs
     global agent_classes
     global agents
     global project_details
     global user_selected_agents
-    global current_project
+    global project
     current_prompt = ""
-    user_input = input("Welcome. Do you want to start a new project or continue with an existing one? [(n)ew!, (c)ontinue!]\n")
+    # user_input = input("Welcome. Do you want to start a new project or continue with an existing one? [(n)ew!, (c)ontinue!]\n")
     
-    if user_input == "c" or user_input == 'continue!' or user_input == '(c)ontinue!':
-        current_project = retrieve_and_load_project()
-    else:
-        current_project = project_init()
-        
+    # if user_input == "c" or user_input == 'continue!' or user_input == '(c)ontinue!':
+    project = retrieve_and_load_project()
+    # else:
+    #     project = project_init()
+    
+    pprint(orc)
+       
+    for agent in user_selected_agents:
+        if not agent.awake:
+            agent.wake_up()
+            agent.save()
     
     iteration = 0
     while True:
@@ -264,9 +259,9 @@ def main():
         #     orc.submit_prompt(user_input)
 
         prompt, response = orc.assess_project(project_details)
-        interaction_to_script(user, prompt, orc, response)
+        project.add_script_entry(UserAgentSingleton(), prompt, orc, response)
         prompt, response = orc.amend_project()
-        interaction_to_script(user, prompt, orc, response)
+        project.add_script_entry(UserAgentSingleton(), prompt, orc, response)
         orc.continue_project()
 
         # new_agent = orc.create_agents()

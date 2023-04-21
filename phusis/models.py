@@ -1,6 +1,6 @@
 import json, uuid, os, mimetypes, sys, PyPDF2, nltk, spacy, re
 from django.contrib.postgres.fields import ArrayField
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.apps import apps
@@ -13,7 +13,7 @@ from django.db import models
 
 class AbstractAgentAttribute(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, null=True)
+    name = models.CharField(max_length=200, null=True, unique=True)
     agent_attribute_type = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True)
     expose_rest = True
@@ -22,7 +22,12 @@ class AbstractAgentAttribute(models.Model):
         abstract = True
 
     def __str__(self):
-        return self.name
+        return f"{self.agent_attribute_type} '{self.name}'"
+    
+    def set_data(self, properties_json):
+        self.name = properties_json.get('name', self.name)
+        self.elaboration = properties_json.get('elaboration', self.elaboration)
+        self.save()
     
     def dictionary(self):
         return {
@@ -32,7 +37,6 @@ class AbstractAgentAttribute(models.Model):
             "elaboration": self.elaboration
         }
         
-
 
 class AgentCapability(AbstractAgentAttribute):
     capability_id = models.IntegerField(blank=False, null=False, default=-1)
@@ -54,14 +58,138 @@ class AgentCapability(AbstractAgentAttribute):
         self.prompt_adjst = properties_json.get('prompt_adjst', self.prompt_adjst)
         self.parameters = properties_json.get('parameters', self.parameters)
         self.output_schema = properties_json.get('output_schema', self.output_schema)
+        self.save()
 
 
+class AgentGoal(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_goal'
+
+class OrcAgentGoal(AgentGoal):
+    agent_attribute_type = 'orc_agent_goal'
+
+class AgentRole(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_role'
+
+class OrcAgentRole(AgentRole):
+    agent_attribute_type = 'orc_agent_role'
+
+class AgentPersonalityTrait(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_personality_trait'
+
+class OrcAgentPersonalityTrait(AgentPersonalityTrait):
+    agent_attribute_type = 'orc_agent_personality_trait'
+
+class AgentQualification(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_qualification'
+
+class OrcAgentQualification(AgentQualification):
+    agent_attribute_type = 'orc_agent_qualification'
+
+class AgentImpersonation(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_impersonation'
+
+class OrcAgentImpersonation(AgentImpersonation):
+    agent_attribute_type = 'orc_agent_impersonation'
+
+class AgentStrength(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_strength'
+
+class OrcAgentStrength(AgentStrength):
+    agent_attribute_type = 'orc_agent_strength'
+
+class AgentLocation(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_location'
+
+class OrcAgentLocation(AgentLocation):
+    agent_attribute_type = 'orc_agent_location'
+
+class AgentDrive(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_drive'
+
+class OrcAgentDrive(AgentDrive):
+    agent_attribute_type = 'orc_agent_drive'
+
+class AgentFear(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_fear'
+
+class OrcAgentFear(AgentFear):
+    agent_attribute_type = 'orc_agent_fear'
+
+class AgentBelief(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_belief'
+
+class OrcAgentBelief(AgentBelief):
+    agent_attribute_type = 'orc_agent_belief'
+
+class AgentAttitude(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_belief'
+
+class OrcAgentAttitude(AgentAttitude):
+    agent_attribute_type = 'orc_agent_attitude'
+
+class AgentFavoredTheme(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_favored_theme'
+ 
+class OrcAgentFavoredTheme(AgentFavoredTheme):
+    agent_attribute_type = 'orc_agent_favored_theme'
+
+class AgentFavoredGenre(AbstractAgentAttribute):
+   agent_attribute_type = 'agent_favored_genre'
+        
+class AgentFavoredGenreCombo(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_favored_genre_combo'        
+        
+class AgentInspirationalSource(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_inspirational_sources'         
+        
+class AgentCreatedTrait(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_created_trait'
+    agent_created_trait_field = models.CharField(max_length=200, null=True, unique=True, default='')
+    agent_created_trait_values = models.JSONField(null=True, blank=True, default=list)
+    
+    def set_data(self, properties_json):
+        pprint(properties_json)
+        print(properties_json.get('trait_field'))
+        print(properties_json.get('trait_value'))
+        self.agent_created_trait_field = properties_json.get('trait_field', self.agent_created_trait_field)
+        self.agent_created_trait_values.append(properties_json.get('trait_value'))
+        self.elaboration = properties_json.get('elaboration', self.elaboration)
+        self.name = f"Agent Created Trait: {self.agent_created_trait_field}"
+        self.save()
+
+class OrcAgentCreatedTrait(AgentCreatedTrait):
+    agent_attribute_type = 'orc_agent_created_trait'
+
+
+def find_agent_attribute_by(attribute_name, attribute_class=AbstractAgentAttribute):
+    if attribute_class == AgentCreatedTrait or attribute_class == OrcAgentCreatedTrait:
+        attribute_name
+    elif attribute_class == AbstractAgentAttribute:
+        for att_class in AbstractAgentAttribute.model_subclasses().all():
+            for instance in att_class.objects.all():
+                if instance.name == attribute_name:
+                    return att_class, instance
+    else:
+        for instance in attribute_class.objects.all():
+            if instance.name == attribute_name:
+                print(f"find_agent_attribute_by(): FOUND: {attribute_class}, {instance}")            
+                return attribute_class, instance
+           
+    print(f"find_agent_attribute_by(): NOT FOUND: {attribute_class}, {attribute_name}")
+    
+    data = {
+        "class_name": attribute_class.__name__,
+        "properties":{
+            "name": attribute_name
+        }
+    }
+
+    return attribute_class, load_or_get_agent_attribute_from(data)
+    
 PROJECT_ROOT="myuz"
 INCOMING_FILES="/files_to_embed/"
 OUTGOING_FILES="/files_created/"
 LOGS="/logs/"
-
-
 def get_phusis_project_workspace(project_type, project_name):
     myuz_dir = os.getcwd()
     
@@ -86,7 +214,6 @@ def get_agent_capabilities_by_capability_ids(capability_ids=
         capabilities.append(capability)
  
     return capabilities
-
 
 
 def camel_case_to_underscore(name):
@@ -117,8 +244,8 @@ def is_valid(json_data):
         return True
 
 
-def load_agent_capabilities_from(json_data):
-    new_capability_obj = {}
+def load_or_get_agent_attribute_from(json_data):
+    new_attribute_obj = {}
     expected_json = {
         "class_name": "AgentCapability",
         "properties": {
@@ -126,14 +253,35 @@ def load_agent_capabilities_from(json_data):
         }
     }
     
-
-    model_class = apps.get_model("phusis", f"{json_data['class_name']}")
-    new_capability_obj, created = model_class.objects.get_or_create(name=json_data['properties']['name'])
-    new_capability_obj.set_data(json_data['properties'])
-    s = "found and updated"
-    if created: s = "created"
-    print(colored(f"load_agent_capabilities_from(): {new_capability_obj.name} with capability_id {new_capability_obj.capability_id} {s}", "green")) 
-    new_capability_obj.save()
+    if is_valid(json_data):
+        attribute_class = apps.get_model("phusis", f"{json_data['class_name']}")
+        if json_data['class_name'] == "AgentCreatedTrait" or json_data['class_name'] == "OrcAgentCreatedTrait":
+            pprint(json_data)
+            new_attribute_obj, created = attribute_class.objects.update_or_create(
+                name=f"Agent Created Trait: {json_data['properties']['trait_field']}",
+                defaults={
+                    'agent_created_trait_field': json_data['properties']['trait_field'],
+                    'agent_created_trait_values': json_data['properties']['trait_values']
+                }
+            )
+            return new_attribute_obj
+        else:        
+            print(colored(f"load_or_get_agent_attributefrom(): Loading {json_data['properties']['name']}", "green"))
+            new_attribute_obj, created = attribute_class.objects.get_or_create(name=json_data['properties']['name'])
+            
+            new_attribute_obj.set_data(json_data['properties'])
+            
+            s = "found and updated"
+            if created: s = "created"
+            print(colored(f"load_agent_attributes_from(): {new_attribute_obj.name} {s}", "green")) 
+        
+        # new_attribute_obj.save()
+    else:
+        print(colored(f"models.load_agent_attributes_from: JSON data for att not valid, expected schema below","red"))
+        print(colored(f"Data received: {json_data}", "red"))
+        print(colored(f"Minimum expected: {expected_json}", "yellow"))   
+    
+    return new_attribute_obj        
     
 
 def load_agent_model_and_return_instance_from(json_data):
@@ -200,7 +348,7 @@ class PromptBuilderSingleton():
         else:                          
             s="I'm glad to have your expertise on this project."
         
-        prompt = f"You are {agent.name}, {s}. You will use your skills to the BEST of your ability to serve me, the human user, I will tell you our objective soon, but first, about you. {self.to_remind(agent)}"
+        prompt = f"You are {agent}, {s}. You will use your skills to the BEST of your ability to serve me, the human user, I will tell you our objective soon, but first, about you. {self.to_remind(agent)}"
 
         return self.auto_reminder(prompt, agent)  
     
@@ -209,7 +357,7 @@ class PromptBuilderSingleton():
         return self.auto_reminder(prompt, agent) 
     
     def to_remind(self, agent):      
-        prompt = f"Here is your character description: {agent.dictionary()}"
+        prompt = f"Here is your character description: {agent.dicctionary()}"
         
         return self.auto_reminder(prompt, agent)  
 
@@ -236,7 +384,7 @@ class PhusisScript():
     in_debug_mode = True
     #script as list of tuples speaker/spoken 
     # [ { date_time, speaker_id, speaker_name, content } ]
-    script_content = models.JSONField(default=list, blank=True)
+    script_content = models.TextField(blank=True, null=True, default='')
     class_display_name = 'Swarm Script'
     script_file_name = models.CharField(max_length=200, default="", editable=False)
     path_to_script = models.CharField(max_length=200, default="", editable=False)
@@ -280,8 +428,10 @@ class PhusisScript():
             }
         }
         print(colored("Adding prompt_and_response script entry...", "green"))
-        self.script_content.append(prompt_and_response)
-        self.save_script_to_file()
+
+        # Save the updated array back to the instance
+        self.script_content = f"{self.script_content},\n{prompt_and_response}" 
+        self.save()
         if self.in_debug_mode:
             pprint(prompt_and_response)
             
@@ -315,22 +465,25 @@ class AbstractEngine():
     ai_api = OpenAi()
     agent = {}
     awareness = 'as_ai'
-    awake = False
     expose_rest = True
     most_recent_responses_to = {
         "start_engine": "",
         "thoughts_concerns_proposed_next_steps": "",
         "submit_report": ""
     }
+    # open_ai_data = {
+    #     "role": "user",
+    #     "content": "",
+    #     "model": "text-ada-001",
+    #     "temperature": 0.2,
+    #     "max_tokens": 300,
+    #     "top_p": 1,
+    #     "frequency_penalty": 0,
+    #     "presence_penalty": 0,
+    # }
     open_ai_data = {
-        "role": "user",
-        "content": "",
-        "model": "text-ada-001",
-        "temperature": 0.2,
-        "max_tokens": 300,
-        "top_p": 1,
-        "frequency_penalty": 0,
-        "presence_penalty": 0,
+       'model':"text-curie-001",
+       'max_tokens':1000
     }
     
     def submit_chat_prompt(self, prompt, prompting_agent):
@@ -352,7 +505,8 @@ class AbstractEngine():
         response = self.ai_api.gpt_chat_response(request_data)
         self.awake = True
         self.most_recent_responses_to['start_engine'] = response
-        print(colored("Engine started.", "green"))
+        print(colored(f"{self.name} engine started.", "green"))
+        return request_data['content'], response
 
     def consider(self, objs=[], prompt_adj=''):
         capability_id=1
@@ -461,11 +615,12 @@ class AbstractEngine():
 
 class AbstractAgent(models.Model, AbstractEngine, PhusisScript):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, unique=True)
     # script_for_agent = models.OneToOneField('PhusisScript', null=True, blank=True, on_delete=models.PROTECT)
     agent_type = models.CharField(max_length=200, default="phusis_agent", editable=False)
     class_display_name = models.CharField(max_length=200, editable=False, default=f"Phusis {agent_type} Agent")
-        
+    related_books = GenericRelation('AgentBookRelationship', related_query_name='agent')
+    awake = models.BooleanField(default=False)
     expose_rest = True
     # [{"prompted_by":"", "AgentCapability":{}, "result":""}]
     steps_taken = models.JSONField(default=list, blank=True)
@@ -475,17 +630,18 @@ class AbstractAgent(models.Model, AbstractEngine, PhusisScript):
     embedding_of_self = models.TextField(blank=True)
     
     #Traits
-    goals = ArrayField(models.CharField(max_length=50), blank=True, default=list)
-    roles = ArrayField(models.CharField(max_length=50), blank=True, default=list)
-    personality_traits = ArrayField(models.CharField(max_length=50), blank=True, default=list)
-    qualifications = ArrayField(models.CharField(max_length=50), blank=True, default=list)
-    impersonations = ArrayField(models.CharField(max_length=50), blank=True, default=list)
-    strengths = ArrayField(models.CharField(max_length=50), blank=True, default=list)
-    possible_locations = ArrayField(models.CharField(max_length=50), blank=True, default=list)
-    attitudes = ArrayField(models.CharField(max_length=50), blank=True, default=list)
-    drives = ArrayField(models.CharField(max_length=50), blank=True, default=list)
-    fears = ArrayField(models.CharField(max_length=50), blank=True, default=list)
-    beliefs = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    goals = models.ManyToManyField(AgentGoal, blank=True)
+    roles = models.ManyToManyField(AgentRole, blank=True)
+    personality_traits = models.ManyToManyField(AgentPersonalityTrait, blank=True)
+    qualifications = models.ManyToManyField(AgentQualification, blank=True)
+    impersonations = models.ManyToManyField(AgentImpersonation, blank=True)
+    strengths = models.ManyToManyField(AgentStrength, blank=True)
+    possible_locations = models.ManyToManyField(AgentLocation, blank=True)
+    attitudes = models.ManyToManyField(AgentAttitude, blank=True)
+    drives = models.ManyToManyField(AgentDrive, blank=True)
+    fears = models.ManyToManyField(AgentFear, blank=True)
+    beliefs = models.ManyToManyField(AgentBelief, blank=True)
+    favored_themes = models.ManyToManyField(AgentFavoredTheme, blank=True)
     
     #Character
     age = models.IntegerField(null=True)
@@ -495,7 +651,7 @@ class AbstractAgent(models.Model, AbstractEngine, PhusisScript):
     malig = models.TextField(blank=True)
     subtr = models.TextField(blank=True)  
     # [{"trait_name":"", "trait_values": ["",""]}]
-    agent_created_traits = models.JSONField(default=list, blank=True)
+    agent_created_traits = models.ManyToManyField(AgentCreatedTrait, blank=True)
     
     class Meta:
         abstract = True
@@ -505,42 +661,29 @@ class AbstractAgent(models.Model, AbstractEngine, PhusisScript):
         return f"{self.class_display_name} for {self.name}"        
 
     def set_data(self, properties_dict):
-        # if self.script_for_agent is None: 
-        #     self.script_for_agent = PhusisScript()
         for key, value in properties_dict.items():
-            attr_type = type(getattr(self, key))
+            # Get the field instance
+            field = self._meta.get_field(key)
+
+            #Deal with capabilities first
             if key == 'capabilities':
-                self.capabilities.set(get_agent_capabilities_by_capability_ids())
+                self.capabilities.set(get_agent_capabilities_by_capability_ids()) 
                 
-            elif attr_type == list:
-                getattr(self, key).append(value)
+            # Check if it's a ManyToManyField
+            elif isinstance(field, models.ManyToManyField):
+                related_objects = []
+
+                # Find the related objects using find_attribute_by function
+                for attr_name in value:
+                    print(f"{field.related_model} {attr_name}")
+                    attr_clas, attr_instance = find_agent_attribute_by(attr_name, field.related_model)
+                    related_objects.append(attr_instance)
+
+                # Set the related objects to the attribute
+                getattr(self, key).set(related_objects)
             else:
+                # Handle other attribute types as needed
                 setattr(self, key, value)
-            
-        # self.name = properties_dict.get('name')
-        # self.agent_type = properties_dict.get('agent_type', camel_case_to_underscore(self.__class__.__name__))
-        # self.class_display_name = properties_dict.get('class_display_name', camel_case_to_spaced(self.__class__.__name__))
-        # self.capabilities.set(standard_agent_capabilities())
-        # # self.capabilities.add(properties_dict.get('capability_ids'), self.capabilities)
-        # self.goals.append(properties_dict.get('goals'))
-        # self.roles.append(properties_dict.get('roles'), [])
-        # self.personality_traits.append(properties_dict.get('personality_traits'), [])
-        # self.qualifications.append(properties_dict.get('qualifications'), [])
-        # self.impersonations.append(properties_dict.get('impersonations'), [])
-        # self.strengths.append(properties_dict.get('strengths'), [])
-        # self.possible_locations.append(properties_dict.get('possible_locations'), [])
-        # self.attitudes.append(properties_dict.get('attitudes'), [])
-        # self.drives.append(properties_dict.get('drives'), [])
-        # self.fears.append(properties_dict.get('fears'), [])
-        # self.beliefs.append(properties_dict.get('beliefs'), [])
-        # self.age = properties_dict.get('age', self.age)
-        # self.origin_story = properties_dict.get('origin_story', '')
-        # self.elaboration = properties_dict.get('elaboration', '')
-        # self.llelle = properties_dict.get('llelle', '')
-        # self.malig = properties_dict.get('malig', '')
-        # self.subtr = properties_dict.get('subtr', '') 
-        # # [{"trait_name":"", "trait_values": ["",""]}]
-        # self.agent_created_traits.set(properties_dict.get('agent_created_traits', []))
     
     def embed(self):
         if self.embedding_of_self == '':
@@ -553,15 +696,24 @@ class AbstractAgent(models.Model, AbstractEngine, PhusisScript):
             "id": str(self.id),
             "name": self.name,
             "agent_type": self.agent_type,
-            "goals": list(self.goals.all().values_list('name', flat=True)),
-            "roles": list(self.roles.all().values_list('name', flat=True)),
-            "personality": list(self.personality.all().values_list('name', flat=True)),
-            "qualifications": list(self.qualifications.all().values_list('name', flat=True)),
-            "impersonations": list(self.impersonations.all().values_list('name', flat=True)),
+            "goals": self.goals,
+            "roles": self.goals,
+            "personality": self.goals,
+            "qualifications": self.goals,
+            "impersonations": self.goals,
             "elaboration": self.elaboration,
             "llelle": self.llelle,
             "malig": self.malig,
-            "subtr": self.subtr
+            "subtr": self.subtr,
+            "steps_taken": self.steps_taken,
+            "strengths": self.strengths,
+            "possible_locations": self.possible_locations,
+            "drives": self.drives,
+            "fears": self.fears,
+            "beliefs": self.beliefs,
+            "age": self.age,
+            "origin_story": self.origin_story,
+            "agent_created_traits": self.agent_created_traits
         }
         
     def introduce_yourself(self, is_brief=True):
@@ -570,11 +722,14 @@ class AbstractAgent(models.Model, AbstractEngine, PhusisScript):
         
         return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{dict_str}"
 
+    def tell_me_who_i_am(self):
+        you_are = f"You are a agent_type. "
+
 
 
 class AbstractPhusisProject(models.Model, PhusisScript):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, default='')
+    name = models.CharField(max_length=200, default='', unique=True)
     project_type = models.CharField(max_length=200, default='Book')
     project_user_input = models.TextField(blank=True, default='')
     project_workspace = get_phusis_project_workspace(project_type, name)
@@ -688,7 +843,7 @@ class OrchestrationEngine(AbstractEngine):
 class OrchestrationAgent(AbstractAgent, OrchestrationEngine):
     class_display_name = "Orchestration Agent"
     agent_type = "orchestration_agent"
-    capabilities =  get_agent_capabilities_by_capability_ids([100,101,102,103])
+    # capabilities =  get_agent_capabilities_by_capability_ids([100,101,102,103])
 
 
 
@@ -976,3 +1131,4 @@ class AgentBookRelationship(models.Model):
     object_id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     agent = GenericForeignKey('content_type', 'object_id')
     book = models.ForeignKey("noveller.Book", on_delete=models.CASCADE)
+

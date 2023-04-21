@@ -1,4 +1,4 @@
-import openai, pinecone, os, shutil
+import openai, pinecone, os, shutil, time
 from pprint import pprint
 from termcolor import colored
 from django.apps import apps
@@ -21,6 +21,8 @@ class OpenAi():
             frequency_penalty=data.get("frequency_penalty", 0),
             presence_penalty=data.get("presence_penalty", 0),
         )
+
+        
         return response['choices'][0]['text']
 
     def get_embedding_for(self, input, model="text-embedding-ada-002"):
@@ -30,20 +32,33 @@ class OpenAi():
         )
         return response['data'][0]['embedding']
     
-    def gpt_chat_response(self, api_data):
+
+
+    def gpt_chat_response(self, api_data, max_retries=3, delay=1):
         # print(f"api_data =  {api_data}")
-        completion = openai.ChatCompletion.create(
-            model=api_data.get('model', "gpt-3.5-turbo"),
-            messages=[
-                {
-                    "role": "user", 
-                    "content": api_data.get("content")
-                }
-            ]
-        )
-        return completion.choices[0].message
-    {
-}
+        last_exception = None
+        retry_attempt = 1
+        for retry_attempt in range(max_retries):
+            try:
+                completion = openai.ChatCompletion.create(
+                    model=api_data.get('model', "gpt-3.5-turbo"),
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": api_data.get("content")
+                        }
+                    ]
+                )
+                
+                print(completion)
+                return completion.choices[0].message
+            except Exception as e:
+                last_exception = e
+                time.sleep(delay)  
+                retry_attempt = retry_attempt + 1 # Wait for the specified delay before retrying
+
+        # If the function reaches this point, it means all retries have failed
+        raise last_exception
 
 class PineconeApi():
     index = {}

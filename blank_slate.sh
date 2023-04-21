@@ -81,7 +81,7 @@ if [ $REINIT_DB == true ]; then
     #delete migrations
     rm -rf **/migrations/*.py
     rm -rf **/migrations/__pycache__
-    python manage.py check
+    # python manage.py check
     python manage.py makemigrations noveller --empty
     python manage.py makemigrations phusis --empty
     python manage.py makemigrations phusis

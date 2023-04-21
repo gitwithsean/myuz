@@ -3,6 +3,8 @@ from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from phusis.models import AbstractPhusisProject, AgentBookRelationship
 import uuid
+from django.core.exceptions import ObjectDoesNotExist
+from pprint import pprint
 
 class NovellerModelDecorator(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -31,11 +33,45 @@ class Book(AbstractPhusisProject):
         ContentType,
         related_name="projects_assigned_to",
         through=AgentBookRelationship,
-        limit_choices_to=models.Q(app_label='phusis', model='characteragent') |
-                         models.Q(app_label='phusis', model='poeticsagent') |
-                         models.Q(app_label='phusis', model='writingagent') |
-                         models.Q(app_label='phusis', model='researchagent')
+        # limit_choices_to=models.Q(app_label='phusis', model='characteragent') |
+        #                  models.Q(app_label='phusis', model='poeticsagent') |
+        #                  models.Q(app_label='phusis', model='writingagent') |
+        #                  models.Q(app_label='phusis', model='researchagent')
     )
+    def add_agents_to_book(self, agents):
+        for agent in agents:
+            agent_content_type = ContentType.objects.get_for_model(agent)
+            relationship, created= AgentBookRelationship.objects.get_or_create(content_type=agent_content_type, object_id=agent.id, book=self)
+            relationship.save()
+            self.save()
+            agent.save()
+        
+        print("SHOWING AGENTS JUST ASSIGNED TO BOOK")
+        pprint(self.get_agents_for_book())    
+            
+    def get_agents_for_book(self):
+        agent_relationships = AgentBookRelationship.objects.filter(book=self)
+        agents = []
+
+        for relationship in agent_relationships:
+            agent_content_type = relationship.content_type
+            agent_object_id = relationship.object_id
+            try:
+                agent = agent_content_type.get_object_for_this_type(pk=agent_object_id)
+                agents.append(agent)
+            except ObjectDoesNotExist:
+                print(f"Warning: Agent with content_type={agent_content_type} and object_id={agent_object_id} not found")
+
+        return agents
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "project_type": self.project_type,
+            "project_workspace": self.project_workspace,
+            "agents_for_project": self.get_agents_for_book()
+        }
+        
     
     # def add_agent_for_book(self, input_agent):
     #     AgentBookRelationship(agent=input_agent, book=self).save()

@@ -1,4 +1,6 @@
+#!/bin/bash
 
+cd ..
 . venv/bin/activate
 
 python manage.py check

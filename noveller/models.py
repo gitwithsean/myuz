@@ -37,8 +37,8 @@ class Book(AbstractPhusisProject):
                          models.Q(app_label='phusis', model='researchagent')
     )
     
-    # def add_agent_for_book(self, agent):
-    #     AgentBookRelationship(agent=agent, book=self)
+    # def add_agent_for_book(self, input_agent):
+    #     AgentBookRelationship(agent=input_agent, book=self).save()
     
     # def agents_for_book(self):
     #     self.agents_for_project.all()

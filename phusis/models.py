@@ -45,7 +45,7 @@ class AgentCapability(AbstractAgentAttribute):
         ordering = ['capability_id']
         
     def __str__(self):
-        return f"{self.id}: {self.name}"
+        return f"{self.capability_id}: {self.name}"
 
     def set_data(self, properties_json):
         self.name = properties_json.get('name', self.name)
@@ -55,6 +55,26 @@ class AgentCapability(AbstractAgentAttribute):
         self.parameters = properties_json.get('parameters', self.parameters)
         self.output_schema = properties_json.get('output_schema', self.output_schema)
 
+
+PROJECT_ROOT="myuz"
+INCOMING_FILES="/files_to_embed/"
+OUTGOING_FILES="/files_created/"
+LOGS="/logs/"
+
+
+def get_phusis_project_workspace(project_type, project_name):
+    myuz_dir = os.getcwd()
+    
+    if PROJECT_ROOT in myuz_dir:
+        myuz_dir = myuz_dir[:myuz_dir.index(PROJECT_ROOT) + len(PROJECT_ROOT)]
+        
+    phusis_project_workspace = f"{myuz_dir}/phusis/phusis_projects/{project_type}/{project_name}" 
+        
+    os.makedirs(f"{phusis_project_workspace}{INCOMING_FILES}", exist_ok=True)
+    os.makedirs(f"{phusis_project_workspace}{OUTGOING_FILES}", exist_ok=True)
+    os.makedirs(f"{phusis_project_workspace}{LOGS}", exist_ok=True)
+    
+    return phusis_project_workspace 
 
 # see init_data/init_agent_capability.json
 def get_agent_capabilities_by_capability_ids(capability_ids=
@@ -70,6 +90,7 @@ def get_agent_capabilities_by_capability_ids(capability_ids=
 
 
 def camel_case_to_underscore(name):
+    print(f"NAME {name}")
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
@@ -208,25 +229,21 @@ class PromptBuilderSingleton():
 
 
 
-class PhusisScript(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200) 
-    is_master_script = models.BooleanField(default=False)
+class PhusisScript():
+    # id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    # name = models.CharField(max_length=200) 
+    # is_master_script = models.BooleanField(default=False)
     in_debug_mode = True
     #script as list of tuples speaker/spoken 
     # [ { date_time, speaker_id, speaker_name, content } ]
     script_content = models.JSONField(default=list, blank=True)
-    agent = {}
-    expose_rest = True
-    class_display_name = 'Script'
-        
-    def script_file_name(self, agent={}):
-        if agent=={}:
-            agent=self.agent
-        else:
-            self.agent = agent    
-        self.name = f"{self.agent.name}_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}"
-        return f"scripts/{self.agent_name}/{self.name}.json"
+    class_display_name = 'Swarm Script'
+    script_file_name = models.CharField(max_length=200, default="", editable=False)
+    path_to_script = models.CharField(max_length=200, default="", editable=False)
+    
+    def __init__(self):
+        self.path_to_script=f"{get_phusis_project_workspace(self.__class__.__name__, self.name)}{LOGS}"        
+        self.script_file_name = self.script_file_name = f"{self.name}_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}"
 
     def script_to_text(self):
         txt = ""
@@ -238,8 +255,8 @@ class PhusisScript(models.Model):
 
     def save_script_to_file(self):
         print(colored("Saving script to file...", "green"))
-        os.makedirs(os.path.dirname(self.script_file_name()), exist_ok=True)
-        with open(self.script_file_name(), "w") as f:
+
+        with open(f"{self.path_to_script}{self.script_file_name}", "w") as f:
             json.dump({"script": {"script_entries": self.script_content}}, f, indent=4) 
         
     def add_script_entry(self, prompter, prompt, responder, response):
@@ -442,10 +459,10 @@ class AbstractEngine():
 
 
 
-class AbstractAgent(models.Model, AbstractEngine):
+class AbstractAgent(models.Model, AbstractEngine, PhusisScript):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=200)
-    script_for_agent = models.OneToOneField('PhusisScript', null=True, blank=True, on_delete=models.PROTECT)
+    # script_for_agent = models.OneToOneField('PhusisScript', null=True, blank=True, on_delete=models.PROTECT)
     agent_type = models.CharField(max_length=200, default="phusis_agent", editable=False)
     class_display_name = models.CharField(max_length=200, editable=False, default=f"Phusis {agent_type} Agent")
         
@@ -488,6 +505,8 @@ class AbstractAgent(models.Model, AbstractEngine):
         return f"{self.class_display_name} for {self.name}"        
 
     def set_data(self, properties_dict):
+        # if self.script_for_agent is None: 
+        #     self.script_for_agent = PhusisScript()
         for key, value in properties_dict.items():
             attr_type = type(getattr(self, key))
             if key == 'capabilities':
@@ -553,27 +572,34 @@ class AbstractAgent(models.Model, AbstractEngine):
 
 
 
-class AbstractPhusisProject(models.Model):
+class AbstractPhusisProject(models.Model, PhusisScript):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, default='')
     project_type = models.CharField(max_length=200, default='Book')
-    project_user_inputs = ArrayField(models.TextField(), blank=True, default=list)
-    project_local_directory = models.CharField(max_length=200, null=True)
-    project_files_added_paths = ArrayField(models.CharField(max_length=50), blank=True, default=list)
-    project_files_produced_paths = ArrayField(models.CharField(max_length=50), blank=True, default=list)
+    project_user_input = models.TextField(blank=True, default='')
+    project_workspace = get_phusis_project_workspace(project_type, name)
     agents_for_project = models.ManyToManyField(
         AbstractAgent, related_name='projects_for_agent', blank=True
     )
-    script_for_project = models.OneToOneField(PhusisScript, on_delete=models.PROTECT)
     
     project_embedding = models.TextField(blank=True)
     
     def __str__(self):
-        return f"{self.project_type}: {self.project_name}"
+        return f"{self.project_type}: {self.name}"
        
     class Meta:
         abstract = True
         ordering = ['name']
+    
+    def set_data(self, properties_dict):
+        if self.script_for_project is None: 
+            self.script_for_project = PhusisScript(is_script_for=self)
+        for key, value in properties_dict.items():
+            attr_type = type(getattr(self, key))
+            if attr_type == list:
+                getattr(self, key).append(value)
+            else:
+                setattr(self, key, value)
     
     def embed(self):
         if self.project_embedding == '':
@@ -680,7 +706,8 @@ class WritingAgent(AbstractAgent, WritingAgentEngine):
     inspirational_sources = ArrayField(models.CharField(max_length=50), blank=True, default=list)
     preferred_writing_style = ArrayField(models.CharField(max_length=50), blank=True, default=list)
 
-#SINGLETON AGENTS WITH ENGINES
+
+
 class CompressionAgentEngine(AbstractEngine):
     open_ai_data = {
         "role": "user",
@@ -868,6 +895,7 @@ class PoeticsAgent(AbstractAgent):
     projects_assigned_to = GenericForeignKey('content_type', 'object_id')
     
 
+
 class StructuralAgent(AbstractAgent):
     # story plotting
     # story structure (r.g. experimental and/or tried and tested structures)
@@ -945,6 +973,6 @@ class UserAgentSingleton(AbstractAgent):
 
 class AgentBookRelationship(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
+    object_id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     agent = GenericForeignKey('content_type', 'object_id')
     book = models.ForeignKey("noveller.Book", on_delete=models.CASCADE)

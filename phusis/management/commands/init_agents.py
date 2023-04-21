@@ -43,6 +43,6 @@ class Command(BaseCommand):
                     data = json.load(file)
 
                 for item in data:
-                    print(colored(f"Loading Agent {item['class_name'] }{item['properties']['name']} into db", "yellow"))
+                    print(colored(f"Loading Agent {item['class_name']} {item['properties']['name']} into db", "yellow"))
                     load_agent_model_and_return_instance_from(item)
 

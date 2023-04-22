@@ -11,7 +11,7 @@ class Command(BaseCommand):
         for app in apps.get_app_configs():
             try:
                 # Create the 'fixtures' directory if it doesn't exist
-                fixtures_dir = os.path.join(app.path, "../phusis/secret-sauce/noveller_data/fixtures")
+                fixtures_dir = os.path.join(app.path, "../phusis/secret_sauce/noveller_data/fixtures")
                 if not os.path.exists(fixtures_dir):
                     os.makedirs(fixtures_dir)
 

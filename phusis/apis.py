@@ -2,6 +2,15 @@ import openai, pinecone, os, shutil, time
 from pprint import pprint
 from termcolor import colored
 from django.apps import apps
+# import googleapiclient
+
+class GoogleApi():
+    
+    def get_google_search_results(self, query):
+        pass
+        
+    def __init__(self):
+        pass
 
 class OpenAi():
     openai.api_key
@@ -50,7 +59,7 @@ class OpenAi():
                     ]
                 )
                 
-                print(completion)
+                print(f"COMPLETION IS HERE {completion}")
                 return completion.choices[0].message
             except Exception as e:
                 last_exception = e

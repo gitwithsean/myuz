@@ -1,6 +1,6 @@
 from django import forms
 from django.apps import apps
-from phusis.models import *
+from phusis.agent_models import *
 from noveller.models import *
 from django.db.models import Q
 

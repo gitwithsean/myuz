@@ -1,8 +1,6 @@
-from django.core.management.base import BaseCommand, CommandError
-
-from phusis.models import *
+from django.core.management.base import BaseCommand
+from phusis.agent_models import *
 from noveller.models import *
-import json
 from pprint import pprint
 
 #globals
@@ -204,27 +202,19 @@ def retrieve_and_load_project():
     else:
         print("loading_data_from_book")
         pprint(user_selected_project.to_dict())
-        for agent in user_selected_project.get_agents_for_book():
+        for agent in user_selected_project.get_agents_for():
             user_selected_agents.append(agent)
             if agent.agent_type == "orchestration_agent":
                 orc = agent
     
     return user_selected_project        
 
-
-def interaction_to_script(sender, prompt, receiver, response):
-    print(f"Sender: {sender.name}\n\"{prompt}\"\n{receiver.name}\n\"{response}\"")
-    UserAgentSingleton().script.add_entry
-    if sender.agent_type != 'user' : sender.script.add_entry(sender, prompt, receiver, response)
-    if receiver.agent_type != 'user' : receiver.script.add_entry(sender, prompt, receiver, response)
-  
     
 def main():
     print("========================= NOVELIER - a phusis application =========================\n\n")
     global user
     user = UserAgentSingleton()
     global orc
-    global orcs
     global agent_classes
     global agents
     global project_details
@@ -237,9 +227,10 @@ def main():
     project = retrieve_and_load_project()
     # else:
     #     project = project_init()
-    
-    pprint(orc)
-       
+
+    if not orc.awake:
+        orc.wake_up()
+        
     for agent in user_selected_agents:
         if not agent.awake:
             agent.wake_up()
@@ -258,7 +249,7 @@ def main():
         # else:
         #     orc.submit_prompt(user_input)
 
-        prompt, response = orc.assess_project(project_details)
+        prompt, response = orc.assess_project(project)
         project.add_script_entry(UserAgentSingleton(), prompt, orc, response)
         prompt, response = orc.amend_project()
         project.add_script_entry(UserAgentSingleton(), prompt, orc, response)

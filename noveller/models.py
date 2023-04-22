@@ -1,10 +1,11 @@
 from __future__ import annotations
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
-from phusis.models import AbstractPhusisProject, AgentBookRelationship
+from phusis.agent_models import AbstractPhusisProject, AgentBookRelationship
 import uuid
 from django.core.exceptions import ObjectDoesNotExist
 from pprint import pprint
+from rest_framework import serializers
 
 class NovellerModelDecorator(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False)
@@ -38,7 +39,7 @@ class Book(AbstractPhusisProject):
         #                  models.Q(app_label='phusis', model='writingagent') |
         #                  models.Q(app_label='phusis', model='researchagent')
     )
-    def add_agents_to_book(self, agents):
+    def add_agents_to(self, agents):
         for agent in agents:
             agent_content_type = ContentType.objects.get_for_model(agent)
             relationship, created= AgentBookRelationship.objects.get_or_create(content_type=agent_content_type, object_id=agent.id, book=self)
@@ -47,9 +48,9 @@ class Book(AbstractPhusisProject):
             agent.save()
         
         print("SHOWING AGENTS JUST ASSIGNED TO BOOK")
-        pprint(self.get_agents_for_book())    
+        pprint(self.get_agents_for())    
             
-    def get_agents_for_book(self):
+    def get_agents_for(self):
         agent_relationships = AgentBookRelationship.objects.filter(book=self)
         agents = []
 
@@ -69,15 +70,17 @@ class Book(AbstractPhusisProject):
             "name": self.name,
             "project_type": self.project_type,
             "project_workspace": self.project_workspace,
-            "agents_for_project": self.get_agents_for_book()
+            "agents_for_project": self.get_agents_for()
         }
+    
+class BookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = '__all__' 
         
-    
-    # def add_agent_for_book(self, input_agent):
-    #     AgentBookRelationship(agent=input_agent, book=self).save()
-    
-    # def agents_for_book(self):
-    #     self.agents_for_project.all()
+def serialize(obj):
+    instance = Book.objects.first()
+    serializer = BookSerializer(instance)
     
 class Genre(NovellerModelDecorator):
     book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_genres')

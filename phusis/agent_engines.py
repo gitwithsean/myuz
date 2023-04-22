@@ -1,8 +1,87 @@
-import mimetypes, PyPDF2, sys, nltk, spacy
+import mimetypes, PyPDF2, sys, nltk, spacy, json
 from .apis import *
-from .agent_utils import PromptBuilderSingleton, get_user_agent_singleton, get_compression_agent_singleton
+from .agent_utils import *
+from django.db import models
+from datetime import datetime
+from pprint import pprint
+from django.contrib.postgres.fields import ArrayField
 
-class AbstractEngine():
+class PhusisScript():
+    in_debug_mode = True
+    script_content = ArrayField(models.JSONField(), default=list)
+    class_display_name = 'Swarm Script'
+    script_file_name = models.CharField(max_length=200, default="", editable=False)
+    path_to_script = models.CharField(max_length=200, default="", editable=False)
+    
+    def __init__(self):
+        self.path_to_script=f"{get_phusis_project_workspace(self.__class__.__name__, self.name)}{LOGS}"        
+        self.script_file_name = self.script_file_name = f"{self.name}_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.json"
+        self.script_content = []
+
+    def script_to_text(self):
+        txt = ""
+        for entry in self.script_content:
+            s = f"speaker_name: {entry.get('speaker_name', '')}\n"
+            s = f"text: {entry.get('text', '')}\n\n"
+            txt = f"{txt}\n\n{s}"
+        return txt 
+
+    def save_script_to_file(self):
+        print(colored(f"Saving script to {self.path_to_script}{self.script_file_name}", "green"))
+
+        with open(f"{self.path_to_script}{self.script_file_name}", "w") as f:
+            json.dump({"script": {"script_entries": self.script_content}}, f, indent=4) 
+        
+    def add_script_entry(self, prompter, prompt, responder, response):
+        capability_id=14
+        time_stamp = datetime.utcnow().strftime("%Y.%m.%d.%H.%M.%s_%Z")
+        prompt_and_response = {
+            "time_stamp" : time_stamp,
+            "prompt_entry" : {
+                "is_prompt": True,
+                "agent": f"{prompter.id}",
+                "prompter_name": prompter.name,
+                "time_stamp": time_stamp,
+                "text": prompt
+            },
+            "response_entry" : {
+                "is_prompt": False,
+                "agent": f"{responder.id}",
+                "responder_name": responder.name,
+                "time_stamp": time_stamp,
+                "text": response
+            }
+        }
+        print(colored("Adding prompt_and_response script entry...", "green"))
+        self.script_content.append(prompt_and_response)  # Access the list stored in the ArrayField
+        # script_content_list.append(prompt_and_response)  # Append the new entry to the list
+        # self.script_content = script_content_list  # Assign the updated list back to the ArrayField
+        self.save()
+        if self.in_debug_mode:
+            pprint(prompt_and_response)
+            
+    def recent_script_entries(self, num_entries=5):
+        capability_id=15
+        print(colored(f"Retrieving {num_entries} most recent prompt_and_response script entries...", "green"))
+        i = 0
+        recent_entries = []
+        
+        #if self.script-content is not emtpy
+        if self.script_content:        
+            script_content_list = self.script_content.all()  # Access the list stored in the ArrayField
+            for script_entry in reversed(script_content_list):
+                pprint(script_entry)
+                recent_entries.append(script_entry)
+                num_entries = num_entries - 1
+                if num_entries == 0:
+                    break
+            return recent_entries
+        else:
+            return None
+
+
+
+class AbstractEngine(PhusisScript):
     ai_api = OpenAi()
     agent = {}
     awareness = 'as_bot'
@@ -40,12 +119,12 @@ class AbstractEngine():
     def wake_up(self):
         capability_id=0
         print(colored(f"Starting engine for {self.name}...", "green"))
-        request_data = self.open_ai_data
-        print(colored(f"Request Data to wake up {self.name}...", "green"))
-        pprint(request_data)
+        request_data = self.open_ai_chat_data
+        # print(colored(f"Request Data to wake up {self.name}...", "green"))
+        # pprint(request_data)
         request_data['content'] = PromptBuilderSingleton().to_wake_up(self)
-        print(colored(f"Content to wake up {self.name}...", "green"))
-        pprint(request_data['content'])
+        # print(colored(f"Content to wake up {self.name}...", "green"))
+        # print(request_data['content'])
         response = self.ai_api.gpt_chat_response(request_data)
         pprint(response)
         self.awake = True
@@ -164,7 +243,7 @@ class WritingAgentEngine(AbstractEngine):
 
 
 class CompressionAgentEngine(AbstractEngine):
-    open_ai_data = {
+    open_ai_chat_data = {
         "role": "user",
         "content": "",
         "model": "gpt-3.5-turbo",
@@ -178,7 +257,7 @@ class CompressionAgentEngine(AbstractEngine):
     def compress_prompt(self, prompt, compression_ratio=0.5, prompting_agent=()):
         capability_id=18
         if prompting_agent == {}: prompting_agent = get_user_agent_singleton()
-        request_data = self.open_ai_data
+        request_data = self.open_ai_chat_data
         request_data['content'] = PromptBuilderSingleton().to_compress(prompt, compression_ratio)
         print(colored("Compressing prompt...", "green"))
         return self.submit_chat_prompt(prompt, prompting_agent)
@@ -188,7 +267,7 @@ class CompressionAgentEngine(AbstractEngine):
 class EmbeddingsAgentEngine(AbstractEngine):
     pinecone_api = PineconeApi()
     file_size_limit = 3     # in MB
-    open_ai_data = {
+    open_ai_chat_data = {
         "model": "text-embedding-ada-002"
     }
     
@@ -298,7 +377,7 @@ class WebSearchAgentEngine(AbstractEngine):
  
 class OrchestrationEngine(AbstractEngine):
     auto_mode = False
-    open_ai_data = {
+    open_ai_chat_data = {
        'model':"gpt-3.5-turbo",
        'max_tokens':1000
     }
@@ -308,28 +387,31 @@ class OrchestrationEngine(AbstractEngine):
     
     def assess_project(self, project):
         capability_id=100
-        global latest_swarm_reports
-        global swarm_produced_files
-        #Get Report from agents
+        print(colored("OrchestrationEngine.assess_project(): Producing Swarm data for assess_project()...", "green"))
         self.gather_swarm_reports(project)
         
-        #Get any files produced by agents
+        latest_swarm_reports = self.latest_swarm_reports
+        swarm_produced_files = self.swarm_produced_files
         
+        print(colored("OrchestrationEngine.assess_project(): Producing prompt for assess_project()...", "green"))
+        #From that data, produce assessment prompt
+        prompt = PromptBuilderSingleton().to_assess(
+            self, {
+                "project": project, 
+                "script_entries": self.recent_script_entries(), 
+                "swarm_reports": latest_swarm_reports, 
+                "swarm_produced_files": swarm_produced_files
+            }
+        )
+        compressed_prompt = get_compression_agent_singleton().compress_prompt(prompt, 0.5)
         
+        print(colored("OrchestrationEngine.assess_project(): Submitting compressed assessment prompt to ai api...", "green"))
+        assessment_prompt, assessment_response = self.submit_chat_prompt(compressed_prompt, get_user_agent_singleton())
         
-        recent_script = project.recent_script_entries(10)
-        recent_responses = self.most_recent_responses_to
-        prompt = f"What is your current assessment of the project?\n\n"
-        prompt = prompt + f"recent chats: {recent_script}\n\n"
-        prompt = prompt + f"project details: {project}"
-        prompt = prompt + f"recent responses: {recent_responses}"
-        prompt = prompt + f"reports from agents: {self.current_agent_states}" 
-        
-        compressed_prompt = get_compression_agent_singleton().compress_prompt(prompt, 0.7)
-        print(colored("Assessing project...", "green"))
-        response = self.submit_chat_prompt(compressed_prompt, get_user_agent_singleton())
-        self.most_recent_responses_to['assess_project'] = response
-        return response
+        self.most_recent_responses_to['assess_project'] = assessment_response
+
+        return assessment_prompt, assessment_response
+
     
     def gather_swarm_reports(self, project):
         capability_id=101
@@ -370,3 +452,5 @@ class OrchestrationEngine(AbstractEngine):
         #for now, just print the data so we can assess it!
         print(self.most_recent_responses_to['amend_project'])
 
+    def provide_orchestrators_report_to_user():
+        pass

@@ -73,14 +73,19 @@ class Book(AbstractPhusisProject):
             "agents_for_project": self.get_agents_for()
         }
     
-class BookSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Book
-        fields = '__all__' 
+    def get_project_details(self, to='assess'):
+        details=self.project_user_input
+        #TODO: Add in the rest of the project details
+        return details
+    
+# class BookSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Book
+#         fields = '__all__' 
         
-def serialize(obj):
-    instance = Book.objects.first()
-    serializer = BookSerializer(instance)
+# def serialize(obj):
+#     instance = Book.objects.first()
+#     serializer = BookSerializer(instance)
     
 class Genre(NovellerModelDecorator):
     book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_genres')

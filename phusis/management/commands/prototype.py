@@ -2,12 +2,13 @@ from django.core.management.base import BaseCommand
 from phusis.agent_models import *
 from noveller.models import *
 from pprint import pprint
+from phusis.agent_utils import add_script_entries_for_each_agent
 
 #globals
 commands = ['exit!', 'go!', 'update!', 'switch_orc!', 'new_agent!', '.intro!']
 commands_str = f"\nCOMMANDS: {commands[0]}, {commands[0]}, {commands[0]}\n"
 agent_types = ['structural_agents']
-user = UserAgentSingleton()
+user = get_user_agent_singleton()
 orc = {}
 project_details = []
 orcs = []
@@ -27,7 +28,7 @@ def user_input_is_command(input):
 
 def user_init():
     global user
-    user = UserAgentSingleton()  
+    user = get_user_agent_singleton()
    
     
 def orcs_init():
@@ -106,7 +107,7 @@ def agents_init():
                 else: 
                     i = i + 1
         
-        user_selected_agents.append(user_selected_agent)
+            user_selected_agents.append(user_selected_agent)
                 
             
 def project_init(): 
@@ -120,7 +121,7 @@ def project_init():
     new_project = Book()
     new_project.name = project_name
     project_type = new_project.class_display_name
-    new_project.agents_for_project.add(UserAgentSingleton())
+    # new_project.agents_for_project.add(get_user_agent_singleton())
     new_project.save()
     
     add_agents_to_project(new_project)
@@ -135,25 +136,24 @@ def add_agents_to_project(project):
     agents_init()
     
     user_selected_agents.append(orc)
-    project.add_agents_to_book(user_selected_agents)
+    project.add_agents_to(user_selected_agents)
         
     print("Waking up agents...\n")
     
     print(f"While we wait, think about the story you want to work on today.\nWhat do you want to tell {orc} to get started? Think about {init_prompts}, etc.\n")
 
     prompt, response = orc.wake_up()
-    project.add_script_entry(UserAgentSingleton(), prompt, orc, response)
-
+    add_script_entries_for_each_agent(project, get_user_agent_singleton(), prompt, orc, response)
     for agent in user_selected_agents:
         prompt, response = agent.wake_up()
-        project.add_script_entry(UserAgentSingleton(), prompt, agent, response)
+        add_script_entries_for_each_agent(project, get_user_agent_singleton(), prompt, agent, response)
 
-    user_input = input(f"\nOK, {orc} is ready for your input...")
+    # user_input = input(f"\nOK, {orc} is ready for your input...")
                        
-                    #    \n\n[or type prompt! to receive a list of prompts that will get you started]\n\n")
+    #                 #    \n\n[or type prompt! to receive a list of prompts that will get you started]\n\n")
             
-    prompt, response = orc.submit_chat_prompt(user_input, UserAgentSingleton())
-    project.add_script_entry(UserAgentSingleton(), prompt, orc, response)
+    # prompt, response = orc.submit_chat_prompt(user_input, get_user_agent_singleton())
+    # project.add_script_entry(get_user_agent_singleton(), prompt, orc, response)
     
     
     # current_prompt = user_input
@@ -208,12 +208,12 @@ def retrieve_and_load_project():
                 orc = agent
     
     return user_selected_project        
-
+    
     
 def main():
     print("========================= NOVELIER - a phusis application =========================\n\n")
     global user
-    user = UserAgentSingleton()
+    user = get_user_agent_singleton()
     global orc
     global agent_classes
     global agents
@@ -250,10 +250,12 @@ def main():
         #     orc.submit_prompt(user_input)
 
         prompt, response = orc.assess_project(project)
-        project.add_script_entry(UserAgentSingleton(), prompt, orc, response)
+        add_script_entries_for_each_agent(project, get_user_agent_singleton(), prompt, orc, response)
+        
         prompt, response = orc.amend_project()
-        project.add_script_entry(UserAgentSingleton(), prompt, orc, response)
+        project.add_script_entry(get_user_agent_singleton(), prompt, orc, response)
         orc.continue_project()
+
 
         # new_agent = orc.create_agents()
         # agents.append(new_agent)

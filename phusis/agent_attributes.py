@@ -135,6 +135,9 @@ class AgentFavoredGenreCombo(AbstractAgentAttribute):
         
 class AgentInspirationalSource(AbstractAgentAttribute):
     agent_attribute_type = 'agent_inspirational_sources'         
+
+class AgentWritingStyle(AbstractAgentAttribute):
+    agent_attribute_type = 'agent_writing_style'
         
 class AgentCreatedTrait(AbstractAgentAttribute):
     agent_attribute_type = 'agent_created_trait'
@@ -153,6 +156,17 @@ class AgentCreatedTrait(AbstractAgentAttribute):
 
 class OrcAgentCreatedTrait(AgentCreatedTrait):
     agent_attribute_type = 'orc_agent_created_trait'
+
+
+def get_agent_capabilities_by_capability_ids(capability_ids=
+                                             [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]):
+
+    capabilities = []
+    for id in capability_ids:
+        capability = AgentCapability.objects.get(capability_id=id)
+        capabilities.append(capability)
+ 
+    return capabilities
 
 
 def find_agent_attribute_by(attribute_name, attribute_class=AbstractAgentAttribute):
@@ -207,7 +221,7 @@ def load_or_get_agent_attribute_from(json_data):
     if is_valid_init_json(json_data):
         attribute_class = apps.get_model("phusis", f"{json_data['class_name']}")
         if json_data['class_name'] == "AgentCreatedTrait" or json_data['class_name'] == "OrcAgentCreatedTrait":
-            pprint(json_data)
+            # pprint(json_data)
             new_attribute_obj, created = attribute_class.objects.update_or_create(
                 name=f"Agent Created Trait: {json_data['properties']['trait_field']}",
                 defaults={

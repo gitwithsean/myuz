@@ -19,9 +19,15 @@ class PhusisScript(models.Model):
     in_debug_mode = True
     script_content = ArrayField(models.JSONField(), default=list)
     class_display_name = 'Swarm Script'
-    script_file_name = models.CharField(max_length=200, default="", editable=False)
-    path_to_script = models.CharField(max_length=200, default="", editable=False)
+    script_file_name = models.CharField(max_length=200, default="")
+    path_to_script = models.CharField(max_length=200, default="", blank=True, null=True)
     
+    class Meta:
+        ordering = ['name']
+    
+    def __str__(self):
+        return f"{self.class_display_name} for {self.name}"
+            
     def setup(self, name):
         self.name = name
         self.path_to_script=f"{get_phusis_project_workspace(self.__class__.__name__, self.name)}/logs"        

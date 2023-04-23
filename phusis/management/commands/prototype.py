@@ -33,40 +33,24 @@ def user_init():
     
 def orcs_init():
     global orc
-    orc_names = ""
     
+    print(f"Orchestrators available: ")
+    i = 1
     for orchestrator in OrchestrationAgent.objects.all():
-        orc_names = orchestrator.name + ", " + orc_names
         orcs.append(orchestrator)
+        print(f"{i}: {orchestrator.name}")
+        i = i + 1
     
-    intro_command = '.intro!'
-
-    while orc == {}: 
-        print(f"Orchestrators available: {orc_names}")
-        chosen_orc_name = input(f"\nPlease enter the name of the Orchestrater you would like to work with, \nor just hit enter for {orcs[0].name}\nOr if you would like an introduction from an Orchestrator, type their Name{intro_command}\n")
-        
-        while not user_input_is_command(chosen_orc_name) and chosen_orc_name.strip() != "" and orc == {}:
-            if(chosen_orc_name.__contains__(intro_command)):
-                orc_name_to_intro = chosen_orc_name.split(intro_command)[0]
-                for orc in orcs:
-                    if orc_name_to_intro == orc.name:
-                        print(f"{orc.introduce_yourself()}\n")
-        
-            if chosen_orc_name.strip() == "":
-                print(f"No selection made, defaulting to {orcs[0].name}")
-                orc_choice = f"{orcs[0].name}"
-            else:
-                orc_choice = chosen_orc_name
-            
-            print(f"Selecting {orc_choice}")  
-            
-            for orc_agent in orcs:          
-                if orc_choice == orc_agent.name: 
-                    orc = orc_agent
-                    break         
-            if orc == {}: 
-                user_input = input(f"\nSomething went wrong! Perhaps you entered the wrong name? Orchestration Agents available are:\n{orc_names}\n") 
-
+    user_input = input("Please enter the number of the orchestrator you would like to lead the project: \n")
+    
+    i = 1
+    for orchestrator in orcs:
+        if f"{i}" == user_input: 
+            orc = orchestrator 
+            print(f"You have selected {orc.name}")
+            break
+        else: 
+            i = i + 1
 
 def agents_init():
     global user_selected_agents
@@ -93,7 +77,7 @@ def agents_init():
             print(f"\nThe {agent_class_with_instances['agent_class']} type:")
             i = 1
             for agent in agent_class_with_instances['agent_instances']:
-                print(f"{i} {agent}")
+                print(f"{i}: {agent}")
                 i = i + 1
     
         if agent_class_with_instances['agent_class'] != "OrchestrationAgent":
@@ -192,17 +176,25 @@ def retrieve_and_load_project():
             user_selected_project = project 
             # pprint(user_selected_project)
             print(f"You have selected {user_selected_project.name}")
-
+            break
         else: 
             i = i + 1
     
-    change_agents = input("Do you want to change or add the agents in your project?\n(y/n)\n")
-    project_content_type = ContentType.objects.get_for_model(project)
+    pprint(user_selected_project.to_dict())
+    change_agents = input("Do you want to change or add to the agents in your project?\n(y/n)\n")
+
+    if user_selected_project.script_for_project == None:
+        script = PhusisScript()
+        script.setup(f"Script for {user_selected_project.project_type}: {user_selected_project.name}")
+        script.save()
+        user_selected_project.script_for_project = script
+        user_selected_project.save()
+        
     if change_agents == 'y':
+        project.agents_for_project.clear()
         add_agents_to_project(user_selected_project)
     else:
         print("loading_data_from_book")
-        pprint(user_selected_project.to_dict())
         for agent in user_selected_project.get_agents_for():
             user_selected_agents.append(agent)
             if agent.agent_type == "orchestration_agent":

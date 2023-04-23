@@ -183,6 +183,7 @@ class CompressionAgentEngine(AbstractEngine):
         request_data = self.open_ai_chat_data
         request_data['content'] = PromptBuilderSingleton().to_compress(prompt, compression_ratio)
         print(colored("Compressing prompt...", "green"))
+        
         return self.submit_chat_prompt(prompt, prompting_agent)
 
 

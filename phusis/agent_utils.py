@@ -55,6 +55,18 @@ def is_valid_init_json(json_data):
 
 
 def add_script_entries_for_each_agent(project, sender, prompt, responder, response):
+    
+    from agent_models import PhusisScript
+    
+    if project.script_for_project is None:
+        project.script_for_project = PhusisScript(name=f"chat_script_for_{project.project_type}_{project.name}")
+        project.script_for_project.setup(f"chat_script_for_{project.project_type}_{project.name}")
+    
+    for agent in [sender, responder]:
+        if agent.script_for_agent is None:
+            agent.script_for_agent = PhusisScript(name=f"chat_script_for_{agent.project_type}_{agent.name}")
+            agent.script_for_agent.setup(f"chat_script_for_{agent.agent_type}_{agent.name}")
+
     project.script_for_project.add_script_entry(sender, prompt, responder, response)    
     sender.script_for_agent.add_script_entry(sender, prompt, responder, response)    
     responder.script_for_agent.add_script_entry(sender, prompt, responder, response)    

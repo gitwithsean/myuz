@@ -43,7 +43,7 @@ def load_attributes():
                         }
                     }
                     # print(data)
-                    load_or_get_agent_attribute_from(data)
+                    # load_or_get_agent_attribute_from(data)
             else:    
                 for orc_created_trait in attribute_class['list_of_instances']:
                     data = {
@@ -55,7 +55,7 @@ def load_attributes():
                         }
                     }
                     # print(data) 
-                    load_or_get_agent_attribute_from(data)
+                    # load_or_get_agent_attribute_from(data)
         
         
 class Command(BaseCommand):

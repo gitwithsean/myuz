@@ -1,87 +1,10 @@
-import mimetypes, PyPDF2, sys, nltk, spacy, json
+import mimetypes, PyPDF2, sys, nltk, spacy
 from .apis import *
 from .agent_utils import *
-from django.db import models
-from datetime import datetime
+
 from pprint import pprint
-from django.contrib.postgres.fields import ArrayField
 
-class PhusisScript():
-    in_debug_mode = True
-    script_content = ArrayField(models.JSONField(), default=list)
-    class_display_name = 'Swarm Script'
-    script_file_name = models.CharField(max_length=200, default="", editable=False)
-    path_to_script = models.CharField(max_length=200, default="", editable=False)
-    
-    def __init__(self):
-        self.path_to_script=f"{get_phusis_project_workspace(self.__class__.__name__, self.name)}{LOGS}"        
-        self.script_file_name = self.script_file_name = f"{self.name}_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.json"
-        self.script_content = []
-
-    def script_to_text(self):
-        txt = ""
-        for entry in self.script_content:
-            s = f"speaker_name: {entry.get('speaker_name', '')}\n"
-            s = f"text: {entry.get('text', '')}\n\n"
-            txt = f"{txt}\n\n{s}"
-        return txt 
-
-    def save_script_to_file(self):
-        print(colored(f"Saving script to {self.path_to_script}{self.script_file_name}", "green"))
-
-        with open(f"{self.path_to_script}{self.script_file_name}", "w") as f:
-            json.dump({"script": {"script_entries": self.script_content}}, f, indent=4) 
-        
-    def add_script_entry(self, prompter, prompt, responder, response):
-        capability_id=14
-        time_stamp = datetime.utcnow().strftime("%Y.%m.%d.%H.%M.%s_%Z")
-        prompt_and_response = {
-            "time_stamp" : time_stamp,
-            "prompt_entry" : {
-                "is_prompt": True,
-                "agent": f"{prompter.id}",
-                "prompter_name": prompter.name,
-                "time_stamp": time_stamp,
-                "text": prompt
-            },
-            "response_entry" : {
-                "is_prompt": False,
-                "agent": f"{responder.id}",
-                "responder_name": responder.name,
-                "time_stamp": time_stamp,
-                "text": response
-            }
-        }
-        print(colored("Adding prompt_and_response script entry...", "green"))
-        self.script_content.append(prompt_and_response)  # Access the list stored in the ArrayField
-        # script_content_list.append(prompt_and_response)  # Append the new entry to the list
-        # self.script_content = script_content_list  # Assign the updated list back to the ArrayField
-        self.save()
-        if self.in_debug_mode:
-            pprint(prompt_and_response)
-            
-    def recent_script_entries(self, num_entries=5):
-        capability_id=15
-        print(colored(f"Retrieving {num_entries} most recent prompt_and_response script entries...", "green"))
-        i = 0
-        recent_entries = []
-        
-        #if self.script-content is not emtpy
-        if self.script_content:        
-            script_content_list = self.script_content.all()  # Access the list stored in the ArrayField
-            for script_entry in reversed(script_content_list):
-                pprint(script_entry)
-                recent_entries.append(script_entry)
-                num_entries = num_entries - 1
-                if num_entries == 0:
-                    break
-            return recent_entries
-        else:
-            return None
-
-
-
-class AbstractEngine(PhusisScript):
+class AbstractEngine():
     ai_api = OpenAi()
     agent = {}
     awareness = 'as_bot'
@@ -222,7 +145,7 @@ class AbstractEngine(PhusisScript):
                 "awake": True,
                 "report":{
                     "conext":{
-                        "recent_script_entries": self.recent_script_entries(),
+                        "recent_script_entries": self.script_for_agent.recent_script_entries(),
                         "steps_taken": self.list(self.steps_taken.all().values_list('name', flat=True))
                     },
                     "thoughts_concerns_proposed_next_steps": self.thoughts_concerns_proposed_next_steps()
@@ -392,13 +315,14 @@ class OrchestrationEngine(AbstractEngine):
         
         latest_swarm_reports = self.latest_swarm_reports
         swarm_produced_files = self.swarm_produced_files
-        
+        recent_script_entries = project.script_for_project.recent_script_entries()
+        print("recent script entries", recent_script_entries)
         print(colored("OrchestrationEngine.assess_project(): Producing prompt for assess_project()...", "green"))
         #From that data, produce assessment prompt
         prompt = PromptBuilderSingleton().to_assess(
             self, {
                 "project": project, 
-                "script_entries": self.recent_script_entries(), 
+                "script_entries": recent_script_entries, 
                 "swarm_reports": latest_swarm_reports, 
                 "swarm_produced_files": swarm_produced_files
             }

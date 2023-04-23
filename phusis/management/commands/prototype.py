@@ -52,9 +52,9 @@ def orcs_init():
                     if orc_name_to_intro == orc.name:
                         print(f"{orc.introduce_yourself()}\n")
         
-            if chosen_orc_name.strip() == " ":
+            if chosen_orc_name.strip() == "":
                 print(f"No selection made, defaulting to {orcs[0].name}")
-                orc_choice = orcs[0].name
+                orc_choice = f"{orcs[0].name}"
             else:
                 orc_choice = chosen_orc_name
             
@@ -75,12 +75,13 @@ def agents_init():
     agent_classes_with_their_instances = []
     
     for agent_class in all_agent_classes:
-        instances_for_agent_class = agent_class.objects.filter()
-        if instances_for_agent_class:
-            class_with_instances = {"agent_class": f"{agent_class.__name__}", "agent_instances": instances_for_agent_class}
-            agent_classes_with_their_instances.append(class_with_instances)
-        else:
-            print(colored(f"Message for dev/admin: No instances yet loaded for {agent_class}", "yellow"))    
+        if not "Singleton" in agent_class.__name__:
+            instances_for_agent_class = agent_class.objects.filter()
+            if instances_for_agent_class:
+                class_with_instances = {"agent_class": f"{agent_class.__name__}", "agent_instances": instances_for_agent_class}
+                agent_classes_with_their_instances.append(class_with_instances)
+            else:
+                print(colored(f"Message for dev/admin: No instances yet loaded for {agent_class}", "yellow"))    
     
     print("You will now be asked to select the other agents you want to work on this project, there will be these types of agents:")
     for item in agent_classes_with_their_instances:
@@ -253,7 +254,7 @@ def main():
         add_script_entries_for_each_agent(project, get_user_agent_singleton(), prompt, orc, response)
         
         prompt, response = orc.amend_project()
-        project.add_script_entry(get_user_agent_singleton(), prompt, orc, response)
+        add_script_entries_for_each_agent(project, get_user_agent_singleton(), prompt, orc, response)
         orc.continue_project()
 
 

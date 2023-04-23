@@ -39,6 +39,7 @@ class Book(AbstractPhusisProject):
         #                  models.Q(app_label='phusis', model='writingagent') |
         #                  models.Q(app_label='phusis', model='researchagent')
     )
+    
     def add_agents_to(self, agents):
         for agent in agents:
             agent_content_type = ContentType.objects.get_for_model(agent)
@@ -109,7 +110,7 @@ class PlotEvent(NovellerModelDecorator):
     is_climax_of_plot = models.BooleanField(blank=True, null=True)
 
 class SubPlot(Plot):
-    sub_plot_of = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_subplot')
+    sub_plot_of = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_subplot', null=True)
     events_of_subplot = models.ManyToManyField('SubPlotEvent', blank=True, related_name='subplots_events')
     
     class Meta:

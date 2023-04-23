@@ -7,11 +7,91 @@ from termcolor import colored
 from django.db import models
 from abc import ABC, abstractmethod
 from .agent_attributes import *
-from .agent_engines import AbstractEngine, OrchestrationEngine, PhusisScript, WritingAgentEngine, CompressionAgentEngine, EmbeddingsAgentEngine, WebSearchAgentEngine
+from .agent_engines import AbstractEngine, OrchestrationEngine, WritingAgentEngine, CompressionAgentEngine, EmbeddingsAgentEngine, WebSearchAgentEngine
 from .agent_utils import get_user_agent_singleton, get_phusis_project_workspace
+from datetime import datetime
+from django.contrib.postgres.fields import ArrayField
+
+
+class PhusisScript(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    name = models.CharField(max_length=200, unique=True)
+    in_debug_mode = True
+    script_content = ArrayField(models.JSONField(), default=list)
+    class_display_name = 'Swarm Script'
+    script_file_name = models.CharField(max_length=200, default="", editable=False)
+    path_to_script = models.CharField(max_length=200, default="", editable=False)
+    
+    def setup(self, name):
+        self.name = name
+        self.path_to_script=f"{get_phusis_project_workspace(self.__class__.__name__, self.name)}/logs"        
+        self.script_file_name = f"{self.name}_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.json"
+        self.script_content = []
+
+    def script_to_text(self):
+        txt = ""
+        for entry in self.script_content:
+            s = f"speaker_name: {entry.get('speaker_name', '')}\n"
+            s = f"text: {entry.get('text', '')}\n\n"
+            txt = f"{txt}\n\n{s}"
+        return txt 
+
+    def save_script_to_file(self):
+        print(colored(f"Saving script to {self.path_to_script}{self.script_file_name}", "green"))
+
+        with open(f"{self.path_to_script}{self.script_file_name}", "w") as f:
+            json.dump({"script": {"script_entries": self.script_content}}, f, indent=4) 
+        
+    def add_script_entry(self, prompter, prompt, responder, response):
+        capability_id=14
+        time_stamp = datetime.utcnow().strftime("%Y.%m.%d.%H.%M.%s_%Z")
+        prompt_and_response = {
+            "time_stamp" : time_stamp,
+            "prompt_entry" : {
+                "is_prompt": True,
+                "agent": f"{prompter.id}",
+                "prompter_name": prompter.name,
+                "time_stamp": time_stamp,
+                "text": prompt
+            },
+            "response_entry" : {
+                "is_prompt": False,
+                "agent": f"{responder.id}",
+                "responder_name": responder.name,
+                "time_stamp": time_stamp,
+                "text": response
+            }
+        }
+        print(colored("Adding prompt_and_response script entry...", "green"))
+        self.script_content.append(prompt_and_response)
+        self.save()
+        if self.in_debug_mode:
+            print(prompt_and_response)
+            
+    def recent_script_entries(self, num_entries=5):
+        capability_id=15
+        print(colored(f"Retrieving {num_entries} most recent prompt_and_response script entries...", "green"))
+        i = 0
+        recent_entries = []
+        
+        print(self.script_content) 
+        #if self.script-content is not emtpy
+        if self.script_content:       
+            for script_entry in reversed(self.script_content):
+                print(script_entry)
+                recent_entries.append(script_entry)
+                num_entries = num_entries - 1
+                if num_entries == 0:
+                    break
+            print(f"recent_entries: {recent_entries}")    
+            return recent_entries
+        else:
+            return None
+
 
 
 class File(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     path_to_file = models.CharField(max_length=255)
 
 
@@ -26,7 +106,7 @@ class Vector(models.Model):
 
 
 
-class AbstractAgent(models.Model, AbstractEngine, PhusisScript):
+class AbstractAgent(models.Model, AbstractEngine):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=200, unique=True)
     agent_type = models.CharField(max_length=200, default="phusis_agent", editable=False)
@@ -39,6 +119,7 @@ class AbstractAgent(models.Model, AbstractEngine, PhusisScript):
     capabilities = models.ManyToManyField('AgentCapability', blank=True)
     embedding_of_self = models.TextField(blank=True)
     files_produced = models.ManyToManyField(File, blank=True,  related_query_name='produced_by')
+    script_for_agent = models.ForeignKey(PhusisScript, on_delete=models.PROTECT, null=True, blank=True)
     
     #Traits
     goals = models.ManyToManyField(AgentGoal, blank=True)
@@ -99,6 +180,7 @@ class AbstractAgent(models.Model, AbstractEngine, PhusisScript):
             else:
                 # Handle other attribute types as needed
                 setattr(self, key, value)
+
     
     def embed(self):
         if self.embedding_of_self == '':
@@ -137,16 +219,18 @@ class AbstractAgent(models.Model, AbstractEngine, PhusisScript):
         return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{dict_str}"
 
     def tell_me_who_i_am(self):
-        you_are = f"You are a agent_type. "
+        you_are = f"You are a {self.agent_type}. "
 
 
 
-class AbstractPhusisProject(models.Model, PhusisScript):
+class AbstractPhusisProject(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=200, default='', unique=True)
     project_type = models.CharField(max_length=200, default='Book')
     project_user_input = models.TextField(blank=True, default='')
-    project_workspace = get_phusis_project_workspace(project_type, name)
+    project_workspace = models.CharField(max_length=200, default='')
+    
+    script_for_project = models.ForeignKey(PhusisScript, on_delete=models.PROTECT, null=True, blank=True)
     agents_for_project = models.ManyToManyField(
         AbstractAgent, related_name='projects_for_agent', blank=True
     )
@@ -161,12 +245,19 @@ class AbstractPhusisProject(models.Model, PhusisScript):
         ordering = ['name']
     
     def set_data(self, properties_dict):
+        if not self.script_for_project:
+            phusis_script = PhusisScript(name=f"Script for {properties_dict['name']}", script_for=self)
+            phusis_script.save()
+            self.script_for_project = phusis_script
+            self.save()
         for key, value in properties_dict.items():
             attr_type = type(getattr(self, key))
             if attr_type == list:
                 getattr(self, key).append(value)
             else:
                 setattr(self, key, value)
+    
+        self.project_workspace = get_phusis_project_workspace(self.project_type, self.name)
     
     def embed(self):
         if self.project_embedding == '':
@@ -213,9 +304,10 @@ class WritingAgent(AbstractAgent, WritingAgentEngine):
 class CompressionAgentSingleton(AbstractAgent, CompressionAgentEngine):
     agent_type = "compression_agent"
     class_display_name = "Compression Agent"
-    _instance = None
     expose_rest = False
     capabilities = [18]
+    
+    _instance = None
     def __new__(cls):
         if cls._instance is None:
             # print('Creating PromptBuilder singleton instance')
@@ -223,7 +315,7 @@ class CompressionAgentSingleton(AbstractAgent, CompressionAgentEngine):
             # Initialize the class attributes here
             cls._instance.prompts_since_reminder = 0
             cls._instance.max_prompts_between_reminders = 5
-        return cls._instancee
+        return cls._instance
 
  
  
@@ -372,8 +464,15 @@ def load_agent_model_and_return_instance_from(json_data):
             print(colored(f"models.create_agent_model_from_instance: class_name {json_data['class_name']} not found in globals()", "red"))
 
         new_agent_obj, created = model_class.objects.update_or_create(name=json_data['properties']['name'])
+        
+        if not new_agent_obj.script_for_agent:
+            phusis_script = PhusisScript()
+            phusis_script.setup(json_data['properties']['name'])
+            phusis_script.save()
+            new_agent_obj.script_for_agent = phusis_script
+        
         new_agent_obj.set_data(json_data['properties'])
-        new_agent_obj.save()
+        # new_agent_obj.save()
 
         # new_agent_obj, created = model_class.objects.get_or_create(name=json_data['properties']['name'])
         # new_agent_obj.set_data(json_data['properties'])

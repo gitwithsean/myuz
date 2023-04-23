@@ -13,8 +13,6 @@ class BookForm(forms.ModelForm):
     class Meta:
         model = Book
         fields = [
-           #'id', #AbstractPhusisProject
-           #'name', #AbstractPhusisProject
            'elaboration',
            'expose_rest',
            'elaboration',
@@ -26,17 +24,6 @@ class BookForm(forms.ModelForm):
            'genre',
            'target_audiences'
         ]
-        
-    # # Fields from the AbstractPhusisProject class
-    # project_agents = forms.ModelMultipleChoiceField(
-    #     queryset=AbstractAgent.__subclasses__(),
-    #     required=False,
-    # )
-
-    # project_script = forms.ModelChoiceField(
-    #     queryset=PhusisScript.objects.all(),
-    #     required=False,
-    # )
 
 class FormMaker:
     global all_noveller_model_form_tuples

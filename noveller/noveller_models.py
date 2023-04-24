@@ -35,10 +35,15 @@ class NovellerModelDecorator(models.Model):
                 related_objects = []
                 # print(f"key: {key}\nvalue: {value}\nfield: {field}\n")
                 # Find the related objects using find_attribute_by function
-                for attr_name in value:
+                if isinstance(value, list):
+                    for attr_name in value:
+                        # print(f"{field.related_model} {attr_name}")
+                        attr_clas, attr_instance = find_and_update_or_create_attribute_by(attr_name, field.related_model)
+                        related_objects.append(attr_instance)
+                else:
                     # print(f"{field.related_model} {attr_name}")
-                    attr_clas, attr_instance = find_and_update_or_create_attribute_by(attr_name, field.related_model)
-                    related_objects.append(attr_instance)
+                    attr_clas, attr_instance = find_and_update_or_create_attribute_by(value, field.related_model)
+                    related_objects.append(attr_instance)            
 
                 # Set the related objects to the attribute
                 getattr(self, key).set(related_objects)
@@ -139,8 +144,8 @@ class ChapterPartSummaryItem(NovellerModelDecorator):
     content = models.TextField(blank=True)
     order_in_part = models.IntegerField(blank=True, default=0, null=True)
     
-    # def __str__(self):
-    #     return f"{self.for_chapter_part_summary}-{self.order_in_part}: {self.content}"
+    def __str__(self):
+        return f"{self.for_chapter_part_summary}-{self.order_in_part}: {self.name}"
     
     class Meta:
         ordering = ['for_chapter_part_summary__for_chapter_part__for_chapter__book','for_chapter_part_summary__for_chapter_part__for_chapter__chapter_num', 'for_chapter_part_summary__for_chapter_part__part_num', 'order_in_part']
@@ -158,7 +163,7 @@ class Setting(NovellerModelDecorator):
     general_setting = models.TextField(blank=True)
 
 class Location(NovellerModelDecorator):
-    character_versions = models.ManyToManyField('CharacterVersion', blank=True, related_name='locations_in_character_version')
+    pass
 
 class BackgroundResearch(NovellerModelDecorator):
     research = models.TextField(blank=True)
@@ -266,13 +271,9 @@ class AppearanceModifiers(NovellerModelDecorator):
     makeup = models.CharField(max_length=200, blank=True, null=True)
     shaving = models.CharField(max_length=200, blank=True, null=True)
     hygiene = models.CharField(max_length=200, blank=True, null=True)
-    character_version = models.ForeignKey('CharacterVersion', on_delete=models.CASCADE, null=True)
     
     # def __str__(self):
     #     return f"{self.character_version}'s appearance"
-
-    class Meta:
-        ordering = ['character_version__for_character__name', 'character_version__version_num']
 
 
 class CharacterTrait(NovellerModelDecorator):
@@ -297,7 +298,7 @@ class InternalConflict(NovellerModelDecorator):
 
 class LitStyleGuide(NovellerModelDecorator):
     perspective = models.ForeignKey('NarrativePerspective', on_delete=models.CASCADE, null=True)
-    inspirations = models.ManyToManyField('LiteraryInspirationPerson', blank=True)
+    inspirations = models.ManyToManyField('LiteraryInspiration', blank=True)
     tone = models.ManyToManyField('LiteraryTone', blank=True)
     imagery = models.ManyToManyField('LiteraryImagery', blank=True)
     symbolism = models.ManyToManyField('LiterarySymbolism', blank=True)
@@ -308,12 +309,9 @@ class LitStyleGuide(NovellerModelDecorator):
     writing_samples = models.TextField(blank=True, null=True)
 
 
-class LiteraryInspirationPerson(NovellerModelDecorator):
-    sources = models.ManyToManyField('LiteraryInspirationSource', blank=True)
-
-
-class LiteraryInspirationSource(NovellerModelDecorator):
+class LiteraryInspiration(NovellerModelDecorator):
     pass
+
 
 class StoryTeller(NovellerModelDecorator):
     character_version = models.ForeignKey('CharacterVersion', on_delete=models.CASCADE, null=True)

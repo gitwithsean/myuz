@@ -5,9 +5,9 @@ from rest_framework import generics
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import *
+from .noveller_models import *
 from .serializers import *
-from .forms import *
+from .forms import get_noveller_model_form_tuples_for
 from django.shortcuts import render
 # from pprint import pprint
   

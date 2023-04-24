@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from phusis.agent_models import *
-from noveller.models import *
+from noveller.noveller_models import *
 from pprint import pprint
 from phusis.agent_utils import add_script_entries_for_each_agent
 
@@ -183,11 +183,11 @@ def retrieve_and_load_project():
     pprint(user_selected_project.to_dict())
     change_agents = input("Do you want to change or add to the agents in your project?\n(y/n)\n")
 
-    if user_selected_project.script_for_project == None:
+    if user_selected_project.script_for == None:
         script = PhusisScript()
         script.setup(f"Script for {user_selected_project.project_type}: {user_selected_project.name}")
         script.save()
-        user_selected_project.script_for_project = script
+        user_selected_project.script_for = script
         user_selected_project.save()
         
     if change_agents == 'y':
@@ -241,6 +241,8 @@ def main():
         #     orc.script
         # else:
         #     orc.submit_prompt(user_input)
+
+        orc.routine(project)
 
         prompt, response = orc.assess_project(project)
         add_script_entries_for_each_agent(project, get_user_agent_singleton(), prompt, orc, response)

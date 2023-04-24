@@ -1,7 +1,7 @@
 from django import forms
 from django.apps import apps
 from phusis.agent_models import *
-from noveller.models import *
+from noveller.noveller_models import *
 from django.db.models import Q
 
 all_noveller_model_form_tuples = []
@@ -13,16 +13,16 @@ class BookForm(forms.ModelForm):
     class Meta:
         model = Book
         fields = [
-           'elaboration',
-           'expose_rest',
-           'elaboration',
-           'settings',
-           'plot',
-           'chapters',
-           'characters',
-           'themes',
-           'genre',
-           'target_audiences'
+            'name',
+            'elaboration',
+            'expose_rest',
+            'settings',
+            'plots',
+            'chapters',
+            'characters',
+            'themes',
+            'genres',
+            'target_audiences'
         ]
 
 class FormMaker:

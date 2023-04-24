@@ -1,0 +1,511 @@
+[
+    {
+        "class_name": "Book",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Living and the Son of Death",
+                    "elaboration": "",
+                    "settings": [
+                        "Early 11th Century Dubh Linn (Dublin)"
+                    ],
+                    "plots": [
+                        "Eabha's and Mac Bais's Coming of Age"
+                    ],
+                    "chapters": [
+                        "Chapter 1"
+                    ],
+                    "characters": [
+                        "Eabha",
+                        "Mac Bais",
+                        "The Blacksmith"
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "StoryTeller",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "lit_style_guide": "The Narrator's Style",
+                    "name": "Narrator"
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "LiteraryInspirationSource",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "The Sound and the Fury"
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "LiteraryInspirationPerson",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "William Faulkner",
+                    "sources": "The Sound and the Fury"
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "Faction",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Vikings",
+                    "description": "",
+                    "members": [
+                        ""
+                    ]
+                }
+            },
+            {
+                "properties": {
+                    "name": "Christian Zealots",
+                    "description": "",
+                    "members": [
+                        ""
+                    ]
+                }
+            },
+            {
+                "properties": {
+                    "name": "Pagan Zealots",
+                    "description": "",
+                    "members": [
+                        ""
+                    ]
+                }
+            },
+            {
+                "properties": {
+                    "name": "Brehons",
+                    "description": "",
+                    "members": [
+                        "Mac Bais v2"
+                    ]
+                }
+            },
+            {
+                "properties": {
+                    "name": "Leinster Kings",
+                    "description": "",
+                    "members": [
+                        ""
+                    ]
+                }
+            },
+            {
+                "properties": {
+                    "name": "Ulster Kings",
+                    "description": "",
+                    "members": [
+                        ""
+                    ]
+                }
+            },
+            {
+                "properties": {
+                    "name": "Norse-Irish",
+                    "description": "",
+                    "members": [
+                        ""
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "BackgroundEvent",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "The Battle of Clontarf",
+                    "date_from": "1014-03-14",
+                    "date_to": "1014-03-14",
+                    "order_in_story_events": "0",
+                    "order_in_narrative_telling": "0"
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "ChapterPartSummary",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Summary of Chapter 1 Part 1",
+                    "for_chapter_part": "Chapter 1 Part 1",
+                    "chapter_part_summary": "The aftermath of the Battle of Clontarf, Infant Mac Bais makes his first kill, Eabha finds him and brings him home.",
+                    "themes": [
+                        ""
+                    ],
+                    "pacing": "",
+                    "part_summary_items": [
+                        ""
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "ChapterPartSummaryItem",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Lengthy description of the field in the battle's aftermath from the Narrator's perspective",
+                    "for_chapter_part_summary": "Summary of Chapter 1 Part 1",
+                    "content": "",
+                    "order_in_part": 1
+                }
+            },
+            {
+                "properties": {
+                    "name": "Mac Bais is wandering around the battlefield, looking around in childish (autistic) wonder, from infant Mac Bais' perspective",
+                    "for_chapter_part_summary": "Summary of Chapter 1 Part 2",
+                    "content": "",
+                    "order_in_part": 1
+                }
+            },
+            {
+                "properties": {
+                    "name": "Mac Bais kills for the first time here as a dying man grabs him and hold on to him",
+                    "for_chapter_part_summary": "Summary of Chapter 1 Part 2",
+                    "content": "",
+                    "order_in_part": 2
+                }
+            },
+            {
+                "properties": {
+                    "name": "Mac Bais is unbothered by the scene",
+                    "for_chapter_part_summary": "Summary of Chapter 1 Part 2",
+                    "content": "",
+                    "order_in_part": 3
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "DeeperBackgroundResearchTopic",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Brehon Law (Fenechas)",
+                    "notes": "legal system used in Ireland up until the 12th century. roots in Celtic, pre-Christian society of Ireland, named after the Brehons, the judges and legal scholars responsible for interpreting and preserving laws. originally transmitted orally by highly trained legal professionals. written down in Old Irish during the early Christian period, as early as the 7th century. Brehon Laws treated women with more respect and provided them with more rights compared to other contemporary legal systems. Could inherit and hold property, participate in legal contracts, seek divorce or separation. As a business owner, she would be considered a 'ban-aírech' or female landholder, granting her certain rights and protections. able to represent herself and seek the assistance of a Brehon, or a judge, to settle the matter according to the Brehon Laws. The Brehon Laws recognized different forms of marriage, with varying degrees of property rights and obligations for both spouses"
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "ChapterPart",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Chapter 1 Part 1",
+                    "for_chapter": "1",
+                    "part_num": "1",
+                    "part_goals": "",
+                    "storyteller": "The Narrator",
+                    "locations": [
+                        "Aftermath of the Battle of Clontarf"
+                    ],
+                    "character_versions": [
+                        "Infant Mac Bais",
+                        "Teenage Eabha"
+                    ],
+                    "themes": [
+                        ""
+                    ],
+                    "factions": [
+                        ""
+                    ],
+                    "chapter_part_summary": "Summary of Chapter 1 Part 1"
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "Chapter",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Chapter 1",
+                    "book": "Living and the Son of Death",
+                    "chapter_num": "1",
+                    "chapter_goals": "",
+                    "chapter_draft_file": "chapter_01_draft.txt",
+                    "parts_for_chapter": [
+                        "Chapter 1 Part 1"
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "Plot",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Eabha's and Mac Bais's Coming of Age",
+                    "book": "Living and the Son of Death",
+                    "events_of_plot": [
+                        "Mac Bais and Eabha meet in the aftermath of the battle of Clontarf"
+                    ]
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "PlotEvent",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Mac Bais and Eabha meet in the aftermath of the battle of Clontarf",
+                    "for_plot": "Eabha's and Mac Bais's Coming of Age",
+                    "date_from": "1014-03-14",
+                    "date_to": "1014-03-14",
+                    "order_in_story_events": "1",
+                    "order_in_narrative_telling": "1",
+                    "foreshadowing": "",
+                    "is_climax_of_plot": "false"
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "TargetAudience",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Literary Young Adults"
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "Genre",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Magical Realism"
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "AppearanceModifiers",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Eabha as a Young Woman",
+                    "clothing": "",
+                    "hair_head_options": "",
+                    "perfume": "",
+                    "makeup": "",
+                    "shaving": "",
+                    "hygiene": "",
+                    "character_version": ""
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "Appearance",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Eabha's Appearance as a Young Woman",
+                    "distinguishing_features": "",
+                    "eyes": "",
+                    "hair": "",
+                    "face": "",
+                    "build": "",
+                    "movement": "",
+                    "character_version": "Eabha as a Young Woman"
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "Character",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Eabha",
+                    "books": ["Living and the Son of Death"],
+                    "age_at_start": "14",
+                    "gender": "Female",
+                    "sex": "Female",
+                    "sexuality": "Straight",
+                    "origin": "Kidnapped by Viking slavers, sold into marriage at 12 to a 37 year old blacksmith, has not yet borne children for him and for that she is abused",
+                    "representative_of": [
+                        "Irish name that means 'living'",
+                        "life",
+                        "growth",
+                        "nurture",
+                        "survival"
+                    ],
+                    "permanent_characteristics": "",
+                    "versions": [
+                        "1",
+                        "2"
+                    ],
+                    "character_arc": ""
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "CharacterRelatedSettingTopic",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "A Young Woman managing a bar in Early 11th Century Dubh Linn (Dublin)",
+                    "setting": "Early 11th Century Dubh Linn (Dublin)",
+                    "rights": "",
+                    "appearance_modifiers": "Appearance of a A Young Woman in Early 11th Century Dubh Linn (Dublin)",
+                    "attitudes": "",
+                    "leisure": "fidchell (board game), singing, dancing, storytelling,conversing with the diverse set of customers at the pub",
+                    "food": "oat and barley porridge, dairy products such as cheese and butter,vegetables like cabbage, onions, and leeks,fruits like apples, plums, and berries,meat, usually pork or beef, was usually for feasts and special occasions, pub work gives her a little more diversity than others",
+                    "work": "responsible for managing the day-to-day operations, including overseeing the production and sale of ale, mead, and other beverages, as well as the procurement of food and provisions, her status as a business owner would garner her a degree of respect within the community.",
+                    "social_life": "Her establishment would be a gathering place for locals and travelers alike, offering a warm atmosphere, hearty fare, and lively entertainment, such as storytelling and music. Despite having more equal rights under Brehon law, her social standing would still be largely influenced by her marital status and family connections."
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "BackgroundResearch",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Early 11th Century Ireland",
+                    "research" : "",
+                    "deeper_research_topics": ["Brehon Law (Fenechas)", "Work and Lifestyle", "Entertainment and Sports", "Social Hierarchy", "Family", "Politics","Religion", "Education", "Economy and Trade","Fairs and Fesitvals"]
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "LitStyleGuide",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Narrator's Style",
+                    "perspective": "Third person omniscient",
+                    "inspirations": "The Sound and the Fury",
+                    "tone": "",
+                    "imagery": "",
+                    "symbolism": "",
+                    "traits": "",
+                    "avoid": "",
+                    "style_guide": "",
+                    "compressed_sg": "",
+                    "writing_samples": ""
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "CharacterRelationship",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Eabha as a Young Woman relationship with Mac Bais as a Teenager",
+                    "relationship_from": "Eabha v2",
+                    "relationship_to": "Mac Bais v2",
+                    "age_started": "14",
+                    "relationship_descriptors": ""
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "CharacterVersion",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Eabha as a Young Woman",
+                    "for_character": "Eabha",
+                    "version_num": "2",
+                    "age_at_start": "19",
+                    "age_at_end": "23",
+                    "locations": [
+                        "Dubh Linn",
+                        "The Burning Boat",
+                        "Rooms over the Burning Boat"
+                    ],
+                    "preferred_weapon": "manipulation",
+                    "appearance": "Eabha's Appearance as a Young Woman",
+                    "setting_based_appearance_modifier_options": "A Young Woman managing a bar in 11th Century Dubh Linn (Dublin)",
+                    "strengths": [
+                        "socially connected",
+                        "empathetic",
+                        "nurturing",
+                        "willful",
+                        "scheming",
+                        "surviving",
+                        "spiritual",
+                        "mentally strong",
+                        "practical",
+                        "able to navigate the world of men",
+                        "telling lies",
+                        "manipulation",
+                        "predictive/portentious dreams?",
+                        "pain/suffering threshold"
+                    ],
+                    "weaknesses": [
+                        "physical strength",
+                        "PTSD flashbacks",
+                        "nightmares",
+                        "a beauty that draws the attention of rapacious men",
+                        "alcohol"
+                    ],
+                    "other_aspects": [
+                        "bears grudges",
+                        "doesn't give back trust easily/at all"
+                    ],
+                    "often_perceived_as": [
+                        "manipulative",
+                        "uppity",
+                        "charming",
+                        "sweet",
+                        "tough"
+                    ],
+                    "drives": [
+                        "protecting Mac Bais",
+                        "survival",
+                        "revenge",
+                        "a lasting peace"
+                    ],
+                    "fears": [
+                        "Mac Báis being left alone"
+                    ],
+                    "lit_style_guide": "First Person Perspective of Eabha as a Young Woman"
+                }
+            }
+        ]
+    },
+    {
+        "class_name": "Setting",
+        "list_of_instances": [
+            {
+                "properties": {
+                    "name": "Early 11th Century Dubh Linn (Dublin)",
+                    "books": [
+                        "Living and the Son of Death"
+                    ],
+                    "general_setting": "Medieval Ireland, in the first half of the 11th Century. there is brutality, danger and trauma, but there is also beauty, nature, music, kindness and community. There are bards. druids, craftspeople, and storytellers. some of whom provide comfort, storytelling, examples of human tenderness, beauty and insight. There is a mixture of Christianity and Celtic/Pagan beliefs. The truly ancient sacred and divine places (e.g. Newgrange) make the stories of a son of god (Christ) from a faraway land harder to take seriously. The narrator is aware of this tension, however most of the characters are untroubled by their mixed holding of these beliefs. Each side (christian / pagan) does have militants who can cause trouble for our protagonists, but their beliefs make them easy to manipulate, and in some cases their beliefs make them helpful. The book draws from the political, social and environmental history of Ireland in those years. It also draws from ancient Irish mythology. The growing port of Dublin (Dubh Linn), the building of Christchurch Cathedral there. The story The Cattle Raid of Cooley (Táin Bó Cúailnge) dates back to the Iron Age, but its written form in Old Irish was likely created in the 11th or 12th century. It was a very popular epic tale of rivalry, war, and heroism"
+                }
+            }
+        ]
+    }
+]

@@ -9,6 +9,7 @@ class AbstractEngine():
     agent = {}
     awareness = 'as_bot'
     expose_rest = True
+    project = {}
     most_recent_responses_to = {
         "start_engine": "",
         "thoughts_concerns_proposed_next_steps": "",
@@ -28,10 +29,10 @@ class AbstractEngine():
        'max_tokens':1000
     }
     
-    def submit_chat_prompt(self, prompt, prompting_agent):
+    def submit_chat_prompt(self, prompt, prompting_agent, responding_agent):
         print(colored("Submitting chat prompt...", "green"))
         request_data = self.open_ai_chat_data
-        request_data['content'] = PromptBuilderSingleton().complete_prompt(prompt, prompting_agent)
+        request_data['content'] = Prompt().complete_prompt(prompt, prompting_agent)
         response = self.ai_api.gpt_chat_response(request_data)
         print(colored("Chat prompt submitted.", "green"))
         return prompt, response
@@ -42,19 +43,14 @@ class AbstractEngine():
     def wake_up(self):
         capability_id=0
         print(colored(f"Starting engine for {self.name}...", "green"))
-        request_data = self.open_ai_chat_data
-        # print(colored(f"Request Data to wake up {self.name}...", "green"))
-        # pprint(request_data)
-        request_data['content'] = PromptBuilderSingleton().to_wake_up(self)
-        # print(colored(f"Content to wake up {self.name}...", "green"))
-        # print(request_data['content'])
-        response = self.ai_api.gpt_chat_response(request_data)
+        prompt = Prompt().to_wake_up(self)
+        response = self.submit_chat_prompt(prompt, self)
         pprint(response)
         self.awake = True
         self.most_recent_responses_to['start_engine'] = response
         print(colored(f"{self.name} engine started.", "green"))
         self.save()
-        return request_data['content'], response
+        return prompt, response
 
     def consider(self, objs=[], prompt_adj=''):
         capability_id=1
@@ -80,7 +76,7 @@ class AbstractEngine():
         capability_id=6
         print(colored("Sharing thoughts, concerns, and proposed next steps...", "green"))
         request_data = self.open_ai_chat_data
-        request_data['content'] = PromptBuilderSingleton().thoughts_concerns_proposed_next_steps(self, agent_to_share_with)
+        request_data['content'] = Prompt().thoughts_concerns_proposed_next_steps(self, agent_to_share_with)
         response = self.submit_chat_prompt(self, request_data['content'], agent_to_share_with)
         self.most_recent_responses_to['thoughts_concerns_proposed_next_steps'] = response
         print(colored("Thoughts, concerns, and proposed next steps shared.", "green"))
@@ -145,7 +141,7 @@ class AbstractEngine():
                 "awake": True,
                 "report":{
                     "conext":{
-                        "recent_script_entries": self.script_for_agent.recent_script_entries(),
+                        "recent_script_entries": self.script_for.recent_script_entries(),
                         "steps_taken": self.list(self.steps_taken.all().values_list('name', flat=True))
                     },
                     "thoughts_concerns_proposed_next_steps": self.thoughts_concerns_proposed_next_steps()
@@ -181,7 +177,7 @@ class CompressionAgentEngine(AbstractEngine):
         capability_id=18
         if prompting_agent == {}: prompting_agent = get_user_agent_singleton()
         request_data = self.open_ai_chat_data
-        request_data['content'] = PromptBuilderSingleton().to_compress(prompt, compression_ratio)
+        request_data['content'] = Prompt().to_compress(prompt, compression_ratio)
         print(colored("Compressing prompt...", "green"))
         
         return self.submit_chat_prompt(prompt, prompting_agent)
@@ -316,11 +312,11 @@ class OrchestrationEngine(AbstractEngine):
         
         latest_swarm_reports = self.latest_swarm_reports
         swarm_produced_files = self.swarm_produced_files
-        recent_script_entries = project.script_for_project.recent_script_entries()
+        recent_script_entries = project.script_for.recent_script_entries()
         print("recent script entries", recent_script_entries)
         print(colored("OrchestrationEngine.assess_project(): Producing prompt for assess_project()...", "green"))
         #From that data, produce assessment prompt
-        prompt = PromptBuilderSingleton().to_assess(
+        prompt = Prompt().to_assess(
             self, {
                 "project": project, 
                 "script_entries": recent_script_entries, 
@@ -379,3 +375,36 @@ class OrchestrationEngine(AbstractEngine):
 
     def provide_orchestrators_report_to_user():
         pass
+    
+    def establish_project_objective(self, project):
+        print(self)
+        prompt = Prompt().to_establish_project_objective(project, self)
+        objectives_prompt, objectives_response = self.submit_chat_prompt(prompt, self)
+        add_script_entries_for_each_agent(project, get_user_agent_singleton(), objectives_prompt, self, objectives_response)
+        return objectives_response
+    
+    def assess_project_state(self, project):
+        prompt = Prompt().to_assess_project_state(project, self)
+        project_state_prompt, project_state_response = self.submit_chat_prompt(prompt, self)
+        add_script_entries_for_each_agent(project, get_user_agent_singleton(), project_state_prompt, self, project_state_response)
+        return project_state_response
+    
+    def crud_agents_to_parts_of_project(self, project):
+        pass
+    
+    def routine(self, project):
+        #establish goals of the project
+        if project.orc_agent_set_objectives == '': 
+            project.orc_agent_set_objectives = self.establish_project_objective(project)
+            print(project.orc_agent_set_objectives)
+        else:
+            #reassess project objectives
+            pass    
+        project_state_response = self.assess_project_state(project)
+        print(project_state_response)
+        # self.crud_agents_to_parts_of_project(project, project_state_response)
+        # self.run_agents(project)
+        # self.assess_agent_output(project)
+        # self.commit_agent_output_to_project(project)
+        
+    

@@ -3,6 +3,8 @@ from termcolor import colored
 from django.apps import apps
 from django.db.models.fields import CharField
 from .agent_models import *
+from django.core.exceptions import ObjectDoesNotExist
+
 
 PROJECT_ROOT="myuz"
 INCOMING_FILES="/files_to_embed/"
@@ -31,6 +33,17 @@ def get_phusis_project_workspace(project_type, project_name):
         return phusis_project_workspace 
 
 
+def model_has_content_and_content(model):
+    try:
+        content = model.objects.all()
+        if content.exists():
+            return True, content
+        else:
+            return False, None
+    except ObjectDoesNotExist:
+        return False, None
+
+
 def camel_case_to_underscore(name):
     print(f"NAME {name}")
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
@@ -44,8 +57,10 @@ def camel_case_to_spaced(name):
     name = name.lower()
     return name
 
+
 def spaced_to_underscore(name):
     return name.replace(" ", "_")
+
 
 def is_valid_init_json(json_data):
     if not 'class_name' in json_data or not 'properties' in json_data or not 'name' in json_data['properties']:
@@ -56,35 +71,36 @@ def is_valid_init_json(json_data):
 
 def add_script_entries_for_each_agent(project, sender, prompt, responder, response):
     
-    from agent_models import PhusisScript
+    from .agent_models import PhusisScript
     
-    if project.script_for_project is None:
-        project.script_for_project = PhusisScript(name=f"chat_script_for_{project.project_type}_{project.name}")
-        project.script_for_project.setup(f"chat_script_for_{project.project_type}_{project.name}")
+    if project.script_for is None:
+        project.script_for = PhusisScript.objects.update_or_create(name=f"chat_script_for_{project.project_type}_{project.name}")
+        project.script_for.setup(f"chat_script_for_{project.project_type}_{project.name}")
     
     for agent in [sender, responder]:
-        if agent.script_for_agent is None:
-            agent.script_for_agent = PhusisScript(name=f"chat_script_for_{agent.project_type}_{agent.name}")
-            agent.script_for_agent.setup(f"chat_script_for_{agent.agent_type}_{agent.name}")
+        if agent.script_for is None:
+            agent.script_for = PhusisScript.objects.update_or_create(name=f"{project.project_type}_{project.name}_chat_script_for_{agent.agent_type}_{agent.name}")
+            agent.script_for.setup(f"{project.project_type}_{project.name}_chat_script_for_{agent.agent_type}_{agent.name}")
 
-    project.script_for_project.add_script_entry(sender, prompt, responder, response)    
-    sender.script_for_agent.add_script_entry(sender, prompt, responder, response)    
-    responder.script_for_agent.add_script_entry(sender, prompt, responder, response)    
+    project.script_for.add_script_entry(sender, prompt, responder, response)    
+    sender.script_for.add_script_entry(sender, prompt, responder, response)    
+    responder.script_for.add_script_entry(sender, prompt, responder, response)    
     project.save()
     sender.save()
     responder.save()
 
+
 def get_user_agent_singleton():
     from phusis.agent_models import UserAgentSingleton
     return UserAgentSingleton()
+
 
 def get_compression_agent_singleton():
     from phusis.agent_models import CompressionAgentSingleton
     return CompressionAgentSingleton()
 
 
-
-class PromptBuilderSingleton():
+class Prompt():
     expose_rest = False
     _instance = None
     def __new__(cls):
@@ -118,6 +134,40 @@ class PromptBuilderSingleton():
         prompt = f"You are {agent}, {s}. You will use your skills to the BEST of your ability to serve me, the human user, I will tell you our objective soon, but first, about you. {self.to_remind(agent)}"
 
         return self.auto_reminder(prompt, agent)  
+    
+    def to_establish_project_objective(self, project, agent):
+        project_models_dict, project_mdodels_str = project.list_project_attributes()
+        prompt = f"Here is a summary of the objectives of the project.\nWe are working on a {project.project_type}\n"
+        prompt += f"This type of project has the following attributes:\n{project_mdodels_str}\n"
+        prompt +- f"Using the informtation provided, please give your assessment of the overall, \nhigh level goals of the project (we will get into the specific tasks later).\n"
+        prompt += f"Keep your response limited to this schema:\n"
+        prompt += 'response:{"goals":["goal one of the project","goal two of the project","goal three of the project"]}'
+        return self.auto_reminder(prompt, agent)
+    
+    def to_assess_project_state(self, project, agent):
+        models_dict, book_attributes_str = project.list_project_attributes()
+        prompt = "Here are all the aspects of the project along with their content if they have any:\n\n"
+        for model_name, fields in models_dict.items():
+            model = apps.get_model(project.from_app, model_name)
+            has_content, content = model_has_content_and_content(model)
+
+            prompt += f"Model: {model_name}\n"
+            prompt += f"Has Content: {has_content}\n"
+            if has_content:
+                prompt += "Content:\n"
+                for obj in content:
+                    prompt += f"  - {obj}\n"
+
+            prompt += "Fields:\n"
+            for field in fields:
+                prompt += f"  - {field}\n"
+
+            prompt += "\n"
+            
+            prompt += f"What do you think we should add to this project? Which values need improving or editing?\n"
+            prompt += f"Keep your response limited to this schema:\n"
+            prompt += 'response:{"models_to_add_or_change":[{"model_name":model_name1,"proposed_changes":["proposed change 1","proposed change 2","proposed change 3"]}, {"model_name":model_name2,"proposed_changes":["proposed change 1","proposed change 2","proposed change 3"]}],"elaborations_reasons_thoughts_concernts":"add your reflections here"}'
+        return self.auto_reminder(prompt, agent)
     
     def to_assess(self, assessing_agent, data_to_assess={}):
         prompt = ""

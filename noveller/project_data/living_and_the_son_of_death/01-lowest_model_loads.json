@@ -19,6 +19,14 @@
                         "Eabha",
                         "Mac Bais",
                         "The Blacksmith"
+                    ],
+                    "genres":[
+                        "Magical Realism",
+                        "Historical Fiction"
+                    ],
+                    "target_audiences":[
+                        "Literary Young Adults",
+                        "Historical Fiction"
                     ]
                 }
             }
@@ -145,14 +153,7 @@
                 "properties": {
                     "name": "Summary of Chapter 1 Part 1",
                     "for_chapter_part": "Chapter 1 Part 1",
-                    "chapter_part_summary": "The aftermath of the Battle of Clontarf, Infant Mac Bais makes his first kill, Eabha finds him and brings him home.",
-                    "themes": [
-                        ""
-                    ],
-                    "pacing": "",
-                    "part_summary_items": [
-                        ""
-                    ]
+                    "chapter_part_summary": "The aftermath of the Battle of Clontarf, Infant Mac Bais makes his first kill, Eabha finds him and brings him home."
                 }
             }
         ]
@@ -211,7 +212,7 @@
             {
                 "properties": {
                     "name": "Chapter 1 Part 1",
-                    "for_chapter": "1",
+                    "for_chapter": "Chapter 1",
                     "part_num": "1",
                     "part_goals": "",
                     "storyteller": "The Narrator",
@@ -219,8 +220,8 @@
                         "Aftermath of the Battle of Clontarf"
                     ],
                     "character_versions": [
-                        "Infant Mac Bais",
-                        "Teenage Eabha"
+                        "Mac Bais as an Infant",
+                        "Eabha as a Teenager"
                     ],
                     "themes": [
                         ""
@@ -276,7 +277,7 @@
                     "order_in_story_events": "1",
                     "order_in_narrative_telling": "1",
                     "foreshadowing": "",
-                    "is_climax_of_plot": "false"
+                    "is_climax_of_plot": "False"
                 }
             }
         ]
@@ -306,14 +307,23 @@
         "list_of_instances": [
             {
                 "properties": {
-                    "name": "Eabha as a Young Woman",
-                    "clothing": "",
-                    "hair_head_options": "",
-                    "perfume": "",
-                    "makeup": "",
-                    "shaving": "",
-                    "hygiene": "",
-                    "character_version": ""
+                    "name": "A Young Woman managing a bar in 11th Century Dubh Linn (Dublin)",
+                    "clothing": [
+                        "long dress made of wool or linen",
+                        "dyed with natural colors",
+                        "belt at the waist",
+                        "woolen cloak or shawl for warmth and protection against the elements",
+                        "simple leather shoes or boots"
+                      ],
+                      "hair_head_options": [
+                        "long and loose",
+                        "braided and pinned up",
+                        "simple headcovering, such as a linen cap or a scarf"
+                      ],
+                      "perfume": "",
+                      "makeup": "",
+                      "shaving": "",
+                      "hygiene": ""
                 }
             }
         ]
@@ -325,11 +335,11 @@
                 "properties": {
                     "name": "Eabha's Appearance as a Young Woman",
                     "distinguishing_features": "",
-                    "eyes": "",
-                    "hair": "",
-                    "face": "",
-                    "build": "",
-                    "movement": "",
+                    "eyes": "grey",
+                    "hair": "black",
+                    "face": "oval",
+                    "build": "slender",
+                    "movement": "assured",
                     "character_version": "Eabha as a Young Woman"
                 }
             }
@@ -356,8 +366,8 @@
                     ],
                     "permanent_characteristics": "",
                     "versions": [
-                        "1",
-                        "2"
+                        "Eabha as a Teenager",
+                        "Eabha as a Young Woman"
                     ],
                     "character_arc": ""
                 }
@@ -372,7 +382,7 @@
                     "name": "A Young Woman managing a bar in Early 11th Century Dubh Linn (Dublin)",
                     "setting": "Early 11th Century Dubh Linn (Dublin)",
                     "rights": "",
-                    "appearance_modifiers": "Appearance of a A Young Woman in Early 11th Century Dubh Linn (Dublin)",
+                    "appearance_modifiers": "A Young Woman managing a bar in 11th Century Dubh Linn (Dublin)",
                     "attitudes": "",
                     "leisure": "fidchell (board game), singing, dancing, storytelling,conversing with the diverse set of customers at the pub",
                     "food": "oat and barley porridge, dairy products such as cheese and butter,vegetables like cabbage, onions, and leeks,fruits like apples, plums, and berries,meat, usually pork or beef, was usually for feasts and special occasions, pub work gives her a little more diversity than others",
@@ -420,8 +430,8 @@
             {
                 "properties": {
                     "name": "Eabha as a Young Woman relationship with Mac Bais as a Teenager",
-                    "relationship_from": "Eabha v2",
-                    "relationship_to": "Mac Bais v2",
+                    "relationship_from": "Eabha as a Young Woman",
+                    "relationship_to": "Mac Bais as a Teenager",
                     "age_started": "14",
                     "relationship_descriptors": ""
                 }

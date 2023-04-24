@@ -30,13 +30,13 @@ class NovellerModelDecorator(models.Model):
         for key, value in properties_dict.items():
             # Get the field instance
             field = self._meta.get_field(key)
-            print(f"key: {key}\nvalue: {value}\nfield: {field}\n")
+            # print(f"key: {key}\nvalue: {value}\nfield: {field}\n")
             if isinstance(field, models.ManyToManyField):
                 related_objects = []
                 # print(f"key: {key}\nvalue: {value}\nfield: {field}\n")
                 # Find the related objects using find_attribute_by function
                 for attr_name in value:
-                    print(f"{field.related_model} {attr_name}")
+                    # print(f"{field.related_model} {attr_name}")
                     attr_clas, attr_instance = find_and_update_or_create_attribute_by(attr_name, field.related_model)
                     related_objects.append(attr_instance)
 
@@ -47,8 +47,10 @@ class NovellerModelDecorator(models.Model):
                 setattr(self, key, attr_instance)
             else:
                 # Handle other attribute types as needed
-                setattr(self, key, value)
                 
+                print(f"key: {key}\nvalue: {value}\nfield: {field}\n")
+                setattr(self, key, value)
+        self.save()        
         
 
 class Genre(NovellerModelDecorator):
@@ -60,7 +62,7 @@ class TargetAudience(NovellerModelDecorator):
 
 class Plot(NovellerModelDecorator):
     book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_plots', null=True)
-    events_of_plot = models.ManyToManyField('PlotEvent', blank=True, null=True)
+    events_of_plot = models.ManyToManyField('PlotEvent', blank=True)
         
 class PlotEvent(NovellerModelDecorator):
     for_plot = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_events', null=True)
@@ -69,12 +71,12 @@ class PlotEvent(NovellerModelDecorator):
     date_to = models.DateField(blank=True, null=True)
     order_in_story_events = models.IntegerField(blank=True, null=True)
     order_in_narrative_telling = models.IntegerField(blank=True, null=True)
-    foreshadowing = models.ManyToManyField('PlotEvent', 'SubPlotEvent', blank=True, null=True)
+    foreshadowing = models.ManyToManyField('PlotEvent', 'SubPlotEvent', blank=True)
     is_climax_of_plot = models.BooleanField(blank=True, null=True)
 
 class SubPlot(Plot):
     sub_plot_of = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_subplot', null=True)
-    events_of_subplot = models.ManyToManyField('SubPlotEvent', blank=True, related_name='subplots_events', null=True)
+    events_of_subplot = models.ManyToManyField('SubPlotEvent', blank=True, related_name='subplots_events')
     
     class Meta:
         ordering = ['sub_plot_of__name', 'name']
@@ -94,7 +96,7 @@ class Chapter(NovellerModelDecorator):
     chapter_num = models.IntegerField(null=True)
     chapter_goals = models.TextField(blank=True, null=True)
     chapter_draft_file = models.OneToOneField('File', on_delete=models.SET_NULL, blank=True, null=True)
-    parts_for_chapter = models.ManyToManyField('ChapterPart', blank=True, related_name='chapters', null=True)
+    parts_for_chapter = models.ManyToManyField('ChapterPart', blank=True, related_name='chapters')
     
     # def __str__(self):
     #     return f"ch.{self.chapter_num}"
@@ -106,11 +108,11 @@ class ChapterPart(NovellerModelDecorator):
     part_num = models.IntegerField(null=True)
     part_goals = models.TextField(blank=True, null=True)
     storyteller = models.OneToOneField('StoryTeller', on_delete=models.SET_NULL, blank=True, null=True)
-    locations = models.ManyToManyField('Location', blank=True, null=True)
-    character_versions = models.ManyToManyField('CharacterVersion', blank=True, null=True)
-    themes = models.ManyToManyField('LiteraryTheme', blank=True, null=True)
-    factions = models.ManyToManyField('Faction', blank=True, null=True)
-    chapter_part_summary = models.ManyToManyField('ChapterPartSummary', blank=True, null=True)
+    locations = models.ManyToManyField('Location', blank=True)
+    character_versions = models.ManyToManyField('CharacterVersion', blank=True)
+    themes = models.ManyToManyField('LiteraryTheme', blank=True)
+    factions = models.ManyToManyField('Faction', blank=True)
+    chapter_part_summary = models.ManyToManyField('ChapterPartSummary', blank=True)
     for_chapter = models.ForeignKey('Chapter', on_delete=models.CASCADE, blank=True, null=True, related_name='chapter_parts')
 
     # def __str__(self):
@@ -122,9 +124,9 @@ class ChapterPart(NovellerModelDecorator):
 class ChapterPartSummary(NovellerModelDecorator):
     for_chapter_part = models.OneToOneField('ChapterPart', on_delete=models.SET_NULL, blank=True, null=True)
     chapter_part_summary = models.TextField(blank=True, null=True)
-    themes = models.ManyToManyField('LiteraryTheme', blank=True, null=True)
-    pacing = models.ManyToManyField('Pacing', blank=True, null=True)
-    part_summary_items = models.ManyToManyField('ChapterPartSummaryItem', blank=True, null=True, related_name='chapter_part_summary_items')
+    themes = models.ManyToManyField('LiteraryTheme', blank=True)
+    pacing = models.ManyToManyField('Pacing', blank=True)
+    part_summary_items = models.ManyToManyField('ChapterPartSummaryItem', blank=True, related_name='chapter_part_summary_items')
     
     # def __str__(self):
     #     return f"{self.for_chapter_part}"
@@ -149,18 +151,18 @@ class Pacing(NovellerModelDecorator):
 # Background, Setting and Research
 
 class Setting(NovellerModelDecorator):
-    books = models.ManyToManyField('Book', blank=True, null=True)
-    background_events = models.ManyToManyField('BackgroundEvent', blank=True, null=True)
-    factions = models.ManyToManyField('Faction', blank=True, null=True)
+    books = models.ManyToManyField('Book', blank=True)
+    background_events = models.ManyToManyField('BackgroundEvent', blank=True)
+    factions = models.ManyToManyField('Faction', blank=True)
     background_research = models.OneToOneField('BackgroundResearch', on_delete=models.SET_NULL, blank=True, null=True)
     general_setting = models.TextField(blank=True)
 
 class Location(NovellerModelDecorator):
-    character_versions = models.ManyToManyField('CharacterVersion', blank=True, null=True, related_name='locations_in_character_version')
+    character_versions = models.ManyToManyField('CharacterVersion', blank=True, related_name='locations_in_character_version')
 
 class BackgroundResearch(NovellerModelDecorator):
     research = models.TextField(blank=True)
-    deeper_research_topics = models.ManyToManyField('DeeperBackgroundResearchTopic', blank=True, null=True)
+    deeper_research_topics = models.ManyToManyField('DeeperBackgroundResearchTopic', blank=True)
     
 class DeeperBackgroundResearchTopic(NovellerModelDecorator):
     notes = models.TextField(blank=True, null=True)
@@ -173,7 +175,7 @@ class BackgroundEvent(NovellerModelDecorator):
 
 class Faction(NovellerModelDecorator):
     description = models.TextField(blank=True, null=True)
-    members = models.ManyToManyField('CharacterVersion', blank=True, null=True)
+    members = models.ManyToManyField('CharacterVersion', blank=True)
     
 class CharacterRelatedSettingTopic(NovellerModelDecorator):
     setting = models.ForeignKey('Setting', on_delete=models.SET_NULL, blank=True, null=True)
@@ -195,9 +197,9 @@ class Character(NovellerModelDecorator):
     sex = models.CharField(max_length=200, blank=True, null=True)
     sexuality = models.CharField(max_length=200, blank=True, null=True)
     origin = models.TextField(blank=True, null=True)
-    representative_of = models.ManyToManyField('LiteraryTheme', blank=True, null=True)
+    representative_of = models.ManyToManyField('LiteraryTheme', blank=True)
     permanent_characteristics = models.TextField(blank=True, null=True)
-    versions = models.ManyToManyField('CharacterVersion', blank=True, null=True, related_name='version_of_character')
+    versions = models.ManyToManyField('CharacterVersion', blank=True, related_name='version_of_character')
     character_arc = models.TextField(blank=True, null=True)
 
 class CharacterVersion(NovellerModelDecorator):
@@ -205,18 +207,18 @@ class CharacterVersion(NovellerModelDecorator):
     version_num = models.IntegerField(null=True)
     age_at_start = models.IntegerField(blank=True, null=True)
     age_at_end = models.IntegerField(blank=True, null=True)
-    locations = models.ManyToManyField('Location', blank=True, null=True)
+    locations = models.ManyToManyField('Location', blank=True)
     preferred_weapon = models.CharField(max_length=200, blank=True, null=True)
     appearance = models.ForeignKey('Appearance', blank=True, on_delete=models.SET_NULL, null=True)
     setting_based_appearance_modifier_options = models.ForeignKey('AppearanceModifiers', blank=True, on_delete=models.SET_NULL, null=True)
-    strengths = models.ManyToManyField('CharacterTrait', related_name='strengths', blank=True, null=True)
-    weaknesses = models.ManyToManyField('CharacterTrait', related_name='weaknesses', blank=True, null=True)
-    other_aspects = models.ManyToManyField('CharacterTrait', related_name='other_aspects', blank=True, null=True)
-    often_perceived_as = models.ManyToManyField('CharacterTrait', related_name='often_perceived_as', blank=True, null=True)
-    drives = models.ManyToManyField('Drive', blank=True, null=True)
-    fears = models.ManyToManyField('Fear', blank=True, null=True)
-    beliefs = models.ManyToManyField('Belief', blank=True, null=True)
-    internal_conflicts = models.ManyToManyField('InternalConflict', blank=True, null=True)
+    strengths = models.ManyToManyField('CharacterTrait', related_name='strengths', blank=True)
+    weaknesses = models.ManyToManyField('CharacterTrait', related_name='weaknesses', blank=True)
+    other_aspects = models.ManyToManyField('CharacterTrait', related_name='other_aspects', blank=True)
+    often_perceived_as = models.ManyToManyField('CharacterTrait', related_name='often_perceived_as', blank=True)
+    drives = models.ManyToManyField('Drive', blank=True)
+    fears = models.ManyToManyField('Fear', blank=True)
+    beliefs = models.ManyToManyField('Belief', blank=True)
+    internal_conflicts = models.ManyToManyField('InternalConflict', blank=True)
     relationships = models.OneToOneField('CharacterRelationship', blank=True, on_delete=models.SET_NULL, null=True)
     subter = models.CharField(max_length=200, blank=True, null=True)
     lit_style_guide = models.ForeignKey('LitStyleGuide', blank=True, null=True, on_delete=models.SET_NULL)
@@ -295,19 +297,19 @@ class InternalConflict(NovellerModelDecorator):
 
 class LitStyleGuide(NovellerModelDecorator):
     perspective = models.ForeignKey('NarrativePerspective', on_delete=models.CASCADE, null=True)
-    inspirations = models.ManyToManyField('LiteraryInspirationPerson', blank=True, null=True)
-    tone = models.ManyToManyField('LiteraryTone', blank=True, null=True)
-    imagery = models.ManyToManyField('LiteraryImagery', blank=True, null=True)
-    symbolism = models.ManyToManyField('LiterarySymbolism', blank=True, null=True)
-    traits = models.ManyToManyField('LiteraryTrait', related_name='litstyleguide_traits', blank=True, null=True)
-    avoid = models.ManyToManyField('LiteraryTrait', related_name='litstyleguide_avoid', blank=True, null=True)
+    inspirations = models.ManyToManyField('LiteraryInspirationPerson', blank=True)
+    tone = models.ManyToManyField('LiteraryTone', blank=True)
+    imagery = models.ManyToManyField('LiteraryImagery', blank=True)
+    symbolism = models.ManyToManyField('LiterarySymbolism', blank=True)
+    traits = models.ManyToManyField('LiteraryTrait', related_name='litstyleguide_traits', blank=True)
+    avoid = models.ManyToManyField('LiteraryTrait', related_name='litstyleguide_avoid', blank=True)
     style_guide = models.TextField(blank=True, null=True)
     compressed_sg = models.TextField(blank=True, null=True)
     writing_samples = models.TextField(blank=True, null=True)
 
 
 class LiteraryInspirationPerson(NovellerModelDecorator):
-    sources = models.ManyToManyField('LiteraryInspirationSource', blank=True, null=True)
+    sources = models.ManyToManyField('LiteraryInspirationSource', blank=True)
 
 
 class LiteraryInspirationSource(NovellerModelDecorator):
@@ -383,13 +385,13 @@ class NovellerModellor(NovellerModelDecorator):
 class Book(AbstractPhusisProject):
     from_app = models.CharField(max_length=200, default='noveller')
     elaboration = models.TextField(blank=True, null=True)
-    settings = models.ManyToManyField(Setting, blank=True, related_name='book_settings', null=True)
-    plots = models.ManyToManyField(Plot, blank=True, related_name='books_events', null=True)
-    chapters = models.ManyToManyField(Chapter, blank=True, related_name='books_chapters', null=True)
-    characters = models.ManyToManyField(Character, blank=True, related_name='characters_book_characters', null=True)
-    themes = models.ManyToManyField(LiteraryTheme, blank=True, related_name='book_themes', null=True)
-    genres = models.ManyToManyField(Genre, blank=True, related_name='book_genres', null=True)
-    target_audiences = models.ManyToManyField(TargetAudience, blank=True, related_name='book_audiences', null=True)  
+    settings = models.ManyToManyField(Setting, blank=True, related_name='book_settings')
+    plots = models.ManyToManyField(Plot, blank=True, related_name='books_events')
+    chapters = models.ManyToManyField(Chapter, blank=True, related_name='books_chapters')
+    characters = models.ManyToManyField(Character, blank=True, related_name='characters_book_characters')
+    themes = models.ManyToManyField(LiteraryTheme, blank=True, related_name='book_themes')
+    genres = models.ManyToManyField(Genre, blank=True, related_name='book_genres')
+    target_audiences = models.ManyToManyField(TargetAudience, blank=True, related_name='book_audiences')  
     expose_rest = models.BooleanField(default=True)
     agents_for_project = models.ManyToManyField(
         ContentType,
@@ -478,6 +480,7 @@ class Book(AbstractPhusisProject):
             else:
                 # Handle other attribute types as needed
                 setattr(self, key, value)
+        self.save()  
                 
 # class BookSerializer(serializers.ModelSerializer):
 #     class Meta:
@@ -513,7 +516,8 @@ def load_noveller_model_and_return_instance_from(json_data):
         new_noveller_obj, created = model_class.objects.update_or_create(name=json_data['properties']['name'])
 
         new_noveller_obj.set_data(json_data['properties'])
-        s = "found and updated"
+        new_noveller_obj.save()
+        s = f"found and updated with:\n{json_data['properties']}"
         if created: s = "created"
         print(colored(f"load_noveller_model_and_return_instance_from: {new_noveller_obj.name} {s}", "green"))
         
@@ -527,13 +531,13 @@ def load_noveller_model_and_return_instance_from(json_data):
 
 def find_and_update_or_create_attribute_by(attr_name, model_class):
 
-    print(f"find_attribute_by(): attr_name: {attr_name}\nmodel_class : {model_class}")
+    # print(f"find_attribute_by(): attr_name: {attr_name}\nmodel_class : {model_class}")
     
     # Check if the attribute exists in the model class
     if hasattr(model_class, attr_name):
         return model_class, getattr(model_class, attr_name)
 
-    print(f"model class : {model_class}")
+    # print(f"model class : {model_class}")
 
     # Check if the attribute exists in any related models
     for related_object in model_class._meta.related_objects:

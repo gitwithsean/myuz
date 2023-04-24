@@ -45,8 +45,8 @@ class Command(BaseCommand):
             # print(item)
             class_name = item["class_name"]
             list_of_instances = item["list_of_instances"]
-            print(f"class_name: {class_name}")
-            print(f"list_of_instances: {list_of_instances}\n\n")
+            # print(f"class_name: {class_name}")
+            # print(f"list_of_instances: {list_of_instances}\n\n")
             for instance in list_of_instances:
                 json_object_to_create = {
                     "class_name": class_name,
@@ -56,6 +56,8 @@ class Command(BaseCommand):
                 json_objects_to_create.append(json_object_to_create)
 
         for obj_json in json_objects_to_create:
-            # print(colored(f"init_book: loading {obj_json['class_name']} {obj_json['properties']['name']}", "yellow"))
+            
+            pprint(obj_json)
+            print(colored(f"init_book: loading {obj_json['class_name']} {obj_json['properties']['name']}", "yellow"))
             
             load_noveller_model_and_return_instance_from(obj_json)

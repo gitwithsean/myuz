@@ -5,7 +5,7 @@ from .agent_utils import *
 from pprint import pprint
 
 class AbstractEngine():
-    ai_api = OpenAi()
+    ai_api = OpenAiAPI()
     agent = {}
     awareness = 'as_bot'
     expose_rest = True
@@ -32,7 +32,9 @@ class AbstractEngine():
     def submit_chat_prompt(self, prompt, prompting_agent, responding_agent):
         print(colored("Submitting chat prompt...", "green"))
         request_data = self.open_ai_chat_data
-        request_data['content'] = Prompt().complete_prompt(prompt, prompting_agent)
+        request_data['content'] = prompt
+        request_data['prompting_agent'] = prompting_agent
+        request_data['responding_agent'] = responding_agent
         response = self.ai_api.gpt_chat_response(request_data)
         print(colored("Chat prompt submitted.", "green"))
         return prompt, response
@@ -44,7 +46,7 @@ class AbstractEngine():
         capability_id=0
         print(colored(f"Starting engine for {self.name}...", "green"))
         prompt = Prompt().to_wake_up(self)
-        response = self.submit_chat_prompt(prompt, self)
+        prompt, response = self.submit_chat_prompt(prompt, get_user_agent_singleton(), self)
         pprint(response)
         self.awake = True
         self.most_recent_responses_to['start_engine'] = response
@@ -246,7 +248,8 @@ class EmbeddingsAgentEngine(AbstractEngine):
         texts_to_embed = []
         if isinstance(data, str):       # if data is a string, add string to texts_to_embed array
             print(colored(f"EmbeddingsAgentEngine.create_embeddings_for(): Loading text to embed...", "green"))
-            texts_to_embed.append(data)      
+            text_data = {"content": data}
+            texts_to_embed.append(text_data)      
         elif 'files' in data:           # if data is list of files, process and set as texts_to_embed array
             print(colored(f"EmbeddingsAgentEngine.create_embeddings_for(): Loading list of files to embed...", "green"))
             texts_to_embed = self.receive_files(data['files'])   
@@ -269,6 +272,7 @@ class EmbeddingsAgentEngine(AbstractEngine):
         #process text, get embeddings, upsert to pinceone
         for text_data in texts_to_embed:             #TODO parallelization? maybe too many api calls
             print(colored(f"EmbeddingsAgentEngine.create_embeddings_for(): tokenizing text(s)...", "green"))
+            print(text_data)
             text_data['tokenized_content'] = self.tokenize_text(text_data['content'])            
             print(colored(f"EmbeddingsAgentEngine.create_embeddings_for(): getting embeddings for tokenized text...", "green"))
             text_data['embeddings'] = self.ai_api.get_embedding_for(text_data['tokenized_content'])
@@ -379,13 +383,13 @@ class OrchestrationEngine(AbstractEngine):
     def establish_project_objective(self, project):
         print(self)
         prompt = Prompt().to_establish_project_objective(project, self)
-        objectives_prompt, objectives_response = self.submit_chat_prompt(prompt, self)
+        objectives_prompt, objectives_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
         add_script_entries_for_each_agent(project, get_user_agent_singleton(), objectives_prompt, self, objectives_response)
         return objectives_response
     
     def assess_project_state(self, project):
         prompt = Prompt().to_assess_project_state(project, self)
-        project_state_prompt, project_state_response = self.submit_chat_prompt(prompt, self)
+        project_state_prompt, project_state_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
         add_script_entries_for_each_agent(project, get_user_agent_singleton(), project_state_prompt, self, project_state_response)
         return project_state_response
     
@@ -402,6 +406,7 @@ class OrchestrationEngine(AbstractEngine):
             pass    
         project_state_response = self.assess_project_state(project)
         print(project_state_response)
+        user_input = input("hit enter to continue...")
         # self.crud_agents_to_parts_of_project(project, project_state_response)
         # self.run_agents(project)
         # self.assess_agent_output(project)

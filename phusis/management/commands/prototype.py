@@ -180,8 +180,8 @@ def retrieve_and_load_project():
         else: 
             i = i + 1
     
-    pprint(user_selected_project.to_dict())
-    change_agents = input("Do you want to change or add to the agents in your project?\n(y/n)\n")
+    
+    pprint(user_selected_project)
 
     if user_selected_project.script_for == None:
         script = PhusisScript()
@@ -189,16 +189,23 @@ def retrieve_and_load_project():
         script.save()
         user_selected_project.script_for = script
         user_selected_project.save()
-        
-    if change_agents == 'y':
-        project.agents_for_project.clear()
+    
+    if user_selected_project.get_agents_for() == None:
         add_agents_to_project(user_selected_project)
-    else:
-        print("loading_data_from_book")
-        for agent in user_selected_project.get_agents_for():
-            user_selected_agents.append(agent)
-            if agent.agent_type == "orchestration_agent":
-                orc = agent
+        user_selected_project.save()
+    else:    
+        change_agents = input("Do you want to start again with fresh agents for your project?\n(y/n)\n")
+        if change_agents == 'y':
+            for agent in user_selected_project.get_agents_for():
+                if agent.script_for != None: agent.script_for.delete()
+            user_selected_project.agents_for_project.clear()
+            add_agents_to_project(user_selected_project)
+        else:
+            print("loading_data_from_book")
+            for agent in user_selected_project.get_agents_for():
+                user_selected_agents.append(agent)
+                if agent.agent_type == "orchestration_agent":
+                    orc = agent
     
     return user_selected_project        
     

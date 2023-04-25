@@ -74,14 +74,17 @@ def add_script_entries_for_each_agent(project, sender, prompt, responder, respon
     from .agent_models import PhusisScript
     
     if project.script_for is None:
-        project.script_for = PhusisScript.objects.update_or_create(name=f"chat_script_for_{project.project_type}_{project.name}")
+        project.script_for, created = PhusisScript.objects.update_or_create(name=f"chat_script_for_{project.project_type}_{project.name}")
         project.script_for.setup(f"chat_script_for_{project.project_type}_{project.name}")
     
     for agent in [sender, responder]:
         if agent.script_for is None:
-            agent.script_for = PhusisScript.objects.update_or_create(name=f"{project.project_type}_{project.name}_chat_script_for_{agent.agent_type}_{agent.name}")
+            agent.script_for, created = PhusisScript.objects.update_or_create(name=f"{project.project_type}_{project.name}_chat_script_for_{agent.agent_type}_{agent.name}")
             agent.script_for.setup(f"{project.project_type}_{project.name}_chat_script_for_{agent.agent_type}_{agent.name}")
 
+    print(colored("this what we are sending to script\n", "yellow"))
+    pprint(f"PROMPT: {prompt}\n\n")
+    pprint(f"RESPONSE: {response}\n\n")
     project.script_for.add_script_entry(sender, prompt, responder, response)    
     sender.script_for.add_script_entry(sender, prompt, responder, response)    
     responder.script_for.add_script_entry(sender, prompt, responder, response)    
@@ -113,7 +116,7 @@ class Prompt():
         return cls._instance
     
     def complete_prompt(self, prompt, prompter):
-        prompt = f"The following prompt comes from a {prompter.agent_type}:\n\n--------------------\n\n{prompt}"
+        prompt = f"The following prompt comes from a {prompter}:\n\n--------------------\n\n{prompt}"
         return self.auto_reminder(prompt, prompter)
     
     def auto_reminder(self, prompt, prompter):
@@ -124,6 +127,7 @@ class Prompt():
         return prompt
                     
     def to_wake_up(self, agent):
+        s = ""
         if agent.awareness      =='as_bot':
             s=f"a {agent.agent_type}, part of a swarm of agents, each with a very defined set of attributes."
         elif agent.awareness    =='as_orc':
@@ -133,13 +137,15 @@ class Prompt():
         
         prompt = f"You are {agent}, {s}. You will use your skills to the BEST of your ability to serve me, the human user, I will tell you our objective soon, but first, about you. {self.to_remind(agent)}"
 
-        return self.auto_reminder(prompt, agent)  
+        # print(colored(f"Prompt.to_wake_up: prompt set to \n{prompt}", "yellow"))
+
+        return prompt
     
     def to_establish_project_objective(self, project, agent):
         project_models_dict, project_mdodels_str = project.list_project_attributes()
         prompt = f"Here is a summary of the objectives of the project.\nWe are working on a {project.project_type}\n"
         prompt += f"This type of project has the following attributes:\n{project_mdodels_str}\n"
-        prompt +- f"Using the informtation provided, please give your assessment of the overall, \nhigh level goals of the project (we will get into the specific tasks later).\n"
+        prompt += f"Using the informtation provided, please give your assessment of the overall, high level goals of the project (we will get into the specific tasks later).\n"
         prompt += f"Keep your response limited to this schema:\n"
         prompt += 'response:{"goals":["goal one of the project","goal two of the project","goal three of the project"]}'
         return self.auto_reminder(prompt, agent)
@@ -164,9 +170,9 @@ class Prompt():
 
             prompt += "\n"
             
-            prompt += f"What do you think we should add to this project? Which values need improving or editing?\n"
-            prompt += f"Keep your response limited to this schema:\n"
-            prompt += 'response:{"models_to_add_or_change":[{"model_name":model_name1,"proposed_changes":["proposed change 1","proposed change 2","proposed change 3"]}, {"model_name":model_name2,"proposed_changes":["proposed change 1","proposed change 2","proposed change 3"]}],"elaborations_reasons_thoughts_concernts":"add your reflections here"}'
+        prompt += f"What do you think we should add to this project? Which values need improving or editing?\n"
+        prompt += f"Keep your response limited to this schema:\n"
+        prompt += 'response:{"models_to_add_or_change":[{"model_name":model_name1,"proposed_changes":["proposed change 1","proposed change 2","proposed change 3"]}, {"model_name":model_name2,"proposed_changes":["proposed change 1","proposed change 2","proposed change 3"]}],"elaborations_reasons_thoughts_concernts":"add your reflections here"}'
         return self.auto_reminder(prompt, agent)
     
     def to_assess(self, assessing_agent, data_to_assess={}):
@@ -194,8 +200,11 @@ class Prompt():
         prompt = f"{agent_to_share_with}, {agent_to_share_with.agent_type} of the swarm you are a member of, has requested for you to report back. They want you to reflect on what you have done so far, and respond in the following format as concisely as possible:\n\nTHOUGHTS:\n\nCONCERNS\n\nWHAT YOU THINK YOUR NEXT STEPS SHOULD BE:\n\n"
         return self.auto_reminder(prompt, agent) 
     
-    def to_remind(self, agent):      
-        prompt = f"Here is your character description: {agent.to_dict()}"
+    def to_remind(self, agent):
+        dict, str, embedding  = agent.to_dict_string_embedding()      
+        prompt = f"Here is your character description: {str}"
+        
+        # print(colored(f"PromptBuilderSingleton().to_remind: prompt set to {prompt}", "yellow"))
         
         return self.auto_reminder(prompt, agent)  
 

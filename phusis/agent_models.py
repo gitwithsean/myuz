@@ -47,7 +47,8 @@ class PhusisScript(models.Model):
         print(colored(f"Saving script to {self.path_to_script}{self.script_file_name}", "green"))
 
         with open(f"{self.path_to_script}{self.script_file_name}", "w") as f:
-            json.dump({"script": {"script_entries": self.script_content}}, f, indent=4) 
+            script_content_json = json.loads(self.script_content)
+            json.dump({"script": {"script_entries": script_content_json}}, f, indent=4) 
         
     def add_script_entry(self, prompter, prompt, responder, response):
         capability_id=14
@@ -92,6 +93,10 @@ class PhusisScript(models.Model):
                     break
             print(f"recent_entries: {recent_entries}")    
             return recent_entries
+        
+            # print(f"recent_entries: {recent_entries}")   
+            # json_recent_entries = json.loads(recent_entries) 
+            # return json_recent_entries
         else:
             return None
 
@@ -104,9 +109,34 @@ class PhusisScript(models.Model):
             return []
         else:
             for entry in entries:
-                if entry.is_prompt:
-                    entry_json = {"role": "user", "content": entry["content"]}
-                    converted_entries.append(entry_json)
+                print(colored(entry, "green"))
+                # entry_json_loaded = json.loads(entry)
+                # pprint(colored(entry_json_loaded, "yellow"))
+                prompt_entry = entry['prompt_entry']
+                print(colored(f"PROMPT ENTRY: \n{prompt_entry}", "green"))
+                
+                prompt_entry_content = prompt_entry["content"]
+                
+                prompt_entry_content = prompt_entry_content.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
+                
+                converted_prompt_entry = {"role": "user", "content": prompt_entry_content}
+                
+                # converted_prompt_entry = json.loads({"role": "user", "content": prompt_entry["content"]})
+                converted_entries.append(converted_prompt_entry)
+                
+                response_entry = entry['response_entry']
+                print(colored(f"RESPONSE ENTRY: \n{response_entry}", "green"))
+                
+                response_entry_content = response_entry["content"]["content"]
+                
+                response_entry_content = response_entry_content.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
+                
+                converted_response_entry = {"role": "assistant", "content": response_entry_content}
+                
+                # converted_response_entry = json.loads({"role": "assistant", "content": response_entry["content"]})
+                converted_entries.append(converted_response_entry)
+    
+                return converted_entries
 
         return converted_entries
 
@@ -175,7 +205,7 @@ class AbstractAgent(models.Model, AbstractEngine):
         ordering = ['name']
     
     def __str__(self):
-        return f"{self.class_display_name} for {self.name}"        
+        return f"{self.name}"        
 
     def set_data(self, properties_dict):
         for key, value in properties_dict.items():
@@ -205,13 +235,12 @@ class AbstractAgent(models.Model, AbstractEngine):
     
     def embed(self):
         if self.embedding_of_self == '':
-            self.embedding_of_self = EmbeddingsAgentSingleton.embed_agent(self)   
+            self.embedding_of_self = EmbeddingsAgentSingleton.create_embeddings_for(self)   
         
         return self.embedding_of_self
         
-    def to_dict(self):
-        return {
-            "id": str(self.id),
+    def to_dict_string_embedding(self):
+        self_dict = {
             "name": self.name,
             "agent_type": self.agent_type,
             "goals": [goal.name for goal in self.goals.all()],
@@ -233,11 +262,53 @@ class AbstractAgent(models.Model, AbstractEngine):
             "subtr": self.subtr,
         }
         
+        string_from_dict = f"-NAME: {self_dict['name']}   -TYPE: {self_dict['agent_type']}" 
+        
+        if self_dict['goals']: string_from_dict += f"  -GOALS: {self_dict['goals']}" 
+        
+        if self_dict['roles']: string_from_dict += f"  -ROLES: {self_dict['roles']}"
+        
+        if self_dict['personality']: string_from_dict += f"  -PERSONALITY: {self_dict['personality']}"
+        
+        if self_dict['qualifications']: string_from_dict += f"  -QUALIFICATIONS {self_dict['qualifications']}"
+        
+        if self_dict['impersonations']: string_from_dict += f"  -IMPERSONATIONS: {self_dict['impersonations']} "
+        
+        if self_dict['elaboration']: string_from_dict += f"  -ELABORATION: {self_dict['elaboration']} "
+        
+        if self_dict['strengths']: string_from_dict += f"  -STRENGTHS: {self_dict['strengths']} "
+        
+        if self_dict['possible_locations']: string_from_dict += f"  -POSSIBLE_LOCATIONS: {self_dict['possible_locations']} "
+        
+        if self_dict['drives']: string_from_dict += f"  -DRIVES: {self_dict['drives']} "
+        
+        if self_dict['fears']: string_from_dict += f"  -FEARS: {self_dict['fears']} "
+        
+        if self_dict['beliefs']: string_from_dict += f"  -BELIEFS: {self_dict['beliefs']} "
+        
+        if self_dict['age']: string_from_dict += f"  -CONCEPTUAL_AGE: {self_dict['age']} "
+        
+        if self_dict['origin_story']: string_from_dict += f"  -ORIGIN_STORY: {self_dict['origin_story']} "
+        
+        if self_dict['llelle']: string_from_dict += f"  -LLELLE: {self_dict['llelle']} "
+        
+        if self_dict['malig']: string_from_dict += f"  -MALIG: {self_dict['malig']} "
+        
+        if self_dict['subtr']: string_from_dict += f"  -SUBTR: {self_dict['subtr']}"
+          
+        string_from_dict = string_from_dict.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
+        
+        # print(colored(f"string_from_dict: {string_from_dict}", "yellow"))
+        
+        # self.embedding_of_self = EmbeddingsAgentSingleton().create_embeddings_for(string_from_dict)  
+         
+        return self_dict, string_from_dict, self.embedding_of_self 
+        
     def introduce_yourself(self, is_brief=True):
         capability_id=17
-        dict_str = json.dumps(self.to_dict(), indent=4)
+        dict, str, embedding = self.to_dict_string_embedding()
         
-        return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{dict_str}"
+        return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{str}"
 
     def tell_me_who_i_am(self):
         you_are = f"You are a {self.agent_type}. "
@@ -346,6 +417,7 @@ class CompressionAgentSingleton(AbstractAgent, CompressionAgentEngine):
  
  
 class EmbeddingsAgentSingleton(AbstractAgent, EmbeddingsAgentEngine):
+    pinecone_api = PineconeApi()
     name = "Embeddings Agent"
     agent_type = "embeddings_agent"
     class_display_name = "Embeddings Agent"
@@ -355,16 +427,11 @@ class EmbeddingsAgentSingleton(AbstractAgent, EmbeddingsAgentEngine):
     _instance = None
     def __new__(cls):
         if cls._instance is None:
-            # print('Creating EmbeddingsAgentSingleton singleton instance')
             cls._instance = super().__new__(cls)
-            # Initialize the class attributes here
-            cls._instance.prompts_since_reminder = 0
-            cls._instance.max_prompts_between_reminders = 5
         return cls._instance
     
     class Meta:
         ordering = None
-
 
 
 class WebSearchAgentSingleton(AbstractAgent, WebSearchAgentEngine):

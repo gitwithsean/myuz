@@ -447,7 +447,7 @@ class Book(AbstractPhusisProject):
         
         for model, fields in models_dict.items():
             book_attributes_str += f"Model: {model}\n"
-            book_attributes_str += "Fields:\n"
+            if fields != None: book_attributes_str += "Fields:\n"
         for field in fields:
             book_attributes_str += f"  - {field}\n"
             book_attributes_str += "\n"

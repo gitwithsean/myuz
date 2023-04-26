@@ -1,8 +1,7 @@
-import mimetypes, PyPDF2, sys, nltk, spacy
 from .apis import *
 from .agent_utils import *
-
 from pprint import pprint
+from termcolor import colored
 
 class AbstractEngine():
     ai_api = OpenAiAPI()
@@ -30,13 +29,13 @@ class AbstractEngine():
     }
     
     def submit_chat_prompt(self, prompt, prompting_agent, responding_agent):
-        print(colored("Submitting chat prompt...", "green"))
+        print(colored("AbstractEngine.submit_chat_prompt(): Submitting chat prompt...", "green"))
         request_data = self.open_ai_chat_data
         request_data['content'] = prompt
         request_data['prompting_agent'] = prompting_agent
         request_data['responding_agent'] = responding_agent
         response = self.ai_api.gpt_chat_response(request_data)
-        print(colored("Chat prompt submitted.", "green"))
+        print(colored("AbstractEngine.submit_chat_prompt(): Chat prompt submitted.\n\n", "green"))
         return prompt, response
         
     def start_engine(self):
@@ -44,13 +43,12 @@ class AbstractEngine():
     
     def wake_up(self):
         capability_id=0
-        print(colored(f"Starting engine for {self.name}...", "green"))
+        print(colored(f"AbstractEngine.wake_up(): Starting engine for {self.name}...", "green"))
         prompt = Prompt().to_wake_up(self)
         prompt, response = self.submit_chat_prompt(prompt, get_user_agent_singleton(), self)
-        pprint(response)
         self.awake = True
         self.most_recent_responses_to['start_engine'] = response
-        print(colored(f"{self.name} engine started.", "green"))
+        print(colored(f"AbstractEngine.wake_up(): {self.name} engine started.", "green"))
         self.save()
         return prompt, response
 
@@ -76,23 +74,23 @@ class AbstractEngine():
     
     def thoughts_concerns_propose_next_steps(self, agent_to_share_with):
         capability_id=6
-        print(colored("Sharing thoughts, concerns, and proposed next steps...", "green"))
+        print(colored("AbstractEngine.thoughts_concerns_propose_next_steps(): Sharing thoughts, concerns, and proposed next steps...", "green"))
         request_data = self.open_ai_chat_data
         request_data['content'] = Prompt().thoughts_concerns_proposed_next_steps(self, agent_to_share_with)
         response = self.submit_chat_prompt(self, request_data['content'], agent_to_share_with)
         self.most_recent_responses_to['thoughts_concerns_proposed_next_steps'] = response
-        print(colored("Thoughts, concerns, and proposed next steps shared.", "green"))
+        print(colored("AbstractEngine.thoughts_concerns_propose_next_steps(): Thoughts, concerns, and proposed next steps shared.", "green"))
         return request_data['content'], response
 
     def submit_state_report_to(self, agent):
         capability_id=7
-        print(colored("Submitting report...", "green"))
+        print(colored("AbstractEngine.submit_state_report_to(): Submitting report...", "green"))
         request_data = self.open_ai_chat_data
         report = self.report()
         request_data['content'] = self.compress_prompt(self, report, agent)
         response = self.submit_chat_prompt(self, request_data['content'], agent)
         self.most_recent_responses_to['report_to'] = response
-        print(colored("Report submitted.", "green"))
+        print(colored("AbstractEngine.submit_state_report_to(): Report submitted.", "green"))
         return request_data['content'], response
 
     def list_productions(self):
@@ -135,7 +133,7 @@ class AbstractEngine():
         }
         
     def report(self):
-        print(colored("Generating report...", "green"))
+        print(colored("AbstractEngine.report(): Generating report...", "green"))
         report = {}
         if self.awake:
             report = {
@@ -154,7 +152,7 @@ class AbstractEngine():
                 "report_from": self.report_from(),
                 "awake": False,
             }
-        print(colored("Report generated.", "green"))
+        print(colored("AbstractEngine.report(): Report generated.", "green"))
         return report
 
  
@@ -175,129 +173,14 @@ class CompressionAgentEngine(AbstractEngine):
         "presence_penalty": 0,
     }
     
-    def compress_prompt(self, prompt, compression_ratio=0.5, prompting_agent=()):
+    def compress(self, text_to_compress, compression_ratio=0.5):
         capability_id=18
-        if prompting_agent == {}: prompting_agent = get_user_agent_singleton()
         request_data = self.open_ai_chat_data
-        request_data['content'] = Prompt().to_compress(prompt, compression_ratio)
-        print(colored("Compressing prompt...", "green"))
-        
-        return self.submit_chat_prompt(prompt, prompting_agent)
-
-
-
-class EmbeddingsAgentEngine(AbstractEngine):
-    pinecone_api = PineconeApi()
-    file_size_limit = 3     # in MB
-    open_ai_chat_data = {
-        "model": "text-embedding-ada-002"
-    }
-    
-    def receive_files(self, files):
-        loaded_files = []
-        
-        for this_file in files:
-            if not os.path.isdir(this_file):
-                file_size = os.path.getsize(this_file) / (1024 * 1024) # Convert size to MB
-                if file_size < self.file_size_limit:                    
-                    loaded_files.append(self.read_file_into_mem(this_file))           
-                else:
-                    pass
-                    #return error about this file
-                    #or break it up into chunks
-            else:
-                print(colored(f"EmbeddingsAgentEngine.receive_files(): skipping {this_file}, we do not currently support loading from sub directories", "yellow"))
-        
-        return loaded_files            
-    
-    def read_file_into_mem(self, file):
-        
-        read_mode = 'r' #default for text files
-        file_content = ""
-        file_type, encoding = mimetypes.guess_type(file)
-        
-        if file_type == "application/pdf":
-            read_mode = 'rb'    #for binary files
-            
-        with open(file, read_mode) as f:
-            if(file_type == "application/pdf"):                 # Handling PDF files
-                pdf_reader = PyPDF2.PdfFileReader(f)
-                for i in range(pdf_reader.getNumPages()):
-                    page = pdf_reader.getPage(i)
-                    file_content += page.extractText()
-            else:                                               # Handling basic text files
-                file_content = f.read()
-            
-        return {"file_type": file_type, "local_file_path": os.path.abspath(file), "content": file_content}
-       
-    def tokenize_text(self, text):
-        text_size = sys.getsizeof(text)  # Get the size of the text in bytes
-
-        if text_size < 1024 * 1024:  # If the text size is less than 1 MB, use NLTK
-            sentences = nltk.sent_tokenize(text)
-        else:  # If the text size is 1 MB or more, use spaCy            
-            # Load spaCy's English model
-            nlp = spacy.load("en_core_web_sm")  
-            doc = nlp(text)
-            sentences = [sent.text for sent in doc.sents]
-
-        return sentences
-    
-    def create_embeddings_for(self, data):
-        capability_id=16
-        texts_to_embed = []
-        if isinstance(data, str):       # if data is a string, add string to texts_to_embed array
-            print(colored(f"EmbeddingsAgentEngine.create_embeddings_for(): Loading text to embed...", "green"))
-            text_data = {"content": data}
-            texts_to_embed.append(text_data)      
-        elif 'files' in data:           # if data is list of files, process and set as texts_to_embed array
-            print(colored(f"EmbeddingsAgentEngine.create_embeddings_for(): Loading list of files to embed...", "green"))
-            texts_to_embed = self.receive_files(data['files'])   
-        elif 'texts' in data:           # if list of texts, set as texts_to_embed
-            print(colored(f"EmbeddingsAgentEngine.create_embeddings_for(): Loading list of texts to embed...", "green"))
-            texts_to_embed = (data['texts'])   
-        else:
-            error_msg = """
-            ERROR in EmbeddingAgentEngine.create_embeddings_for()
-            Incorrect input type for function create_embeddings_for
-            Accepted inputs:
-                data : { files : ["list", "of", "file", "paths", "for", "embedding"] }
-                data : { texts : ["list", "of", "texts", "for", "embedding"] }
-                data : "single text for embedding"
-            Received input:\n
-            """
-            print(colored(error_msg, "red"))
-            pprint(data)
-
-        #process text, get embeddings, upsert to pinceone
-        for text_data in texts_to_embed:             #TODO parallelization? maybe too many api calls
-            print(colored(f"EmbeddingsAgentEngine.create_embeddings_for(): tokenizing text(s)...", "green"))
-            print(text_data)
-            text_data['tokenized_content'] = self.tokenize_text(text_data['content'])            
-            print(colored(f"EmbeddingsAgentEngine.create_embeddings_for(): getting embeddings for tokenized text...", "green"))
-            text_data['embeddings'] = self.ai_api.get_embedding_for(text_data['tokenized_content'])
-            print(colored(f"EmbeddingsAgentEngine.create_embeddings_for(): upserting embeddings to pinecone and adding to local db...", "green"))
-            self.pinecone_api.upsert_embedding(text_data)
-        
-    def embed_files_from_dir(self, dir_path='./phusis/files_to_embed/'):
-        capability_id=17
-        print(colored(f"EmbeddingsAgentEngine.embed_files_from_dir(): Embedding files in {dir_path}", "green"))
-        file_list = [os.path.join(dir_path, f) for f in os.listdir(dir_path)]
-        self.create_embeddings_for({'files': file_list})
-    
-
-
-
-class WebSearchAgentEngine(AbstractEngine):
-    gooogle_api = GoogleApi()
-    def perform_google_search(self, query):
-        #
-        capability_id=19
-        print(colored(f"WebSearchAgentEngine.perform_google_search(): Performing Google search for {query}", "green"))
-        
-        return self.gooogle_api.get_google_search_results(query)
-    
-     
+        prompt = Prompt().to_compress(text_to_compress, compression_ratio)
+        print(colored("CompressionAgentEngine.compress_prompt(): Compressing prompt...", "green"))
+        p, response = self.submit_chat_prompt(prompt, get_user_agent_singleton(), self)
+        return response
+   
  
 class OrchestrationEngine(AbstractEngine):
     auto_mode = False
@@ -316,14 +199,11 @@ class OrchestrationEngine(AbstractEngine):
         
         latest_swarm_reports = self.latest_swarm_reports
         swarm_produced_files = self.swarm_produced_files
-        recent_script_entries = project.script_for.recent_script_entries()
-        print("recent script entries", recent_script_entries)
         print(colored("OrchestrationEngine.assess_project(): Producing prompt for assess_project()...", "green"))
         #From that data, produce assessment prompt
         prompt = Prompt().to_assess(
             self, {
                 "project": project, 
-                "script_entries": recent_script_entries, 
                 "swarm_reports": latest_swarm_reports, 
                 "swarm_produced_files": swarm_produced_files
             }
@@ -366,46 +246,46 @@ class OrchestrationEngine(AbstractEngine):
         prompt = prompt + f"And as a reminder, this is who you are:\n\n{self.original_data}"
         
         compressed_prompt = get_compression_agent_singleton().compress_prompt(prompt, 0.5)
-        print(colored("Amending project...", "green"))
+        print(colored("OrchestrationEnginne.amend_project(): Amending project...", "green"))
         response = self.ai_api.submit_chat_prompt(self, compressed_prompt, get_user_agent_singleton())
         self.most_recent_responses_to['amend_project'] = response
         return compressed_prompt, response
           
     def resume_project(self):
         capability_id=103
-        print(colored("Resuming project...", "green"))
+        print(colored("OrchestrationEnginne.resume_project(): Resuming project...", "green"))
         #for now, just print the data so we can assess it!
-        print(self.most_recent_responses_to['amend_project'])
+        print(colored(f"OrchestrationEnginne.resume_project(): {self.most_recent_responses_to['amend_project']})", 'green'))
 
     def provide_orchestrators_report_to_user():
         pass
     
     def establish_project_objective(self, project):
-        print(self)
+        print(colored(f"OrchestrationEnginne.establish_project_objective(): {self}", "green"))
         prompt = Prompt().to_establish_project_objective(project, self)
         objectives_prompt, objectives_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
-        add_script_entries_for_each_agent(project, get_user_agent_singleton(), objectives_prompt, self, objectives_response)
         return objectives_response
     
     def assess_project_state(self, project):
+        print(colored(f"OrchestrationEnginne.assess_project_state(): {self}", "green"))
         prompt = Prompt().to_assess_project_state(project, self)
         project_state_prompt, project_state_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
-        add_script_entries_for_each_agent(project, get_user_agent_singleton(), project_state_prompt, self, project_state_response)
         return project_state_response
     
     def crud_agents_to_parts_of_project(self, project):
+        print(colored(f"OrchestrationEnginne.crud_agents_to_parts_of_project(): {self}", "green"))
         pass
     
     def routine(self, project):
         #establish goals of the project
         if project.orc_agent_set_objectives == '': 
             project.orc_agent_set_objectives = self.establish_project_objective(project)
-            print(project.orc_agent_set_objectives)
+            print(colored(f"OrchestrationEnginne.routine(): Project objectives set by Orchestrator {project.orc_agent_set_objectives}", "green"))
         else:
             #reassess project objectives
             pass    
-        project_state_response = self.assess_project_state(project)
-        print(project_state_response)
+        project_state_assessment_response = self.assess_project_state(project)
+        print(colored(f"OrchestrationEnginne.routine(): Project state assessment by Orchestrator {project_state_assessment_response}", "green"))
         user_input = input("hit enter to continue...")
         # self.crud_agents_to_parts_of_project(project, project_state_response)
         # self.run_agents(project)

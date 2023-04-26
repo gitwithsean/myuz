@@ -145,9 +145,9 @@ class AgentCreatedTrait(AbstractAgentAttribute):
     agent_created_trait_values = models.JSONField(null=True, blank=True, default=list)
     
     def set_data(self, properties_json):
-        pprint(properties_json)
-        print(properties_json.get('trait_field'))
-        print(properties_json.get('trait_value'))
+        # pprint(properties_json)
+        # print(properties_json.get('trait_field'))
+        # print(properties_json.get('trait_value'))
         self.agent_created_trait_field = properties_json.get('trait_field', self.agent_created_trait_field)
         self.agent_created_trait_values.append(properties_json.get('trait_value'))
         self.elaboration = properties_json.get('elaboration', self.elaboration)
@@ -180,10 +180,10 @@ def find_agent_attribute_by(attribute_name, attribute_class=AbstractAgentAttribu
     else:
         for instance in attribute_class.objects.all():
             if instance.name == attribute_name:
-                print(f"find_agent_attribute_by(): FOUND: {attribute_class}, {instance}")            
+                print(colored(f"find_agent_attribute_by(): FOUND: {attribute_class}, {instance}", "green"))            
                 return attribute_class, instance
            
-    print(f"find_agent_attribute_by(): NOT FOUND: {attribute_class}, {attribute_name}")
+    print(colored(f"find_agent_attribute_by(): NOT FOUND: {attribute_class}, {attribute_name}", "red"))
     
     data = {
         "class_name": attribute_class.__name__,
@@ -196,13 +196,6 @@ def find_agent_attribute_by(attribute_name, attribute_class=AbstractAgentAttribu
 
 
 def is_valid_init_json(json_data):
-    
-    # print("HER LOOK HERE")
-    # pprint(json_data)
-    
-    # print(f"{json_data['class_name']}")
-    # print(f"{json_data['properties']}")
-    # print(f"{json_data['properties']['name']}")
     if not 'class_name' in json_data or not 'properties' in json_data or not 'name' in json_data['properties']:
         return False
     else:

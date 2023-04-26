@@ -7,6 +7,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from pprint import pprint
 from rest_framework import serializers
 from django.apps import apps
+from abc import abstractmethod
+from termcolor import colored
 
 class NovellerModelDecorator(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
@@ -24,9 +26,13 @@ class NovellerModelDecorator(models.Model):
     def set_name():
         pass
     
+    @abstractmethod
+    def get_brief():
+        pass
+    
     # NovellerModelDecorator set_data
     def set_data(self, properties_dict):
-        pprint(properties_dict)
+        # pprint(properties_dict)
         for key, value in properties_dict.items():
             # Get the field instance
             field = self._meta.get_field(key)
@@ -53,7 +59,7 @@ class NovellerModelDecorator(models.Model):
             else:
                 # Handle other attribute types as needed
                 
-                print(f"key: {key}\nvalue: {value}\nfield: {field}\n")
+                # print(f"key: {key}\nvalue: {value}\nfield: {field}\n")
                 setattr(self, key, value)
         self.save()        
         
@@ -68,6 +74,21 @@ class TargetAudience(NovellerModelDecorator):
 class Plot(NovellerModelDecorator):
     book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_plots', null=True)
     events_of_plot = models.ManyToManyField('PlotEvent', blank=True)
+    
+    def get_brief(self):
+        plot_events_to_brief = ""
+        if self.events_of_plot:
+            plot_events_to_brief = "- Events:\n"
+            i = 1
+            for plot_event in self.events_of_plot.all():
+                plot_events_to_brief += f"  {i}: {plot_event.description} \n"
+                i = i + 1
+            
+        brief = "### Plot Brief \n"
+        brief += f"- Plot: {self.name} \n"
+        brief += f"- Events: {self.events_of_plot} \n"
+        
+        return brief
         
 class PlotEvent(NovellerModelDecorator):
     for_plot = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_events', null=True)
@@ -206,6 +227,28 @@ class Character(NovellerModelDecorator):
     permanent_characteristics = models.TextField(blank=True, null=True)
     versions = models.ManyToManyField('CharacterVersion', blank=True, related_name='version_of_character')
     character_arc = models.TextField(blank=True, null=True)
+    
+    def get_brief(self):  
+        brief = "### Character Brief \n"
+        brief += f"- Name: {self.name} \n"
+        
+        if self.age_at_start: brief += f"- Age: {self.age_at_start} \n"
+        
+        if self.gender: brief += f"- Gender: {self.gender}\n"
+        
+        if self.sex: brief += f"- Sex assigned at Birth: {self.sex}\n"
+        
+        if self.sexuality: brief += f"- Sexuality: {self.sexuality}\n"
+        
+        if self.origin: brief += f"- Origin: {self.origin}\n"
+        
+        if self.representative_of: brief  += f"- Themes: {[literary_theme.name for literary_theme in self.representative_of.all()]}\n"
+        
+        if self.permanent_characteristics: brief += f"- Permanent Characteristics: {self.permanent_characteristics}\n"
+        
+        if self.versions: brief += f"- Versions: {[version.name for version in self.versions.all()]}\n"
+        
+        return brief
 
 class CharacterVersion(NovellerModelDecorator):
     for_character = models.ForeignKey('Character', blank=True, on_delete=models.SET_NULL, null=True)
@@ -384,8 +427,10 @@ class Book(AbstractPhusisProject):
     from_app = models.CharField(max_length=200, default='noveller')
     elaboration = models.TextField(blank=True, null=True)
     settings = models.ManyToManyField(Setting, blank=True, related_name='book_settings')
+    ##NEEDS plot.get_brief() method
     plots = models.ManyToManyField(Plot, blank=True, related_name='books_events')
     chapters = models.ManyToManyField(Chapter, blank=True, related_name='books_chapters')
+    ##NEEDS character.get_brief() method
     characters = models.ManyToManyField(Character, blank=True, related_name='characters_book_characters')
     themes = models.ManyToManyField(LiteraryTheme, blank=True, related_name='book_themes')
     genres = models.ManyToManyField(Genre, blank=True, related_name='book_genres')
@@ -401,6 +446,36 @@ class Book(AbstractPhusisProject):
         #                  models.Q(app_label='phusis', model='researchagent')
     )
     
+    
+    def convert_array_to_md_list(self, array):
+        md_list=""
+        for item in array:
+            md_list += f"- {item}\n"
+    
+    def project_brief(self):
+        
+        brief = "# PROJECT BRIEF \n"
+        brief += f"## Project Type: {self.project_type} \n"
+        brief += f"## Name: {self.name} \n"
+        
+        if self.orc_agent_set_objectives: brief += f"## Goals: {self.orc_agent_set_objectives} \n"
+        
+        if self.genres: brief += f"## Genres: {self.convert_array_to_md_list([genre.name for genre in self.genres.all()])} \n"
+        
+        if self.plots: brief += f"## Plots: {self.convert_array_to_md_list([plot.get_brief() for plot in self.plots.all()])} \n"
+        
+        if self.characters: brief += f"## Characters: {[character.get_brief() for character in self.characters.all()]} \n"
+        
+        if self.settings: brief += f"## Settings: {self.convert_array_to_md_list([setting.name for setting in self.settings.all()])} \n"
+        
+        if self.themes: brief += f"## Themes: {self.convert_array_to_md_list([theme.name for theme in self.themes.all()])} \n"
+        
+        if self.target_audiences: brief += f"## Target Audiences: {self.convert_array_to_md_list([audience.name for audience in self.target_audiences.all()])} \n"
+        
+        if self.elaboration: brief += f"## Elaboration: {self.elaboration} \n"
+        
+        return brief
+    
     def add_agents_to(self, agents):
         for agent in agents:
             agent_content_type = ContentType.objects.get_for_model(agent)
@@ -409,8 +484,7 @@ class Book(AbstractPhusisProject):
             self.save()
             agent.save()
         
-        print("SHOWING AGENTS JUST ASSIGNED TO BOOK")
-        pprint(self.get_agents_for())    
+        print(colored(f"Book.add_agents_to(): Agents assigned to book:\n{self.get_agents_for()}", "green")) 
             
     def get_agents_for(self):
         agent_relationships = AgentBookRelationship.objects.filter(book=self)
@@ -423,17 +497,9 @@ class Book(AbstractPhusisProject):
                 agent = agent_content_type.get_object_for_this_type(pk=agent_object_id)
                 agents.append(agent)
             except ObjectDoesNotExist:
-                print(f"Warning: Agent with content_type={agent_content_type} and object_id={agent_object_id} not found")
+                print(f"Book.get_agents_for(): Warning! Agent with content_type={agent_content_type} and object_id={agent_object_id} not found")
 
         return agents
-
-    def to_dict(self):
-        return {
-            "name": self.name,
-            "project_type": self.project_type,
-            "project_workspace": self.project_workspace,
-            "agents_for_project": self.get_agents_for()
-        }
     
     def list_project_attributes(self):
         book_attributes_str = f"These are the various attributes, and their sub attributes of {self.name}:\n"
@@ -469,7 +535,7 @@ class Book(AbstractPhusisProject):
 
                 # Find the related objects using find_attribute_by function
                 for attr_name in value:
-                    print(f"{field.related_model} {attr_name}")
+                    # print(colored(f"Book.set_data(): {field.related_model} {attr_name}", "green"))
                     attr_clas, attr_instance = find_and_update_or_create_attribute_by(attr_name, field.related_model)
                     related_objects.append(attr_instance)
 
@@ -479,15 +545,6 @@ class Book(AbstractPhusisProject):
                 # Handle other attribute types as needed
                 setattr(self, key, value)
         self.save()  
-                
-# class BookSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Book
-#         fields = '__all__' 
-        
-# def serialize(obj):
-#     instance = Book.objects.first()
-#     serializer = BookSerializer(instance)
     
 
 

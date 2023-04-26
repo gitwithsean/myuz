@@ -7,153 +7,7 @@ from termcolor import colored
 from django.db import models
 from abc import ABC, abstractmethod
 from .agent_attributes import *
-from .agent_engines import AbstractEngine, OrchestrationEngine, WritingAgentEngine, CompressionAgentEngine, EmbeddingsAgentEngine, WebSearchAgentEngine
-from .agent_utils import get_user_agent_singleton, get_phusis_project_workspace
-from datetime import datetime
-from django.contrib.postgres.fields import ArrayField
-from django.db.models.functions import Lower
-
-
-class PhusisScript(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, unique=True)
-    in_debug_mode = True
-    script_content = ArrayField(models.JSONField(), default=list)
-    class_display_name = 'Swarm Script'
-    script_file_name = models.CharField(max_length=200, default="")
-    path_to_script = models.CharField(max_length=200, default="", blank=True, null=True)
-    
-    class Meta:
-        ordering = ['name']
-    
-    def __str__(self):
-        return f"{self.class_display_name} for {self.name}"
-            
-    def setup(self, name):
-        self.name = name
-        self.path_to_script=f"{get_phusis_project_workspace(self.__class__.__name__, self.name)}/logs"        
-        self.script_file_name = f"{self.name}_script_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.json"
-        self.script_content = []
-
-    def script_to_text(self):
-        txt = ""
-        for entry in self.script_content:
-            s = f"speaker_name: {entry.get('speaker_name', '')}\n"
-            s = f"text: {entry.get('text', '')}\n\n"
-            txt = f"{txt}\n\n{s}"
-        return txt 
-
-    def save_script_to_file(self):
-        print(colored(f"Saving script to {self.path_to_script}{self.script_file_name}", "green"))
-
-        with open(f"{self.path_to_script}{self.script_file_name}", "w") as f:
-            script_content_json = json.loads(self.script_content)
-            json.dump({"script": {"script_entries": script_content_json}}, f, indent=4) 
-        
-    def add_script_entry(self, prompter, prompt, responder, response):
-        capability_id=14
-        time_stamp = datetime.utcnow().strftime("%Y.%m.%d.%H.%M.%s_%Z")
-        prompt_and_response = {
-            "time_stamp" : time_stamp,
-            "prompt_entry" : {
-                "is_prompt": True,
-                "agent": f"{prompter.id}",
-                "prompter_name": prompter.name,
-                "time_stamp": time_stamp,
-                "content": prompt
-            },
-            "response_entry" : {
-                "is_prompt": False,
-                "agent": f"{responder.id}",
-                "responder_name": responder.name,
-                "time_stamp": time_stamp,
-                "content": response
-            }
-        }
-        print(colored("Adding prompt_and_response script entry...", "green"))
-        self.script_content.append(prompt_and_response)
-        self.save()
-        if self.in_debug_mode:
-            print(prompt_and_response)
-            
-    def recent_script_entries(self, num_entries=5):
-        capability_id=15
-        print(colored(f"Retrieving {num_entries} most recent prompt_and_response script entries...", "green"))
-        i = 0
-        recent_entries = []
-        
-        print(self.script_content) 
-        #if self.script-content is not emtpy
-        if self.script_content:       
-            for script_entry in reversed(self.script_content):
-                print(script_entry)
-                recent_entries.append(script_entry)
-                num_entries = num_entries - 1
-                if num_entries == 0:
-                    break
-            print(f"recent_entries: {recent_entries}")    
-            return recent_entries
-        
-            # print(f"recent_entries: {recent_entries}")   
-            # json_recent_entries = json.loads(recent_entries) 
-            # return json_recent_entries
-        else:
-            return None
-
-    def convert_last_n_number_of_entries_to_api_format(self, num_entries=5):
-        capability_id=-1
-        converted_entries = []
-        print(colored(f"Converting {num_entries} most recent prompt_and_response script entries to API format...", "green"))
-        entries = self.recent_script_entries(num_entries)
-        if entries.__len__ == 0:
-            return []
-        else:
-            for entry in entries:
-                print(colored(entry, "green"))
-                # entry_json_loaded = json.loads(entry)
-                # pprint(colored(entry_json_loaded, "yellow"))
-                prompt_entry = entry['prompt_entry']
-                print(colored(f"PROMPT ENTRY: \n{prompt_entry}", "green"))
-                
-                prompt_entry_content = prompt_entry["content"]
-                
-                prompt_entry_content = prompt_entry_content.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
-                
-                converted_prompt_entry = {"role": "user", "content": prompt_entry_content}
-                
-                # converted_prompt_entry = json.loads({"role": "user", "content": prompt_entry["content"]})
-                converted_entries.append(converted_prompt_entry)
-                
-                response_entry = entry['response_entry']
-                print(colored(f"RESPONSE ENTRY: \n{response_entry}", "green"))
-                
-                response_entry_content = response_entry["content"]["content"]
-                
-                response_entry_content = response_entry_content.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
-                
-                converted_response_entry = {"role": "assistant", "content": response_entry_content}
-                
-                # converted_response_entry = json.loads({"role": "assistant", "content": response_entry["content"]})
-                converted_entries.append(converted_response_entry)
-    
-                return converted_entries
-
-        return converted_entries
-
-class File(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    path_to_file = models.CharField(max_length=255)
-
-
-
-class Vector(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    content = models.TextField(blank=False)
-    embeddings = models.TextField(blank=False)
-    
-    def is_file(self):
-        return os.path.isfile(self.data)
-
+from .agent_engines import AbstractEngine, OrchestrationEngine, WritingAgentEngine, CompressionAgentEngine
 
 
 class AbstractAgent(models.Model, AbstractEngine):
@@ -169,8 +23,7 @@ class AbstractAgent(models.Model, AbstractEngine):
     steps_taken = models.JSONField(default=list, blank=True)
     capabilities = models.ManyToManyField('AgentCapability', blank=True)
     embedding_of_self = models.TextField(blank=True)
-    files_produced = models.ManyToManyField(File, blank=True,  related_query_name='produced_by')
-    script_for = models.ForeignKey(PhusisScript, on_delete=models.PROTECT, null=True, blank=True)
+    chat_logs = models.ManyToManyField('ChatLog', blank=True)
     
     #Traits
     goals = models.ManyToManyField(AgentGoal, blank=True)
@@ -207,6 +60,16 @@ class AbstractAgent(models.Model, AbstractEngine):
     def __str__(self):
         return f"{self.name}"        
 
+        
+    def add_to_chat_logs(self, prompt, response):
+        
+        print(colored(f"AbstractAgent.add_to_chat_logs: prompt:\n{prompt} \nresponse:\n{response}", "yellow"))
+        
+        new_chat_log = ChatLog(prompt=prompt, response=response, responder_name=self.name, responder_type=self.agent_type, responder_id=self.id)
+        self.chat_logs.add(new_chat_log)
+        self.save()
+        return new_chat_log
+        
     def set_data(self, properties_dict):
         for key, value in properties_dict.items():
             # Get the field instance
@@ -222,7 +85,7 @@ class AbstractAgent(models.Model, AbstractEngine):
 
                 # Find the related objects using find_agent_attribute_by function
                 for attr_name in value:
-                    print(f"{field.related_model} {attr_name}")
+                    # print(f"{field.related_model} {attr_name}")
                     attr_clas, attr_instance = find_agent_attribute_by(attr_name, field.related_model)
                     related_objects.append(attr_instance)
 
@@ -232,14 +95,8 @@ class AbstractAgent(models.Model, AbstractEngine):
                 # Handle other attribute types as needed
                 setattr(self, key, value)
 
-    
-    def embed(self):
-        if self.embedding_of_self == '':
-            self.embedding_of_self = EmbeddingsAgentSingleton.create_embeddings_for(self)   
         
-        return self.embedding_of_self
-        
-    def to_dict_string_embedding(self):
+    def to_dict_and_string(self):
         self_dict = {
             "name": self.name,
             "agent_type": self.agent_type,
@@ -297,23 +154,33 @@ class AbstractAgent(models.Model, AbstractEngine):
         if self_dict['subtr']: string_from_dict += f"  -SUBTR: {self_dict['subtr']}"
           
         string_from_dict = string_from_dict.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
-        
-        # print(colored(f"string_from_dict: {string_from_dict}", "yellow"))
-        
-        # self.embedding_of_self = EmbeddingsAgentSingleton().create_embeddings_for(string_from_dict)  
          
-        return self_dict, string_from_dict, self.embedding_of_self 
+        return self_dict, string_from_dict
         
     def introduce_yourself(self, is_brief=True):
         capability_id=17
-        dict, str, embedding = self.to_dict_string_embedding()
+        dict, str, embedding = self.to_dict_and_string()
         
         return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{str}"
 
-    def tell_me_who_i_am(self):
-        you_are = f"You are a {self.agent_type}. "
 
-
+class ChatLog(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    prompt = models.TextField(blank=False, null=False)
+    response = models.TextField(blank=False, null=False)
+    compressed_prompt_content = models.TextField(blank=True, null=True)
+    compressed_response_content = models.TextField(blank=True, null=True)
+    responder_name = models.CharField(max_length=200, default='', blank=False, null=False)
+    responder_type = models.CharField(max_length=200, default='', blank=False, null=False)
+    responder_id = models.UUIDField(default=uuid.uuid4, auto_created=True, editable=False)
+    
+    def convert_log_to_chain_objects(self):
+        if not self.compressed_prompt_content: self.compressed_prompt_content = CompressionAgentSingleton().compress(self.prompt, 0.3)
+        if not self.compressed_response_content: self.compressed_response_content = CompressionAgentSingleton().compress(self.prompt, 0.3)
+        self.save()
+        prompt_obj = {"role": "user", "content": f"{self.compressed_prompt_content}"}
+        response_obj = {"role": "assistant", "content": f"{self.compressed_response_content}"}
+        return [prompt_obj, response_obj]
 
 class AbstractPhusisProject(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
@@ -322,8 +189,6 @@ class AbstractPhusisProject(models.Model):
     project_user_input = models.TextField(blank=True, default='')
     project_workspace = models.CharField(max_length=200, default='', blank=True, null=True)
     orc_agent_set_objectives = models.TextField(blank=True, default='')
-    
-    script_for = models.ForeignKey(PhusisScript, on_delete=models.PROTECT, null=True, blank=True)
     agents_for_project = models.ManyToManyField(
         AbstractAgent, related_name='projects_for_agent', blank=True
     )
@@ -338,11 +203,6 @@ class AbstractPhusisProject(models.Model):
         ordering = ['name']
     
     def set_data(self, properties_dict):
-        if not self.script_for:
-            phusis_script = PhusisScript.objects.update_or_create(name=f"chat_script_for_{self.project_type}_{self.name}")
-            phusis_script.save()
-            self.script_for = phusis_script
-            self.save()
         for key, value in properties_dict.items():
             attr_type = type(getattr(self, key))
             if attr_type == list:
@@ -350,13 +210,7 @@ class AbstractPhusisProject(models.Model):
             else:
                 setattr(self, key, value)
     
-        self.project_workspace = get_phusis_project_workspace(self.project_type, self.name)
-    
-    def embed(self):
-        if self.project_embedding == '':
-            self.project_embedding = EmbeddingsAgentSingleton.embed_project(self)   
-        
-        return self.project_embedding
+        # self.project_workspace = get_phusis_project_workspace(self.project_type, self.name)
     
     @abstractmethod
     def list_project_attributes(self):
@@ -375,13 +229,16 @@ class AbstractPhusisProject(models.Model):
         pass
     
     @abstractmethod
+    def project_brief(self):
+        pass
+    
+    @abstractmethod
     def get_schema_for(self):
         pass
 
     @abstractmethod
     def serialized(self):
         pass
-
 
 
 
@@ -407,36 +264,8 @@ class CompressionAgentSingleton(AbstractAgent, CompressionAgentEngine):
     _instance = None
     def __new__(cls):
         if cls._instance is None:
-            # print('Creating PromptBuilder singleton instance')
-            cls._instance = super().__new__(cls)
-            # Initialize the class attributes here
-            cls._instance.prompts_since_reminder = 0
-            cls._instance.max_prompts_between_reminders = 5
-        return cls._instance
-
- 
- 
-class EmbeddingsAgentSingleton(AbstractAgent, EmbeddingsAgentEngine):
-    pinecone_api = PineconeApi()
-    name = "Embeddings Agent"
-    agent_type = "embeddings_agent"
-    class_display_name = "Embeddings Agent"
-    expose_rest = False
-    capabilities = [{"capability_id":16},{"capability_id":17}]
-    
-    _instance = None
-    def __new__(cls):
-        if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
-    
-    class Meta:
-        ordering = None
-
-
-class WebSearchAgentSingleton(AbstractAgent, WebSearchAgentEngine):
-    agent_type = "web_search_agent"
-    class_display_name = "Web Search Agent"
 
 
 class PoeticsAgent(AbstractAgent):
@@ -554,14 +383,9 @@ def load_agent_model_and_return_instance_from(json_data):
         if json_data['class_name'] in globals():
             model_class = apps.get_model("phusis", f"{json_data['class_name']}")
         else: 
-            print(colored(f"models.create_agent_model_from_instance: class_name {json_data['class_name']} not found in globals()", "red"))
+            print(colored(f"agent_models.create_agent_model_from_instance: class_name {json_data['class_name']} not found in globals()", "red"))
 
         new_agent_obj, created = model_class.objects.update_or_create(name=json_data['properties']['name'])
-        
-        if not new_agent_obj.script_for:
-            phusis_script, created= PhusisScript.objects.update_or_create(name=json_data['properties']['name'])
-            phusis_script.save()
-            new_agent_obj.script_for = phusis_script
         
         new_agent_obj.set_data(json_data['properties'])
         # new_agent_obj.save()
@@ -571,10 +395,10 @@ def load_agent_model_and_return_instance_from(json_data):
         # new_agent_obj.save()
         s = "found and updated"
         if created: s = "created"
-        print(colored(f"load_agent_model_and_return_instance_from: {new_agent_obj.name} {s}", "green"))
+        print(colored(f"agent_models.load_agent_model_and_return_instance_from: {new_agent_obj.name} {s}", "green"))
         
     else:
-        print(colored(f"models.create_agent_model_from_instance: JSON data for agent not valid, expected schema below","red"))
+        print(colored(f"agent_models.create_agent_model_from_instance: JSON data for agent not valid, expected schema below","red"))
         print(colored(f"Data received: {json_data}", "red"))
         print(colored(f"Minimum expected: {expected_json}", "yellow"))
 

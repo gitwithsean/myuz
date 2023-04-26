@@ -86,7 +86,7 @@ DATABASES = {
         'USER': os.environ['MYUZ_DB_USER'],
         'PASSWORD': os.environ['MYUZ_DB_PW'],
         'HOST': 'localhost',
-        'PORT': '',
+        'PORT': '5432',
     }
 }
 

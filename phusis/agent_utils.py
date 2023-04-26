@@ -2,9 +2,10 @@ import os, re
 from termcolor import colored
 from django.apps import apps
 from django.db.models.fields import CharField
-from .agent_models import *
 from django.core.exceptions import ObjectDoesNotExist
-
+# from .agent_models import *
+# from .agent_memory import ProjectMemory
+# from .apis import OpenAiAPI
 
 PROJECT_ROOT="myuz"
 INCOMING_FILES="/files_to_embed/"
@@ -45,7 +46,6 @@ def model_has_content_and_content(model):
 
 
 def camel_case_to_underscore(name):
-    print(f"NAME {name}")
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
@@ -69,28 +69,19 @@ def is_valid_init_json(json_data):
         return True
 
 
-def add_script_entries_for_each_agent(project, sender, prompt, responder, response):
-    
-    from .agent_models import PhusisScript
-    
-    if project.script_for is None:
-        project.script_for, created = PhusisScript.objects.update_or_create(name=f"chat_script_for_{project.project_type}_{project.name}")
-        project.script_for.setup(f"chat_script_for_{project.project_type}_{project.name}")
-    
-    for agent in [sender, responder]:
-        if agent.script_for is None:
-            agent.script_for, created = PhusisScript.objects.update_or_create(name=f"{project.project_type}_{project.name}_chat_script_for_{agent.agent_type}_{agent.name}")
-            agent.script_for.setup(f"{project.project_type}_{project.name}_chat_script_for_{agent.agent_type}_{agent.name}")
+def memorize_chat(prompt, response, responder):
+    from phusis.agent_memory import ProjectMemory
+    new_chat_log = responder.add_to_chat_logs(prompt, response)
+    ProjectMemory().add_chat_log_db_instance_to_pinecone_memory(new_chat_log)
 
-    print(colored("this what we are sending to script\n", "yellow"))
-    pprint(f"PROMPT: {prompt}\n\n")
-    pprint(f"RESPONSE: {response}\n\n")
-    project.script_for.add_script_entry(sender, prompt, responder, response)    
-    sender.script_for.add_script_entry(sender, prompt, responder, response)    
-    responder.script_for.add_script_entry(sender, prompt, responder, response)    
-    project.save()
-    sender.save()
-    responder.save()
+def memorize_chat(chat_log):
+    from phusis.agent_memory import ProjectMemory
+    # print(colored(f"agent_uitls.memorize_chat(): {chat_log}", "yellow"))
+    ProjectMemory().add_chat_log_db_instance_to_pinecone_memory(chat_log)    
+
+def get_embeddings_for(text):
+    from phusis.apis import OpenAiAPI
+    return OpenAiAPI().get_embeddings_for(text)
 
 
 def get_user_agent_singleton():
@@ -103,16 +94,16 @@ def get_compression_agent_singleton():
     return CompressionAgentSingleton()
 
 
+def get_project_memory_singleton():
+    from phusis.agent_memory import ProjectMemory
+    return ProjectMemory()
+
 class Prompt():
     expose_rest = False
     _instance = None
     def __new__(cls):
         if cls._instance is None:
-            # print('Creating PromptBuilder singleton instance')
             cls._instance = super().__new__(cls)
-            # Initialize the class attributes here
-            cls._instance.prompts_since_reminder = 0
-            cls._instance.max_prompts_between_reminders = 5
         return cls._instance
     
     def complete_prompt(self, prompt, prompter):
@@ -135,19 +126,18 @@ class Prompt():
         else:                          
             s="I'm glad to have your expertise on this project."
         
-        prompt = f"You are {agent}, {s}. You will use your skills to the BEST of your ability to serve me, the human user, I will tell you our objective soon, but first, about you. {self.to_remind(agent)}"
+        prompt = f"You are {agent}, {s}. You will use your skills to the BEST of your ability to serve me, the human user, I will tell you our objective soon, but first, about you. {self.to_remind(agent)}\n\nPlease respond only that you understand, and are ready to proceed."
 
         # print(colored(f"Prompt.to_wake_up: prompt set to \n{prompt}", "yellow"))
 
         return prompt
     
     def to_establish_project_objective(self, project, agent):
-        project_models_dict, project_mdodels_str = project.list_project_attributes()
-        prompt = f"Here is a summary of the objectives of the project.\nWe are working on a {project.project_type}\n"
-        prompt += f"This type of project has the following attributes:\n{project_mdodels_str}\n"
+        project_models_dict, project_models_str = project.list_project_attributes()
+        prompt = f"{project.project_brief()}\n\n"
+        prompt += f"### Project Attributes:\n{project_models_str}\n\n"
         prompt += f"Using the informtation provided, please give your assessment of the overall, high level goals of the project (we will get into the specific tasks later).\n"
-        prompt += f"Keep your response limited to this schema:\n"
-        prompt += 'response:{"goals":["goal one of the project","goal two of the project","goal three of the project"]}'
+        prompt += f"Please respond in markdown format."
         return self.auto_reminder(prompt, agent)
     
     def to_assess_project_state(self, project, agent):
@@ -201,7 +191,7 @@ class Prompt():
         return self.auto_reminder(prompt, agent) 
     
     def to_remind(self, agent):
-        dict, str, embedding  = agent.to_dict_string_embedding()      
+        dict, str = agent.to_dict_and_string()      
         prompt = f"Here is your character description: {str}"
         
         # print(colored(f"PromptBuilderSingleton().to_remind: prompt set to {prompt}", "yellow"))

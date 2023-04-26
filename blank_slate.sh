@@ -5,6 +5,7 @@ Usage: $(basename "$0") [OPTIONS]
 
 Options:
   db:       Drop and recreate the myuz database. 
+  db_init:  Depends on db being set - intits the db with agents and book
   venv:     Delete and recreate the Python virtual environment. 
   pinecone: Delete and recreate the myuz pinecone index. 
   --help:   Display this help and exit. 
@@ -35,8 +36,8 @@ do
             echo 'db detected'
             REINIT_DB=true
             ;;
-        db_data)
-            echo 'db_data detected'
+        db_init)
+            echo 'db_init detected'
             REINIT_DB_DATA=true
             ;;
         venv)
@@ -91,10 +92,9 @@ if [ $REINIT_DB == true ]; then
     echo "REINIT_DB_DATA ${REINIT_DB_DATA}"
 
     if [ $REINIT_DB_DATA == true ]; then
-        python manage init_db
+        python manage init_agents phusis
+        python manage init_book noveller
     fi
-    # python3 manage.py makemigrations phusis
-    # python3 manage.py migrate phusis
 fi
 
 echo "REINIT_VENV ${REINIT_VENV}"

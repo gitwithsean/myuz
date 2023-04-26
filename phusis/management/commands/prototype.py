@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from phusis.agent_models import *
 from noveller.noveller_models import *
 from pprint import pprint
-from phusis.agent_utils import add_script_entries_for_each_agent
+from phusis.agent_utils import memorize_chat, get_user_agent_singleton
 
 #globals
 commands = ['exit!', 'go!', 'update!', 'switch_orc!', 'new_agent!', '.intro!']
@@ -128,10 +128,10 @@ def add_agents_to_project(project):
     print(f"While we wait, think about the story you want to work on today.\nWhat do you want to tell {orc} to get started? Think about {init_prompts}, etc.\n")
 
     prompt, response = orc.wake_up()
-    add_script_entries_for_each_agent(project, get_user_agent_singleton(), prompt, orc, response)
+    # memorize_chat(prompt, response, orc)
     for agent in user_selected_agents:
         prompt, response = agent.wake_up()
-        add_script_entries_for_each_agent(project, get_user_agent_singleton(), prompt, agent, response)
+        # memorize_chat(prompt, response, agent)
 
     # user_input = input(f"\nOK, {orc} is ready for your input...")
                        
@@ -183,21 +183,18 @@ def retrieve_and_load_project():
     
     pprint(user_selected_project)
 
-    if user_selected_project.script_for == None:
-        script = PhusisScript()
-        script.setup(f"Script for {user_selected_project.project_type}: {user_selected_project.name}")
-        script.save()
-        user_selected_project.script_for = script
-        user_selected_project.save()
-    
-    if user_selected_project.get_agents_for() == None:
+    if user_selected_project.get_agents_for() == []:
         add_agents_to_project(user_selected_project)
         user_selected_project.save()
     else:    
         change_agents = input("Do you want to start again with fresh agents for your project?\n(y/n)\n")
-        if change_agents == 'y':
+        if change_agents == 'y':            
             for agent in user_selected_project.get_agents_for():
-                if agent.script_for != None: agent.script_for.delete()
+                if agent.chat_logs: 
+                    print(colored(f"deleting chat logs for {agent.name}", "yellow"))
+                    chat_logs = agent.chat_logs.all()
+                    agent.chat_logs.clear()
+                    chat_logs.delete()
             user_selected_project.agents_for_project.clear()
             add_agents_to_project(user_selected_project)
         else:
@@ -240,34 +237,11 @@ def main():
     while True:
         iteration = iteration+1
         print(f"=================ITERATION {iteration}=================")
-        # if user_input == "exit!":
-        #     break
-        # elif user_input == "go!":
-        #     pass
-        # elif user_input == "update!":
-        #     orc.script
-        # else:
-        #     orc.submit_prompt(user_input)
+
 
         orc.routine(project)
 
-        prompt, response = orc.assess_project(project)
-        add_script_entries_for_each_agent(project, get_user_agent_singleton(), prompt, orc, response)
-        
-        prompt, response = orc.amend_project()
-        add_script_entries_for_each_agent(project, get_user_agent_singleton(), prompt, orc, response)
-        orc.continue_project()
 
-
-        # new_agent = orc.create_agents()
-        # agents.append(new_agent)
-
-        # for agent in agents:
-        #     prompt = orc.generate_prompt(agent)
-        #     response = agent.respond(prompt)
-
-        #     orc.master_script.add_entry(orc, prompt)
-        #     orc.master_script.add_entry(agent, response)
 
         if not orc.auto_mode:
             print("Project status update:")

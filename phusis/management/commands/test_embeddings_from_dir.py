@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from phusis.models import EmbeddingsAgentSingleton
+from phusis.agent_models import EmbeddingsAgentSingleton
 
 class Command(BaseCommand):
     help = 'Runs a function in MyModel'

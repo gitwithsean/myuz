@@ -7,7 +7,7 @@ class NovellerConfig(AppConfig):
     name = "noveller"
 
     def ready(self):
-        from phusis.models import AbstractAgent
+        from phusis.agent_models import AbstractAgent
         for model in apps.get_models():
             if model.__module__ == self.name+'.models':
                 field_name = 'responsibilities'

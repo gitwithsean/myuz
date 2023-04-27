@@ -9,6 +9,8 @@ for command in commands:
 if not 'online' in result.stdout:
     raise RuntimeError("postgres service not running")
 
+print("connecting to the postgres server")
+
 # Establish a connection to the PostgreSQL server
 conn = psycopg2.connect(
     dbname="postgres",
@@ -23,6 +25,8 @@ conn.autocommit = True
 # Open a cursor to perform database operations
 cur = conn.cursor()
 
+print("terminating existing connections to the myuz db")
+
 # Terminate all connections to the "myuz" database
 cur.execute("""
     SELECT pg_terminate_backend(pg_stat_activity.pid)
@@ -30,16 +34,16 @@ cur.execute("""
     WHERE pg_stat_activity.datname = 'myuz';
 """)
 
-# Drop the "myuz" database if it exists
+print("Dropping the myuz database if it exists")
 cur.execute("DROP DATABASE IF EXISTS myuz;")
 
-# Create a new "myuz" database
+print("Creating a new myuz database")
 cur.execute("CREATE DATABASE myuz;")
 
 admin_user=os.environ['MYUZ_DB_USER']
 admin_pw=os.environ['MYUZ_DB_PW']
 
-# Grant all privileges on the "myuz" database to the "sryan" user
+print(f"Granting all privileges on the myuz database to the {admin_user} user")
 cur.execute(f"GRANT ALL PRIVILEGES ON DATABASE myuz TO {admin_user};")
 
 # Close the cursor and the connection

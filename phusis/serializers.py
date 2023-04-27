@@ -1,8 +1,8 @@
 from django.apps import apps
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import serializers
-from .models import *
-from .models import OrchestrationAgent
+from .agent_models import *
+from .agent_models import OrchestrationAgent
 # from pprint import pprint
 
 all_phusis_model_serializer_tuples = []

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.forms import inlineformset_factory
-from .models import *
+from .agent_models import *
 
 for model in dir():
     try:

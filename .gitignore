@@ -12,3 +12,4 @@ venv
 .vscode
 **/fixtures/
 phusis/phusis_projects/**
+logs.txt

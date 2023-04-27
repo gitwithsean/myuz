@@ -5,6 +5,7 @@ Usage: $(basename "$0") [OPTIONS]
 
 Options:
   db:       Drop and recreate the myuz database. 
+  db_init:  Depends on db being set - intits the db with agents and book
   venv:     Delete and recreate the Python virtual environment. 
   pinecone: Delete and recreate the myuz pinecone index. 
   --help:   Display this help and exit. 
@@ -35,8 +36,8 @@ do
             echo 'db detected'
             REINIT_DB=true
             ;;
-        db_data)
-            echo 'db_data detected'
+        db_init)
+            echo 'db_init detected'
             REINIT_DB_DATA=true
             ;;
         venv)
@@ -67,6 +68,8 @@ if [ $REINIT_PINECONE  == true ]; then
     read -r PINECONE_ENV < $MYUZ_DIR/.secrets/pinecone_api_region
     read -r PINECONE_API_KEY < $MYUZ_DIR/.secrets/pinecone_api_key
     echo "DELETING PINECONE INDEX"
+    echo "curl -i -X DELETE https://controller.${PINECONE_ENV}.pinecone.io/databases/${INDEX} \
+    -H "Api-Key: ${PINECONE_API_KEY}""
     curl -i -X DELETE https://controller.${PINECONE_ENV}.pinecone.io/databases/${INDEX} \
     -H "Api-Key: ${PINECONE_API_KEY}"
     echo "PINECONE INDEX ${INDEX} DELETED" 
@@ -81,7 +84,7 @@ if [ $REINIT_DB == true ]; then
     #delete migrations
     rm -rf **/migrations/*.py
     rm -rf **/migrations/__pycache__
-    python manage.py check
+    # python manage.py check
     python manage.py makemigrations noveller --empty
     python manage.py makemigrations phusis --empty
     python manage.py makemigrations phusis
@@ -91,10 +94,9 @@ if [ $REINIT_DB == true ]; then
     echo "REINIT_DB_DATA ${REINIT_DB_DATA}"
 
     if [ $REINIT_DB_DATA == true ]; then
-        python manage init_db
+        python manage.py init_agents phusis
+        python manage.py init_book noveller
     fi
-    # python3 manage.py makemigrations phusis
-    # python3 manage.py migrate phusis
 fi
 
 echo "REINIT_VENV ${REINIT_VENV}"
@@ -102,6 +104,7 @@ echo "REINIT_VENV ${REINIT_VENV}"
 if [ $REINIT_VENV == true ]; then
     cd $MYUZ_DIR
     pip freeze > requirements.txt
+    deactivate
     #re-init python env
     rm -rf venv
     python -m venv venv

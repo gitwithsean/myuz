@@ -1,7 +1,7 @@
 from django import forms
 from django.apps import apps
-from phusis.models import *
-from noveller.models import *
+from phusis.agent_models import *
+from noveller.noveller_models import *
 from django.db.models import Q
 
 all_noveller_model_form_tuples = []
@@ -13,30 +13,17 @@ class BookForm(forms.ModelForm):
     class Meta:
         model = Book
         fields = [
-           #'id', #AbstractPhusisProject
-           #'name', #AbstractPhusisProject
-           'elaboration',
-           'expose_rest',
-           'elaboration',
-           'settings',
-           'plot',
-           'chapters',
-           'characters',
-           'themes',
-           'genre',
-           'target_audiences'
+            'name',
+            'elaboration',
+            'expose_rest',
+            'settings',
+            'plots',
+            'chapters',
+            'characters',
+            'themes',
+            'genres',
+            'target_audiences'
         ]
-        
-    # # Fields from the AbstractPhusisProject class
-    # project_agents = forms.ModelMultipleChoiceField(
-    #     queryset=AbstractAgent.__subclasses__(),
-    #     required=False,
-    # )
-
-    # project_script = forms.ModelChoiceField(
-    #     queryset=PhusisScript.objects.all(),
-    #     required=False,
-    # )
 
 class FormMaker:
     global all_noveller_model_form_tuples
@@ -46,7 +33,7 @@ class FormMaker:
         # Omit relationship model classes
         if '_' not in model_name:
             
-            # print(f"Creating form for {model_name}")
+            # print(f"\nCreating form for {model_name}")
             model = apps.get_model('noveller', model_name)
                          
             if model.__name__ == 'Book':

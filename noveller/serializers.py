@@ -1,6 +1,6 @@
 from django.apps import apps
 from rest_framework import serializers
-from .models import *
+from .noveller_models import *
 # from pprint import pprint
 
 all_noveller_model_serializer_tuples = []

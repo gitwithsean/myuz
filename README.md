@@ -1,5 +1,5 @@
 
-<img src="./myuz/logos/phusis.png" width="200"> 
+<img src="./myuz/logos/phusis_logo.png" width="200"> 
 
 # *phusis*
 

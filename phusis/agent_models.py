@@ -7,7 +7,7 @@ from termcolor import colored
 from django.db import models
 from abc import ABC, abstractmethod
 from .agent_attributes import *
-from .agent_engines import AbstractEngine, OrchestrationEngine, WritingAgentEngine, CompressionAgentEngine
+from .agent_engines import AbstractEngine, OrchestrationEngine, WritingAgentEngine, compress_text
 
 
 class AbstractAgent(models.Model, AbstractEngine):
@@ -17,13 +17,16 @@ class AbstractAgent(models.Model, AbstractEngine):
     agent_system_prompt = models.TextField(blank=True)
     class_display_name = models.CharField(max_length=200, editable=False, default=f"Phusis {agent_type} Agent")
     related_books = GenericRelation('AgentBookRelationship', related_query_name='agent')
-    awake = models.BooleanField(default=False)
+    project_attributes_assigned_to = models.ManyToManyField('PhusisProjectAttribute', blank=True)
     expose_rest = True
     # [{"prompted_by":"", "AgentCapability":{}, "result":""}]
     steps_taken = models.JSONField(default=list, blank=True)
     capabilities = models.ManyToManyField('AgentCapability', blank=True)
     embedding_of_self = models.TextField(blank=True)
     chat_logs = models.ManyToManyField('ChatLog', blank=True)
+    awake = models.BooleanField(default=False)
+    wake_up_message = models.TextField(blank=True, null=True)
+    compressed_wake_up_message = models.TextField(blank=True, null=True)
     
     #Traits
     goals = models.ManyToManyField(AgentGoal, blank=True)
@@ -66,8 +69,9 @@ class AbstractAgent(models.Model, AbstractEngine):
         print(colored(f"AbstractAgent.add_to_chat_logs: prompt:\n{prompt} \nresponse:\n{response}", "yellow"))
         
         new_chat_log = ChatLog(prompt=prompt, response=response, responder_name=self.name, responder_type=self.agent_type, responder_id=self.id)
-        self.chat_logs.add(new_chat_log)
+        new_chat_log.save()
         self.save()
+        self.chat_logs.add(new_chat_log)
         return new_chat_log
         
     def set_data(self, properties_dict):
@@ -94,7 +98,7 @@ class AbstractAgent(models.Model, AbstractEngine):
             else:
                 # Handle other attribute types as needed
                 setattr(self, key, value)
-
+        self.save()
         
     def to_dict_and_string(self):
         self_dict = {
@@ -119,39 +123,39 @@ class AbstractAgent(models.Model, AbstractEngine):
             "subtr": self.subtr,
         }
         
-        string_from_dict = f"-NAME: {self_dict['name']}   -TYPE: {self_dict['agent_type']}" 
+        string_from_dict = f"- NAME: {self_dict['name']}\n- TYPE: {self_dict['agent_type']}\n" 
         
-        if self_dict['goals']: string_from_dict += f"  -GOALS: {self_dict['goals']}" 
+        if self_dict['goals']: string_from_dict += f"- GOALS: {self_dict['goals']}\n" 
         
-        if self_dict['roles']: string_from_dict += f"  -ROLES: {self_dict['roles']}"
+        if self_dict['roles']: string_from_dict += f"- ROLES: {self_dict['roles']}\n"
         
-        if self_dict['personality']: string_from_dict += f"  -PERSONALITY: {self_dict['personality']}"
+        if self_dict['personality']: string_from_dict += f"- PERSONALITY: {self_dict['personality']}\n"
         
-        if self_dict['qualifications']: string_from_dict += f"  -QUALIFICATIONS {self_dict['qualifications']}"
+        if self_dict['qualifications']: string_from_dict += f"- QUALIFICATIONS {self_dict['qualifications']}\n"
         
-        if self_dict['impersonations']: string_from_dict += f"  -IMPERSONATIONS: {self_dict['impersonations']} "
+        if self_dict['impersonations']: string_from_dict += f"- IMPERSONATIONS: {self_dict['impersonations']}\n"
         
-        if self_dict['elaboration']: string_from_dict += f"  -ELABORATION: {self_dict['elaboration']} "
+        if self_dict['elaboration']: string_from_dict += f"- ELABORATION: {self_dict['elaboration']}\n"
         
-        if self_dict['strengths']: string_from_dict += f"  -STRENGTHS: {self_dict['strengths']} "
+        if self_dict['strengths']: string_from_dict += f"- STRENGTHS: {self_dict['strengths']}\n"
         
-        if self_dict['possible_locations']: string_from_dict += f"  -POSSIBLE_LOCATIONS: {self_dict['possible_locations']} "
+        if self_dict['possible_locations']: string_from_dict += f"- POSSIBLE_LOCATIONS: {self_dict['possible_locations']}\n"
         
-        if self_dict['drives']: string_from_dict += f"  -DRIVES: {self_dict['drives']} "
+        if self_dict['drives']: string_from_dict += f"- DRIVES: {self_dict['drives']}\n"
         
-        if self_dict['fears']: string_from_dict += f"  -FEARS: {self_dict['fears']} "
+        if self_dict['fears']: string_from_dict += f"- FEARS: {self_dict['fears']}\n"
         
-        if self_dict['beliefs']: string_from_dict += f"  -BELIEFS: {self_dict['beliefs']} "
+        if self_dict['beliefs']: string_from_dict += f"- BELIEFS: {self_dict['beliefs']}\n"
         
-        if self_dict['age']: string_from_dict += f"  -CONCEPTUAL_AGE: {self_dict['age']} "
+        if self_dict['age']: string_from_dict += f"- CONCEPTUAL_AGE: {self_dict['age']}\n"
         
-        if self_dict['origin_story']: string_from_dict += f"  -ORIGIN_STORY: {self_dict['origin_story']} "
+        if self_dict['origin_story']: string_from_dict += f"- ORIGIN_STORY: {self_dict['origin_story']}\n"
         
-        if self_dict['llelle']: string_from_dict += f"  -LLELLE: {self_dict['llelle']} "
+        if self_dict['llelle']: string_from_dict += f"- LLELLE: {self_dict['llelle']}\n"
         
-        if self_dict['malig']: string_from_dict += f"  -MALIG: {self_dict['malig']} "
+        if self_dict['malig']: string_from_dict += f"- MALIG: {self_dict['malig']}\n"
         
-        if self_dict['subtr']: string_from_dict += f"  -SUBTR: {self_dict['subtr']}"
+        if self_dict['subtr']: string_from_dict += f"- SUBTR: {self_dict['subtr']}\n"
           
         string_from_dict = string_from_dict.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
          
@@ -168,19 +172,47 @@ class ChatLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     prompt = models.TextField(blank=False, null=False)
     response = models.TextField(blank=False, null=False)
-    compressed_prompt_content = models.TextField(blank=True, null=True)
-    compressed_response_content = models.TextField(blank=True, null=True)
+    compressed_prompt_content = models.TextField(blank=True, null=True, default='')
+    compressed_response_content = models.TextField(blank=True, null=True, default='')
     responder_name = models.CharField(max_length=200, default='', blank=False, null=False)
     responder_type = models.CharField(max_length=200, default='', blank=False, null=False)
     responder_id = models.UUIDField(default=uuid.uuid4, auto_created=True, editable=False)
     
     def convert_log_to_chain_objects(self):
-        if not self.compressed_prompt_content: self.compressed_prompt_content = CompressionAgentSingleton().compress(self.prompt, 0.3)
-        if not self.compressed_response_content: self.compressed_response_content = CompressionAgentSingleton().compress(self.prompt, 0.3)
+        # print(colored(f"ChatLog.convert_log_to_chain_objects(): right before compression, prompt is {self.prompt}", "yellow"))
+        # print(colored(f"ChatLog.convert_log_to_chain_objects(): right before compression, response is {self.response}", "yellow"))
+        
+        if self.compressed_prompt_content == '' and self.prompt: self.compressed_prompt_content = compress_text(self.prompt, 0.25)
+        if not self.compressed_response_content == '' and self.response: self.compressed_response_content = compress_text(self.response, 0.25)
         self.save()
         prompt_obj = {"role": "user", "content": f"{self.compressed_prompt_content}"}
         response_obj = {"role": "assistant", "content": f"{self.compressed_response_content}"}
-        return [prompt_obj, response_obj]
+        # return [prompt_obj, response_obj]
+        return [prompt_obj]
+
+
+class PhusisProjectAttribute(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    name = models.CharField(max_length=200, blank=False, null=False)
+
+
+class PhusisProjectGoalStep(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    name = models.CharField(max_length=200, blank=False, null=False)
+    related_project_attributes = models.ManyToManyField(PhusisProjectAttribute, related_name='project_attrigutes_for_project_goal_step', blank=True)
+        
+    def add_project_attribute_to_step(self, attribute):
+        self.related_project_attributes.add(attribute)
+        self.save()
+
+class PhusisProjectGoal(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    name = models.CharField(max_length=200, blank=False, null=False)
+    steps = models.ManyToManyField(PhusisProjectGoalStep, blank=True, null=True)
+
+    def add_step_to_goal(self, step_name):
+        self.steps.add(PhusisProjectGoalStep(name=step_name).save())
+        self.save()
 
 class AbstractPhusisProject(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
@@ -189,11 +221,26 @@ class AbstractPhusisProject(models.Model):
     project_user_input = models.TextField(blank=True, default='')
     project_workspace = models.CharField(max_length=200, default='', blank=True, null=True)
     orc_agent_set_objectives = models.TextField(blank=True, default='')
+    goals_for_project = models.ManyToManyField(PhusisProjectGoal, blank=True)
+    project_attributes = models.ManyToManyField(PhusisProjectAttribute, blank=True, null=True)
     agents_for_project = models.ManyToManyField(
         AbstractAgent, related_name='projects_for_agent', blank=True
     )
     
     project_embedding = models.TextField(blank=True)
+    
+    def add_to_goals_for_project(self, goal_name, steps_for_goal):
+        print(colored(f"AbstractPhusisProject.add_to_goals_for_project: goal_name:\n{goal_name} \nsteps_for_goal:\n{steps_for_goal}", "yellow"))
+        
+        new_goal = PhusisProjectGoal(name=goal_name)
+        for step in steps_for_goal:
+            new_goal.add_step_to_goal(step)
+        new_goal.save()
+        
+        self.save()
+        self.goals_for_project.add(new_goal)
+        self.save()
+        return new_goal
     
     def __str__(self):
         return f"{self.project_type}: {self.name}"
@@ -209,9 +256,11 @@ class AbstractPhusisProject(models.Model):
                 getattr(self, key).append(value)
             else:
                 setattr(self, key, value)
-    
+        
         # self.project_workspace = get_phusis_project_workspace(self.project_type, self.name)
-    
+
+        self.save()
+        
     @abstractmethod
     def list_project_attributes(self):
         pass
@@ -252,20 +301,6 @@ class OrchestrationAgent(AbstractAgent, OrchestrationEngine):
 class WritingAgent(AbstractAgent, WritingAgentEngine):
     agent_type = "writing_agent"
     class_display_name = "Writing Agent"
-
-
-
-class CompressionAgentSingleton(AbstractAgent, CompressionAgentEngine):
-    agent_type = "compression_agent"
-    class_display_name = "Compression Agent"
-    expose_rest = False
-    capabilities = [18]
-    
-    _instance = None
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
 
 
 class PoeticsAgent(AbstractAgent):
@@ -310,7 +345,6 @@ class CharacterAgent(AbstractAgent):
     class_display_name = "Character Agent"
   
 
-
     
 class WorldBuildingAgent(AbstractAgent):
     agent_type = "world_building_agent"
@@ -350,16 +384,16 @@ class UserAgentSingleton(AbstractAgent):
     expose_rest = False
     def __new__(cls):
         if cls._instance is None:
-            # print('Creating PromptBuilder singleton instance')
             cls._instance = super().__new__(cls)
-            # Initialize the class attributes here
-            cls._instance.prompts_since_reminder = 0
-            cls._instance.max_prompts_between_reminders = 5
         return cls._instance
     
     class Meta:
         ordering = None
 
+    def save(self, *args, **kwargs):
+        if not self.pk and UserAgentSingleton.objects.exists():
+            raise ValueError("An instance of UserAgentSingleton already exists.")
+        return super(UserAgentSingleton, self).save(*args, **kwargs)
 
 class AgentBookRelationship(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
@@ -383,19 +417,14 @@ def load_agent_model_and_return_instance_from(json_data):
         if json_data['class_name'] in globals():
             model_class = apps.get_model("phusis", f"{json_data['class_name']}")
         else: 
-            print(colored(f"agent_models.create_agent_model_from_instance: class_name {json_data['class_name']} not found in globals()", "red"))
-
+            # print(colored(f"agent_models.create_agent_model_from_instance: class_name {json_data['class_name']} not found in globals()", "yellow"))
+            pass
         new_agent_obj, created = model_class.objects.update_or_create(name=json_data['properties']['name'])
         
         new_agent_obj.set_data(json_data['properties'])
-        # new_agent_obj.save()
-
-        # new_agent_obj, created = model_class.objects.get_or_create(name=json_data['properties']['name'])
-        # new_agent_obj.set_data(json_data['properties'])
-        # new_agent_obj.save()
         s = "found and updated"
         if created: s = "created"
-        print(colored(f"agent_models.load_agent_model_and_return_instance_from: {new_agent_obj.name} {s}", "green"))
+        # print(colored(f"agent_models.load_agent_model_and_return_instance_from: {new_agent_obj.name} {s}", "green"))
         
     else:
         print(colored(f"agent_models.create_agent_model_from_instance: JSON data for agent not valid, expected schema below","red"))

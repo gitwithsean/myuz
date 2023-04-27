@@ -1,7 +1,7 @@
 from __future__ import annotations
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
-from phusis.agent_models import AbstractPhusisProject, AgentBookRelationship
+from phusis.agent_models import AbstractPhusisProject, AgentBookRelationship, PhusisProjectAttribute
 import uuid
 from django.core.exceptions import ObjectDoesNotExist
 from pprint import pprint
@@ -10,9 +10,7 @@ from django.apps import apps
 from abc import abstractmethod
 from termcolor import colored
 
-class NovellerModelDecorator(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, unique=True)  
+class NovellerModelDecorator(PhusisProjectAttribute):
     elaboration = models.TextField(blank=True, null=True)
     expose_rest = True
     
@@ -22,9 +20,6 @@ class NovellerModelDecorator(models.Model):
         
     def __str__(self):
         return self.name
-    
-    def set_name():
-        pass
     
     @abstractmethod
     def get_brief():
@@ -72,7 +67,7 @@ class TargetAudience(NovellerModelDecorator):
     pass
 
 class Plot(NovellerModelDecorator):
-    book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_plots', null=True)
+    plot_for_book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_plots', null=True)
     events_of_plot = models.ManyToManyField('PlotEvent', blank=True)
     
     def get_brief(self):
@@ -118,7 +113,7 @@ class SubPlotEvent(PlotEvent):
 
 #Chapters, Outlines, Summaries
 class Chapter(NovellerModelDecorator):
-    book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='book_characters', null=True)
+    chapter_in_book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='book_characters', null=True)
     chapter_num = models.IntegerField(null=True)
     chapter_goals = models.TextField(blank=True, null=True)
     chapter_draft_file = models.OneToOneField('File', on_delete=models.SET_NULL, blank=True, null=True)
@@ -133,7 +128,7 @@ class Chapter(NovellerModelDecorator):
 class ChapterPart(NovellerModelDecorator):
     part_num = models.IntegerField(null=True)
     part_goals = models.TextField(blank=True, null=True)
-    storyteller = models.OneToOneField('StoryTeller', on_delete=models.SET_NULL, blank=True, null=True)
+    storyteller_of_part = models.OneToOneField('StoryTeller', on_delete=models.SET_NULL, blank=True, null=True)
     locations = models.ManyToManyField('Location', blank=True)
     character_versions = models.ManyToManyField('CharacterVersion', blank=True)
     themes = models.ManyToManyField('LiteraryTheme', blank=True)
@@ -151,7 +146,7 @@ class ChapterPartSummary(NovellerModelDecorator):
     for_chapter_part = models.OneToOneField('ChapterPart', on_delete=models.SET_NULL, blank=True, null=True)
     chapter_part_summary = models.TextField(blank=True, null=True)
     themes = models.ManyToManyField('LiteraryTheme', blank=True)
-    pacing = models.ManyToManyField('Pacing', blank=True)
+    pacing = models.ManyToManyField('StoryPacing', blank=True)
     part_summary_items = models.ManyToManyField('ChapterPartSummaryItem', blank=True, related_name='chapter_part_summary_items')
     
     # def __str__(self):
@@ -161,7 +156,7 @@ class ChapterPartSummary(NovellerModelDecorator):
         ordering = ['for_chapter_part__for_chapter__chapter_num', 'for_chapter_part__part_num']
 
 class ChapterPartSummaryItem(NovellerModelDecorator):
-    for_chapter_part_summary = models.ForeignKey('ChapterPartSummary', on_delete=models.SET_NULL, blank=True, null=True)
+    for_chapter_part_summary = models.ForeignKey(ChapterPartSummary, on_delete=models.SET_NULL, blank=True, null=True)
     content = models.TextField(blank=True)
     order_in_part = models.IntegerField(blank=True, default=0, null=True)
     
@@ -171,7 +166,7 @@ class ChapterPartSummaryItem(NovellerModelDecorator):
     class Meta:
         ordering = ['for_chapter_part_summary__for_chapter_part__for_chapter__book','for_chapter_part_summary__for_chapter_part__for_chapter__chapter_num', 'for_chapter_part_summary__for_chapter_part__part_num', 'order_in_part']
 
-class Pacing(NovellerModelDecorator):
+class StoryPacing(NovellerModelDecorator):
     pass
     
 # Background, Setting and Research
@@ -204,9 +199,9 @@ class Faction(NovellerModelDecorator):
     members = models.ManyToManyField('CharacterVersion', blank=True)
     
 class CharacterRelatedSettingTopic(NovellerModelDecorator):
-    setting = models.ForeignKey('Setting', on_delete=models.SET_NULL, blank=True, null=True)
+    character_in_setting = models.ForeignKey('Setting', on_delete=models.SET_NULL, blank=True, null=True)
     rights = models.TextField(blank=True, null=True)
-    appearance_modifiers = models.ForeignKey('AppearanceModifiers', on_delete=models.SET_NULL, blank=True, null=True)
+    appearance_modifiers = models.ForeignKey('CharacterAppearanceModifiers', on_delete=models.SET_NULL, blank=True, null=True)
     attitudes = models.TextField(blank=True, null=True)
     leisure = models.TextField(blank=True, null=True)
     food = models.TextField(blank=True, null=True)
@@ -257,19 +252,19 @@ class CharacterVersion(NovellerModelDecorator):
     age_at_end = models.IntegerField(blank=True, null=True)
     locations = models.ManyToManyField('Location', blank=True)
     preferred_weapon = models.CharField(max_length=200, blank=True, null=True)
-    appearance = models.ForeignKey('Appearance', blank=True, on_delete=models.SET_NULL, null=True)
-    setting_based_appearance_modifier_options = models.ForeignKey('AppearanceModifiers', blank=True, on_delete=models.SET_NULL, null=True)
+    appearance = models.ForeignKey('CharacterAppearance', blank=True, on_delete=models.SET_NULL, null=True)
+    setting_based_appearance_modifier_options = models.ForeignKey('CharacterAppearanceModifiers', blank=True, on_delete=models.SET_NULL, null=True)
     strengths = models.ManyToManyField('CharacterTrait', related_name='strengths', blank=True)
     weaknesses = models.ManyToManyField('CharacterTrait', related_name='weaknesses', blank=True)
     other_aspects = models.ManyToManyField('CharacterTrait', related_name='other_aspects', blank=True)
     often_perceived_as = models.ManyToManyField('CharacterTrait', related_name='often_perceived_as', blank=True)
-    drives = models.ManyToManyField('Drive', blank=True)
-    fears = models.ManyToManyField('Fear', blank=True)
-    beliefs = models.ManyToManyField('Belief', blank=True)
-    internal_conflicts = models.ManyToManyField('InternalConflict', blank=True)
+    drives = models.ManyToManyField('CharacterDrive', blank=True)
+    fears = models.ManyToManyField('CharacterFear', blank=True)
+    beliefs = models.ManyToManyField('CharacterBelief', blank=True)
+    internal_conflicts = models.ManyToManyField('CharacterInternalConflict', blank=True)
     relationships = models.OneToOneField('CharacterRelationship', blank=True, on_delete=models.SET_NULL, null=True)
     subter = models.CharField(max_length=200, blank=True, null=True)
-    lit_style_guide = models.ForeignKey('LitStyleGuide', blank=True, null=True, on_delete=models.SET_NULL)
+    lit_style_guide = models.ForeignKey('LiteraryStyleGuide', blank=True, null=True, on_delete=models.SET_NULL)
 
     # def __str__(self):
     #     return f"{self.for_character} v{self.version_num}"
@@ -291,7 +286,7 @@ class CharacterRelationship(NovellerModelDecorator):
         ordering = ['relationship_from__for_character__name', 'relationship_to__for_character__name']
 
 
-class Appearance(NovellerModelDecorator):
+class CharacterAppearance(NovellerModelDecorator):
     distinguishing_features = models.TextField(null=True)
     eyes = models.CharField(max_length=200, null=True)
     hair = models.CharField(max_length=200, null=True)
@@ -307,7 +302,7 @@ class Appearance(NovellerModelDecorator):
         ordering = ['character_version__for_character__name', 'character_version__version_num']
 
 
-class AppearanceModifiers(NovellerModelDecorator):
+class CharacterAppearanceModifiers(NovellerModelDecorator):
     clothing = models.TextField(blank=True, null=True)
     hair_head_options = models.TextField(blank=True, null=True)
     perfume = models.CharField(max_length=200, blank=True, null=True)
@@ -323,23 +318,23 @@ class CharacterTrait(NovellerModelDecorator):
     pass
 
 
-class Drive(NovellerModelDecorator):
+class CharacterDrive(NovellerModelDecorator):
     pass
 
 
-class Fear(NovellerModelDecorator):
+class CharacterFear(NovellerModelDecorator):
     pass
 
 
-class Belief(NovellerModelDecorator):
+class CharacterBelief(NovellerModelDecorator):
     pass
   
     
-class InternalConflict(NovellerModelDecorator):
+class CharacterInternalConflict(NovellerModelDecorator):
     pass
 
 
-class LitStyleGuide(NovellerModelDecorator):
+class LiteraryStyleGuide(NovellerModelDecorator):
     perspective = models.ForeignKey('NarrativePerspective', on_delete=models.CASCADE, null=True)
     inspirations = models.ManyToManyField('LiteraryInspiration', blank=True)
     tone = models.ManyToManyField('LiteraryTone', blank=True)
@@ -358,7 +353,7 @@ class LiteraryInspiration(NovellerModelDecorator):
 
 class StoryTeller(NovellerModelDecorator):
     character_version = models.ForeignKey('CharacterVersion', on_delete=models.CASCADE, null=True)
-    lit_style_guide = models.ForeignKey('LitStyleGuide', on_delete=models.CASCADE, null=True)
+    lit_style_guide = models.ForeignKey('LiteraryStyleGuide', on_delete=models.CASCADE, null=True)
     
     # def __str__(self):
     #     return f"{self.character_version} style as a story teller"
@@ -395,31 +390,31 @@ class File(NovellerModelDecorator):
     expose_rest = False
 
  
-class NovellerModellor(NovellerModelDecorator):
+# class NovellerModellor(NovellerModelDecorator):
         
-    class __NovellerModellorSingleton:
-        def __init__(self):
-            self.instance = NovellerModellor()
+#     class __NovellerModellorSingleton:
+#         def __init__(self):
+#             self.instance = NovellerModellor()
         
-        def __str__(self):
-            return str(self.instance)
+#         def __str__(self):
+#             return str(self.instance)
         
-        def __getattr__(self, name):
-            return getattr(self.instance, name)
+#         def __getattr__(self, name):
+#             return getattr(self.instance, name)
         
-        def __setattr__(self, name):
-            return setattr(self.instance, name)
+#         def __setattr__(self, name):
+#             return setattr(self.instance, name)
         
-        def __del__(self):
-            raise TypeError("Singletons can't be deleted")
+#         def __del__(self):
+#             raise TypeError("Singletons can't be deleted")
     
-    _instance = None  # class level variable to hold instance
+#     _instance = None  # class level variable to hold instance
     
-    @classmethod
-    def get_instance(cls):
-        if not cls._instance:
-            cls._instance = cls.__NovellerModellorSingleton()
-        return cls._instance
+#     @classmethod
+#     def get_instance(cls):
+#         if not cls._instance:
+#             cls._instance = cls.__NovellerModellorSingleton()
+#         return cls._instance
 
 
 
@@ -512,11 +507,7 @@ class Book(AbstractPhusisProject):
             models_dict[model_name] = fields
         
         for model, fields in models_dict.items():
-            book_attributes_str += f"Model: {model}\n"
-            if fields != None: book_attributes_str += "Fields:\n"
-        for field in fields:
-            book_attributes_str += f"  - {field}\n"
-            book_attributes_str += "\n"
+            book_attributes_str += f"Attribute: {model}\n"
         
         return models_dict, book_attributes_str
 
@@ -566,7 +557,8 @@ def load_noveller_model_and_return_instance_from(json_data):
         if json_data['class_name'] in globals():
             model_class = apps.get_model("noveller", f"{json_data['class_name']}")
         else: 
-            print(colored(f"noveller_models.create_noveller_model_from_instance: class_name {json_data['class_name']} not found in globals()", "red"))
+            # print(colored(f"noveller_models.create_noveller_model_from_instance: class_name {json_data['class_name']} not found in globals()", "yellow"))
+            pass
 
         new_noveller_obj, created = model_class.objects.update_or_create(name=json_data['properties']['name'])
 
@@ -574,7 +566,7 @@ def load_noveller_model_and_return_instance_from(json_data):
         new_noveller_obj.save()
         s = f"found and updated with:\n{json_data['properties']}"
         if created: s = "created"
-        print(colored(f"load_noveller_model_and_return_instance_from: {new_noveller_obj.name} {s}", "green"))
+        # print(colored(f"load_noveller_model_and_return_instance_from: {new_noveller_obj.name} {s}", "green"))
         
     else:
         print(colored(f"models.create_agent_model_from_instance: JSON data for agent not valid, expected schema below","red"))

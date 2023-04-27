@@ -73,10 +73,10 @@ class Command(BaseCommand):
         if not os.path.exists(data_directory):
             raise CommandError(f'Data directory not found: {data_directory}')
 
-        print(colored(f"app_name is {app_name}", "green"))
+        # print(colored(f"app_name is {app_name}", "green"))
 
         if app_name == "phusis":
-            print(colored(f"init_agents {app_name}: Loading Agent Capabilities", "green"))
+            # print(colored(f"init_agents {app_name}: Loading Agent Attributes and Capabilities", "green"))
             load_attributes()
             load_capabilities()
             
@@ -87,6 +87,6 @@ class Command(BaseCommand):
                     data = json.load(file)
 
                 for item in data:
-                    print(colored(f"Loading Agent {item['class_name']} {item['properties']['name']} into db", "yellow"))
+                    print(colored(f"Loading {item['class_name']} {item['properties']['name']} into db", "yellow"))
                     load_agent_model_and_return_instance_from(item)
 

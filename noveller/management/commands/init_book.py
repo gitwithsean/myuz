@@ -23,7 +23,7 @@ class Command(BaseCommand):
         if not os.path.exists(data_directory):
             raise CommandError(f'Data directory not found: {data_directory}')
 
-        print(colored(f"app_name is {app_name}", "green"))
+        # print(colored(f"app_name is {app_name}", "green"))
         
         book_json_data = []
                    
@@ -57,7 +57,7 @@ class Command(BaseCommand):
 
         for obj_json in json_objects_to_create:
             
-            pprint(obj_json)
+            # pprint(obj_json)
             print(colored(f"init_book: loading {obj_json['class_name']} {obj_json['properties']['name']}", "yellow"))
             
             load_noveller_model_and_return_instance_from(obj_json)

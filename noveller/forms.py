@@ -33,7 +33,7 @@ class FormMaker:
         # Omit relationship model classes
         if '_' not in model_name:
             
-            # print(f"Creating form for {model_name}")
+            # print(f"\nCreating form for {model_name}")
             model = apps.get_model('noveller', model_name)
                          
             if model.__name__ == 'Book':

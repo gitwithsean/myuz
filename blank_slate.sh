@@ -68,6 +68,8 @@ if [ $REINIT_PINECONE  == true ]; then
     read -r PINECONE_ENV < $MYUZ_DIR/.secrets/pinecone_api_region
     read -r PINECONE_API_KEY < $MYUZ_DIR/.secrets/pinecone_api_key
     echo "DELETING PINECONE INDEX"
+    echo "curl -i -X DELETE https://controller.${PINECONE_ENV}.pinecone.io/databases/${INDEX} \
+    -H "Api-Key: ${PINECONE_API_KEY}""
     curl -i -X DELETE https://controller.${PINECONE_ENV}.pinecone.io/databases/${INDEX} \
     -H "Api-Key: ${PINECONE_API_KEY}"
     echo "PINECONE INDEX ${INDEX} DELETED" 
@@ -92,8 +94,8 @@ if [ $REINIT_DB == true ]; then
     echo "REINIT_DB_DATA ${REINIT_DB_DATA}"
 
     if [ $REINIT_DB_DATA == true ]; then
-        python manage init_agents phusis
-        python manage init_book noveller
+        python manage.py init_agents phusis
+        python manage.py init_book noveller
     fi
 fi
 
@@ -102,6 +104,7 @@ echo "REINIT_VENV ${REINIT_VENV}"
 if [ $REINIT_VENV == true ]; then
     cd $MYUZ_DIR
     pip freeze > requirements.txt
+    deactivate
     #re-init python env
     rm -rf venv
     python -m venv venv

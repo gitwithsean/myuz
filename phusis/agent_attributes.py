@@ -180,10 +180,10 @@ def find_agent_attribute_by(attribute_name, attribute_class=AbstractAgentAttribu
     else:
         for instance in attribute_class.objects.all():
             if instance.name == attribute_name:
-                print(colored(f"find_agent_attribute_by(): FOUND: {attribute_class}, {instance}", "green"))            
+                # print(colored(f"find_agent_attribute_by(): FOUND: {attribute_class}, {instance}", "green"))            
                 return attribute_class, instance
            
-    print(colored(f"find_agent_attribute_by(): NOT FOUND: {attribute_class}, {attribute_name}", "red"))
+    # print(colored(f"find_agent_attribute_by(): NOT FOUND: {attribute_class}, {attribute_name}", "yellow"))
     
     data = {
         "class_name": attribute_class.__name__,
@@ -224,14 +224,14 @@ def load_or_get_agent_attribute_from(json_data):
             )
             return new_attribute_obj
         else:        
-            print(colored(f"load_or_get_agent_attributefrom(): Loading {json_data['properties']['name']}", "green"))
+            # print(colored(f"load_or_get_agent_attributefrom(): Loading {json_data['properties']['name']}", "green"))
             new_attribute_obj, created = attribute_class.objects.get_or_create(name=json_data['properties']['name'])
             
             new_attribute_obj.set_data(json_data['properties'])
             
             s = "found and updated"
             if created: s = "created"
-            print(colored(f"load_agent_attributes_from(): {new_attribute_obj.name} {s}", "green")) 
+            # print(colored(f"load_agent_attributes_from(): {new_attribute_obj.name} {s}", "green")) 
         
         # new_attribute_obj.save()
     else:

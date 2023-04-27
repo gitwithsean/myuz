@@ -89,11 +89,6 @@ def get_user_agent_singleton():
     return UserAgentSingleton()
 
 
-def get_compression_agent_singleton():
-    from phusis.agent_models import CompressionAgentSingleton
-    return CompressionAgentSingleton()
-
-
 def get_project_memory_singleton():
     from phusis.agent_memory import ProjectMemory
     return ProjectMemory()
@@ -120,13 +115,13 @@ class Prompt():
     def to_wake_up(self, agent):
         s = ""
         if agent.awareness      =='as_bot':
-            s=f"a {agent.agent_type}, part of a swarm of agents, each with a very defined set of attributes."
+            s=f"a GPT {agent.agent_type} and member of a swarm of agents, each with a very defined set of attributes,  working towards a common user objective."
         elif agent.awareness    =='as_orc':
-            s=f"the master orchestrator of a swarm of GPT agents, all working towards a common objective." 
+            s=f"the master orchestrator and leader of a swarm of GPT agents, all working towards a common user objective." 
         else:                          
             s="I'm glad to have your expertise on this project."
         
-        prompt = f"You are {agent}, {s}. You will use your skills to the BEST of your ability to serve me, the human user, I will tell you our objective soon, but first, about you. {self.to_remind(agent)}\n\nPlease respond only that you understand, and are ready to proceed."
+        prompt = f"You are '{agent}', {s} You will use your skills to the BEST of your ability to serve me, the human user. These arwe your attributes:\n {self.to_remind(agent)}."
 
         # print(colored(f"Prompt.to_wake_up: prompt set to \n{prompt}", "yellow"))
 
@@ -136,33 +131,68 @@ class Prompt():
         project_models_dict, project_models_str = project.list_project_attributes()
         prompt = f"{project.project_brief()}\n\n"
         prompt += f"### Project Attributes:\n{project_models_str}\n\n"
-        prompt += f"Using the informtation provided, please give your assessment of the overall, high level goals of the project (we will get into the specific tasks later).\n"
-        prompt += f"Please respond in markdown format."
+        prompt += f"Using the informtation provided, please definte a number of High Level Goals, in the order they need to be achieved, to complete this project.\n"
+        prompt += f"Please respond with each goal entered into an iterable array of comma separated strings, no new lines, no numbers, like this: ['goal', 'goal', 'goal', ... ]"
         return self.auto_reminder(prompt, agent)
+    
+    def to_learn_about_agent_types(self, purpose):
+        from .agent_models import AbstractAgent
+        
+        list_of_agent_types = AbstractAgent.__subclasses__()
+        
+    
+        prompt = "# GPT Agent Types\n\n"
+        
+        for agent_type in list_of_agent_types:
+            prompt += f"## {agent_type.__name__}\n"
+            prompt += f"{agent_type.__description__}\n\n"
+
+        prompt += f"Which of these agent types do you want to assign to the following purpose?\n\n{purpose}"
+    
+    def to_assign_agent_to_goal(self, goal):
+        from .agent_models import AbstractAgent
+        
+        list_of_agent_types = AbstractAgent.__subclasses__()
+    
+        prompt = "# GPT Agent Types\n\n"
+        
+        for agent_type in list_of_agent_types:
+            prompt += f"## {agent_type.__name__}\n"
+            for agent_instance in agent_type.objects.all():
+                agent_to_dict, agent_to_string = agent_instance.to_dict_and_string()
+                prompt += agent_to_string
+    
+        
+        prompt += f"Please assign a GPT agent, or write a prompt to initialize an agent you wish to add to the following goal: {goal}\n"
+        prompt += "Leave your response only in this JSON format {goal_for_agent: goal, agent_chosen: {agent_type: agent_type, agent_name: agent_name, new_agent_prompt: the prompt you want to give the new agent if you wnat to create one}}\n"
+        
+        return prompt
     
     def to_assess_project_state(self, project, agent):
         models_dict, book_attributes_str = project.list_project_attributes()
-        prompt = "Here are all the aspects of the project along with their content if they have any:\n\n"
+        prompt = "# Project Current State:\n\n"
         for model_name, fields in models_dict.items():
             model = apps.get_model(project.from_app, model_name)
             has_content, content = model_has_content_and_content(model)
 
-            prompt += f"Model: {model_name}\n"
-            prompt += f"Has Content: {has_content}\n"
+            prompt += f"## Model: {model_name}\n"
+            prompt += f"- Has Content: {has_content}\n"
             if has_content:
-                prompt += "Content:\n"
+                prompt += "### Content:\n"
                 for obj in content:
                     prompt += f"  - {obj}\n"
 
-            prompt += "Fields:\n"
+            prompt += "### Fields:\n"
             for field in fields:
                 prompt += f"  - {field}\n"
 
             prompt += "\n"
             
         prompt += f"What do you think we should add to this project? Which values need improving or editing?\n"
-        prompt += f"Keep your response limited to this schema:\n"
-        prompt += 'response:{"models_to_add_or_change":[{"model_name":model_name1,"proposed_changes":["proposed change 1","proposed change 2","proposed change 3"]}, {"model_name":model_name2,"proposed_changes":["proposed change 1","proposed change 2","proposed change 3"]}],"elaborations_reasons_thoughts_concernts":"add your reflections here"}'
+        prompt += f"Please respond in markdown format."
+        
+        print(colored(f"Prompt.to_assess_project_state: prompt set to \n{prompt}", "yellow"))
+        
         return self.auto_reminder(prompt, agent)
     
     def to_assess(self, assessing_agent, data_to_assess={}):
@@ -192,15 +222,11 @@ class Prompt():
     
     def to_remind(self, agent):
         dict, str = agent.to_dict_and_string()      
-        prompt = f"Here is your character description: {str}"
+        prompt = f"Here is your character description: \n{str}"
         
         # print(colored(f"PromptBuilderSingleton().to_remind: prompt set to {prompt}", "yellow"))
         
         return self.auto_reminder(prompt, agent)  
-
-    def to_compress(self, prompt, compression_ratio=0.25):
-        compression_prompt = f"Compression agent: compress the following text to a ratio <= {compression_ratio} so that another GPT agent will understand the full meaning of the original text. Use abbreviations, symbols, or emojis to assist. It does not need to be human-readable, but it should be easy for another GPT instance to interpret. Here is the text: {prompt}"
-        return compression_prompt
         
     def to_ask_opinion_about(self, it, agent):
         prompt = ""

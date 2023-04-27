@@ -34,7 +34,7 @@ class AbstractEngine():
         request_data['content'] = prompt
         request_data['prompting_agent'] = prompting_agent
         request_data['responding_agent'] = responding_agent
-        response = self.ai_api.gpt_chat_response(request_data)
+        response = agent_chatterer(request_data)
         print(colored("AbstractEngine.submit_chat_prompt(): Chat prompt submitted.\n\n", "green"))
         return prompt, response
         
@@ -43,34 +43,35 @@ class AbstractEngine():
     
     def wake_up(self):
         capability_id=0
-        print(colored(f"AbstractEngine.wake_up(): Starting engine for {self.name}...", "green"))
-        prompt = Prompt().to_wake_up(self)
-        prompt, response = self.submit_chat_prompt(prompt, get_user_agent_singleton(), self)
-        self.awake = True
-        self.most_recent_responses_to['start_engine'] = response
-        print(colored(f"AbstractEngine.wake_up(): {self.name} engine started.", "green"))
-        self.save()
-        return prompt, response
+        if not self.awake:
+            request_data = self.open_ai_chat_data
+            print(colored(f"AbstractEngine.wake_up(): Starting engine for {self.name}...", "green"))
+            
+            prompt = Prompt().to_wake_up(self)
+            request_data['content'] = prompt
+            request_data['prompting_agent'] = get_user_agent_singleton()
+            request_data['responding_agent'] = self
+            
+            # response = self.ai_api.gpt_chat_response(request_data)
+            
+            #we actually don't need to submit the prompt to the API, because we already have the response ("I understand and I'm ready!")
+            response = "I understand and I'm ready!"
+            self.wake_up_message = prompt
+            
+            # print(colored(f"AbstractEngine.wake_up(): right before compression, prompt is {prompt}", "yellow"))
+            
+            self.compressed_wake_up_message = compress_text(prompt, 0.75)
+            self.awake = True           
+            
+            self.most_recent_responses_to['start_engine'] = response
+            
+            print(colored(f"AbstractEngine.wake_up(): {self.name} engine started.", "green"))
+            
+            self.save()
+            
+            return prompt, response
+        return "already awake", "already awake"
 
-    def consider(self, objs=[], prompt_adj=''):
-        capability_id=1
-        pass
-
-    def produce(self, objs=[], prompt_adj=''):
-        capability_id=2
-        pass
-
-    def reflect_on(self, objs=[], prompt_adj=''):
-        capability_id=3
-        pass
-    
-    def question_criticize (self, objs=[], prompt_adj=''):
-        capability_id=4
-        pass
-    
-    def offer_prompts(self, objs=[], prompt_adj=''):
-        capability_id=5
-        pass
     
     def thoughts_concerns_propose_next_steps(self, agent_to_share_with):
         capability_id=6
@@ -82,6 +83,7 @@ class AbstractEngine():
         print(colored("AbstractEngine.thoughts_concerns_propose_next_steps(): Thoughts, concerns, and proposed next steps shared.", "green"))
         return request_data['content'], response
 
+
     def submit_state_report_to(self, agent):
         capability_id=7
         print(colored("AbstractEngine.submit_state_report_to(): Submitting report...", "green"))
@@ -92,33 +94,7 @@ class AbstractEngine():
         self.most_recent_responses_to['report_to'] = response
         print(colored("AbstractEngine.submit_state_report_to(): Report submitted.", "green"))
         return request_data['content'], response
-
-    def list_productions(self):
-        capability_id=8
-        pass
-
-    def return_production_content(self):
-        capability_id=9
-        pass
-
-    def executive_summary_of(self, obj=[]):
-        capability_id=10
-        if obj.len()==0: obj.append(self)
-        pass
     
-    def delve_into(self):
-        capability_id=11
-        pass
-    
-    def improvise_on(self, obj=[]):
-        capability_id=12
-        if obj.len()==0: obj.append(self)
-        pass
-    
-    def dwell_on(self, obj=[]):
-        capability_id=13
-        if obj.len()==0: obj.append(self)
-        pass
     
     def report_from(self):
         return {
@@ -131,6 +107,7 @@ class AbstractEngine():
             "impersonations": list(self.impersonations.all().values_list('name', flat=True)),
             # "self-summarization": (self.summarize_self(), ''),
         }
+     
         
     def report(self):
         print(colored("AbstractEngine.report(): Generating report...", "green"))
@@ -160,34 +137,14 @@ class WritingAgentEngine(AbstractEngine):
     pass
 
 
-
-class CompressionAgentEngine(AbstractEngine):
-    open_ai_chat_data = {
-        "role": "user",
-        "content": "",
-        "model": "gpt-3.5-turbo",
-        "temperature": 0,
-        "max_tokens": 1000,
-        "top_p": 1,
-        "frequency_penalty": 0,
-        "presence_penalty": 0,
-    }
-    
-    def compress(self, text_to_compress, compression_ratio=0.5):
-        capability_id=18
-        request_data = self.open_ai_chat_data
-        prompt = Prompt().to_compress(text_to_compress, compression_ratio)
-        print(colored("CompressionAgentEngine.compress_prompt(): Compressing prompt...", "green"))
-        p, response = self.submit_chat_prompt(prompt, get_user_agent_singleton(), self)
-        return response
-   
- 
 class OrchestrationEngine(AbstractEngine):
     auto_mode = False
     open_ai_chat_data = {
-       'model':"gpt-3.5-turbo",
+       'model':"gpt-4",
        'max_tokens':1000
     }
+    array_of_project_goals = []
+    
     awareness = 'as_leader_of_ai_swarm'
     latest_swarm_reports = []
     swarm_produced_files = []
@@ -208,7 +165,8 @@ class OrchestrationEngine(AbstractEngine):
                 "swarm_produced_files": swarm_produced_files
             }
         )
-        compressed_prompt = get_compression_agent_singleton().compress_prompt(prompt, 0.5)
+        # print(colored(f"AbstractEngine.assess_project(): right before compression, prompt is {prompt}", "yellow"))
+        compressed_prompt = compress_text(prompt, 0.25)
         
         print(colored("OrchestrationEngine.assess_project(): Submitting compressed assessment prompt to ai api...", "green"))
         assessment_prompt, assessment_response = self.submit_chat_prompt(compressed_prompt, get_user_agent_singleton())
@@ -244,8 +202,8 @@ class OrchestrationEngine(AbstractEngine):
         prompt = prompt + "\n\nGiven your most recent assessment of the project above, what do you think, given your expertise as an orchestrations agent, we need to do next? You have a variety of options, including, but not limited to.\nRequesting to wake up an agent and tasking them\nGiving new tasks to already awake agents\nAsking the User for more input\nWhatever else it is you think we could be doing to further the project\n"
         
         prompt = prompt + f"And as a reminder, this is who you are:\n\n{self.original_data}"
-        
-        compressed_prompt = get_compression_agent_singleton().compress_prompt(prompt, 0.5)
+        # print(colored(f"AbstractEngine.amend_project(): right before compression, prompt is {prompt}", "yellow"))
+        compressed_prompt = compress_text(prompt, 0.25)
         print(colored("OrchestrationEnginne.amend_project(): Amending project...", "green"))
         response = self.ai_api.submit_chat_prompt(self, compressed_prompt, get_user_agent_singleton())
         self.most_recent_responses_to['amend_project'] = response
@@ -276,16 +234,38 @@ class OrchestrationEngine(AbstractEngine):
         print(colored(f"OrchestrationEnginne.crud_agents_to_parts_of_project(): {self}", "green"))
         pass
     
+    def assign_agent_to_goal(self, goal):
+        print(colored(f"OrchestrationEnginne.assign_agent_to_goal(): {self}", "green"))
+        prompt = Prompt().to_assign_agent_to_goal(goal)
+        goal_assignment_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
+        return goal_assignment_response
+    
     def routine(self, project):
+        print(print(colored(f"\nOrchestrationEnginne.routine(): Starting agent routine...\n", "green")))
+        
         #establish goals of the project
         if project.orc_agent_set_objectives == '': 
             project.orc_agent_set_objectives = self.establish_project_objective(project)
-            print(colored(f"OrchestrationEnginne.routine(): Project objectives set by Orchestrator {project.orc_agent_set_objectives}", "green"))
+            print(colored(f"\nOrchestrationEnginne.routine(): Project objectives set by Orchestrator\n\n{project.orc_agent_set_objectives}\n", "green"))
         else:
-            #reassess project objectives
-            pass    
+            #reassess project objectives?
+            pass
+        
+        #convert string of objectives to array
+        if self.array_of_project_goals == []:
+            goals_string = project.orc_agent_set_objectives[1:-1]
+            self.array_of_project_goals = goals_string.split(', ')
+        
+        #create a more detailed list of steps for each objective
+        
+        
+        #assign 
+        for goal in self.array_of_project_goals:
+            self.assign_agent_to_goal(goal)
+        
         project_state_assessment_response = self.assess_project_state(project)
-        print(colored(f"OrchestrationEnginne.routine(): Project state assessment by Orchestrator {project_state_assessment_response}", "green"))
+        print(colored(f"\nOrchestrationEngine.routine(): Project state assessment by Orchestrator {project_state_assessment_response}\n", "green"))
+        
         user_input = input("hit enter to continue...")
         # self.crud_agents_to_parts_of_project(project, project_state_response)
         # self.run_agents(project)
@@ -293,3 +273,86 @@ class OrchestrationEngine(AbstractEngine):
         # self.commit_agent_output_to_project(project)
         
     
+def compress_text(text_to_compress, compression_ratio=0.5):
+    opeanai_api = OpenAiAPI()
+    open_ai_chat_data = {
+        "model": "gpt-3.5-turbo",
+    }
+    
+    # print(colored(f"agent_engines.compress_text(): Compressing text to a ratio <= {compression_ratio}. Text = \n\n{text_to_compress}\n\nCompression...", "yellow"))
+     
+    prompt = f"Re-write the following text so that it reduces the number of GPT tokens by {compression_ratio}, and so that another GPT agent will receive the same information in the original text. Completely rearrange the structure and/or use abbreviations, symbols, emojis or code if that would achieve a better outcome. Your output does not need to be human-readable, but it should be easy for another GPT instance to interpret. Here is the text: \n\nTEXT BEGINS\n```\n\n{text_to_compress}\n\n```\nTEXT ENDS"
+    
+    # print(colored("agent_engines.compress_text(): Compressing prompt...", "yellow"))
+    
+    api_data = open_ai_chat_data
+    
+    with open("./.secrets/openai_api_key", 'r') as f:
+        api_data['key'] = f.read()
+        
+    api_data['messages_to_submit'] = []
+    api_data['messages_to_submit'].append({"role": "system", "content": "You are a GPT agent with the role of reducing the amount of GPT tokens required to convey the meaning of a text to another GPT agent."})
+    api_data['messages_to_submit'].append({"role": "user", "content": prompt})
+    
+    print(colored(f"\nagent_engines.compress_text(): messages_to_submit = \n", "yellow"))
+    
+    for message in api_data['messages_to_submit']:
+        print(colored(f"\nrole: {message['role']}\n{message['content']}\n--------------", "yellow"))
+    
+    print(colored(f"\nagent_engines.compress_text(): sumbitting messages to api \n", "yellow"))
+    
+    response = opeanai_api.chat_response(api_data)
+    
+    print(colored(f"\nagent_engines.compress_text(): response =\n {response.choices[0].message.content}\n", "green"))
+    
+    return response.choices[0].message.content     
+   
+def agent_chatterer(api_data):
+    
+    opeanai_api = OpenAiAPI()
+    
+    if api_data['responding_agent'].agent_type == "orchestration_agent":
+        api_data['key_file'] = "./.secrets/orc_openai_api_key"
+        api_data['model'] = "gpt-4"
+    else:
+        api_data['key_file'] = "./.secrets/openai_api_key"
+        api_data['model'] = "gpt-3.5-turbo"
+        
+    with open(api_data['key_file'], 'r') as f:
+        api_data['key'] = f.read()
+
+    system_message = ""
+    if api_data.get('system_message') != None:
+        system_message = api_data['system_message']
+    elif api_data['responding_agent'].compressed_wake_up_message != '':
+        system_message = api_data['responding_agent'].compressed_wake_up_message
+    else: 
+        api_data['responding_agent'].wake_up()
+        system_message = api_data['responding_agent'].wake_up_message
+        
+    api_data['messages_to_submit'] = [{"role": "system", "content": system_message}]
+    
+    if api_data['responding_agent'] != "UtilityAgent":
+        i = 3
+        if api_data['responding_agent'].chat_logs.all() != [] :
+            for chat_log in api_data['responding_agent'].chat_logs.all(): 
+                #some way to count the tokens in the chat log and not add if it goes beyond a limit, but for now, just the last i (3)
+                if i > 0:
+                    for obj in chat_log.convert_log_to_chain_objects():
+                        api_data['messages_to_submit'].append(obj)
+                        i = i - 1
+    
+    api_data['messages_to_submit'].append({"role": "user", "content": api_data.get("content")})
+    
+    print(colored(f"\nagent_engines.agent_chatterer(): messages_to_submit = \n", "yellow"))
+    
+    for message in api_data['messages_to_submit']:
+        print(colored(f"\nrole: {message['role']}\n{message['content']}\n--------------", "yellow"))
+    
+    print(colored(f"\nagent_engines.agent_chatterer(): sumbitting messages to api\n", "yellow"))
+    
+    response = opeanai_api.chat_response(api_data)
+    
+    print(colored(f"\nagent_engines.agent_chatterer(): response =\n{response.choices[0].message.content}\n", "green"))
+    
+    return response.choices[0].message.content        

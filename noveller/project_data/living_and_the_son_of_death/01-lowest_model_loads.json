@@ -203,7 +203,7 @@
                     "for_chapter": "Chapter 1",
                     "part_num": 1,
                     "part_goals": "",
-                    "storyteller": "The Narrator",
+                    "storyteller_of_part": "The Narrator",
                     "locations": [
                         "Aftermath of the Battle of Clontarf"
                     ],
@@ -283,7 +283,7 @@
         ]
     },
     {
-        "class_name": "AppearanceModifiers",
+        "class_name": "CharacterAppearanceModifiers",
         "list_of_instances": [
             {
                 "properties": {
@@ -309,7 +309,7 @@
         ]
     },
     {
-        "class_name": "Appearance",
+        "class_name": "CharacterAppearance",
         "list_of_instances": [
             {
                 "properties": {
@@ -360,7 +360,7 @@
             {
                 "properties": {
                     "name": "A Young Woman managing a bar in Early 11th Century Dubh Linn (Dublin)",
-                    "setting": "Early 11th Century Dubh Linn (Dublin)",
+                    "character_in_setting": "Early 11th Century Dubh Linn (Dublin)",
                     "rights": "Brehon Laws treated women with more respect and provided them with more rights compared to other contemporary legal systems. Could inherit and hold property, participate in legal contracts, seek divorce or separation. As a business owner, she would be considered a 'ban-aírech' or female landholder, granting her certain rights and protections. Able to represent herself and seek the assistance of a Brehon, or a judge, to settle the matter according to the Brehon Laws. The Brehon Laws recognized different forms of marriage, with varying degrees of property rights and obligations for both spouses. The Viking settlement of Dubh Linn (Dublin) was influenced not only by the Brehon Laws but also by Norse laws and customs. The young woman's legal status and rights would be affected by the interplay of these two legal systems.",
                     "appearance_modifiers": "A Young Woman managing a bar in 11th Century Dubh Linn (Dublin)",
                     "attitudes": "",
@@ -385,7 +385,7 @@
         ]
     },
     {
-        "class_name": "LitStyleGuide",
+        "class_name": "LiteraryStyleGuide",
         "list_of_instances": [
             {
                 "properties": {

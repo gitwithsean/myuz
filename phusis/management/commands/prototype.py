@@ -18,8 +18,6 @@ agents = []
 init_prompts = ['genre(s)', 'character(s)', 'setting', 'target audiences', 'conflicts and resolutions', 'themes', 'style']
 user_selected_agents = []
 project = {}
-full_auto = False
-change_agents = True
 
 def user_input_is_command(input):
     global commands
@@ -36,7 +34,6 @@ def user_init():
     
 def orcs_init():
     global orc
-    global full_auto
     print(f"Orchestrators available: ")
     i = 1
     for orchestrator in OrchestrationAgent.objects.all():
@@ -44,10 +41,10 @@ def orcs_init():
         print(f"{i}: {orchestrator.name}")
         i = i + 1
     
-    if full_auto: 
-        user_input = "3"
-    else:    
-        user_input = input("Please enter the number of the orchestrator you would like to lead the project: \n")
+
+    user_input = "3"
+
+    # user_input = input("Please enter the number of the orchestrator you would like to lead the project: \n")
     
     i = 1
     for orchestrator in orcs:
@@ -60,7 +57,6 @@ def orcs_init():
 
 def agents_init():
     global user_selected_agents
-    global full_auto
     # instances_for_agent_class = []
     all_agent_classes = AbstractAgent.__subclasses__()
     agent_classes_with_their_instances = []
@@ -77,7 +73,10 @@ def agents_init():
     print("You will now be asked to select the other agents you want to work on this project, there will be these types of agents:")
     for item in agent_classes_with_their_instances:
          print(item['agent_class'])
-         
+    
+    
+    full_auto_user_input = ["8","2","3","3","2","1","5"]
+    user_input_counter = 0     
     for agent_class_with_instances in agent_classes_with_their_instances:
         
         if agent_class_with_instances['agent_class'] != "OrchestrationAgent":
@@ -87,14 +86,11 @@ def agents_init():
                 print(f"{i}: {agent}")
                 i = i + 1
     
-        full_auto_user_input = ["8","2","3","3","2","1","5"]
-        user_input_counter = 0
         if agent_class_with_instances['agent_class'] != "OrchestrationAgent":
-            if full_auto:
-                user_input = full_auto_user_input[user_input_counter]
-                user_input_counter = user_input_counter + 1
-            else:
-                user_input = input(f"\nPlease enter the number that corresponds to the agent you wish to assign to this project\n")
+
+            user_input = full_auto_user_input[user_input_counter]
+            user_input_counter = user_input_counter + 1
+            # user_input = input(f"\nPlease enter the number that corresponds to the agent you wish to assign to this project\n")
 
             i = 1
             for agent in agent_class_with_instances['agent_instances']:
@@ -141,40 +137,11 @@ def add_agents_to_project(project):
     print(f"While we wait, think about the story you want to work on today.\nWhat do you want to tell {orc} to get started? Think about {init_prompts}, etc.\n")
 
     orc.wake_up()
-    # memorize_chat(prompt, response, orc)
     for agent in user_selected_agents:
-        prompt, response = agent.wake_up()
-        # memorize_chat(prompt, response, agent)
-
-    # user_input = input(f"\nOK, {orc} is ready for your input...")
-                       
-    #                 #    \n\n[or type prompt! to receive a list of prompts that will get you started]\n\n")
-            
-    # prompt, response = orc.submit_chat_prompt(user_input, get_user_agent_singleton())
-    # project.add_script_entry(get_user_agent_singleton(), prompt, orc, response)
-    
-    
-    # current_prompt = user_input
-    
-    # if user_input == 'prompt!':
-    #     user_input = ""
-    #     for init_prompt in init_prompts:
-    #         user_input = user_input + {init_prompt} + input(f"tell us about the {init_prompt} of the story") + "\n"
-    #         user_input = user_input + input(f"Anything else you want to add?") + "\n"\
-        
-    #     project_details.append(user_input.__str__())
-    # else:
-    #     while user_input_is_command(user_input) == False:
-    #         project_details.append(user_input.__str__())
-    #         user_input = input(f"Enter input. Tell {orc} more about your story...\nCOMMANDS: 'go!' 'exit!' 'update!'") 
-        #         if not user_input_is_command: project_details.append(user_input.__str__())
-        
-        # user_input
-
+        agent.wake_up()
 
 def retrieve_and_load_project():
-    global orc
-    global full_auto
+
     projects_available = Book.objects.all()
     # pprint(projects_available)
     user_selected_project = {}
@@ -183,10 +150,10 @@ def retrieve_and_load_project():
     for project in projects_available:
         print(f"{i}: {project.name}")
     
-    if full_auto:  
-        user_input = "1"
-    else:
-        user_input = input(f"\nPlease enter the number that corresponds to the project you wish to load\n")
+
+    user_input = "1"
+
+    # user_input = input(f"\nPlease enter the number that corresponds to the project you wish to load\n")
     
     i = 1
     for project in projects_available:
@@ -205,21 +172,21 @@ def retrieve_and_load_project():
         add_agents_to_project(user_selected_project)
         user_selected_project.save()
     else:
-        if full_auto:
-            if change_agents:
-                user = 'y'
-            else: 
-                user = 'n'
-        else:            
-            user = input("Do you want to start again with fresh agents for your project?\n(y/n)\n")
-            
-        if user == 'y':            
+        user = 'y'
+        # user = 'n'
+        # user = input("Do you want to start again with fresh agents for your project?\n(y/n)\n")
+        if user == 'y':      
+            print(colored(f"deleting memory of {user_selected_project.name}", "yellow"))
+            goals = user_selected_project.goals_for_project.all()
+            user_selected_project.goals_for_project.clear()
+            goals.delete()  
+            user_selected_project.save()    
             for agent in user_selected_project.get_agents_for():
                 if agent.chat_logs: 
-                    print(colored(f"deleting chat logs for {agent.name}", "yellow"))
+                    print(colored(f"deleting memory for {agent.name}", "yellow"))
                     chat_logs = agent.chat_logs.all()
                     agent.chat_logs.clear()
-                    agent.aweake = False
+                    agent.awake = False
                     chat_logs.delete()
                     agent.save()
             user_selected_project.agents_for_project.clear()
@@ -254,6 +221,7 @@ def main():
 
     if not orc.awake:
         orc.wake_up()
+        orc.auto_mode = True
         orc.save()
         
     print(colored(f"prototype.main() - orc.awake: {orc.awake}", "yellow")) 
@@ -286,13 +254,5 @@ if __name__ == "__main__":
 class Command(BaseCommand):
     help = 'Run the phusis noveller prototype'
     
-    def add_arguments(self, parser):
-        parser.add_argument('full_auto', type=str, help='Run on default inputs, no user input required')
-        parser.add_argument('change_agents', type=str, help='If full auto, also re-init agents')
-    
     def handle(self, *args, **options):
-        global full_auto
-        global change_agents
-        full_auto = options['full_auto']
-        change_agents = options['change_agents']
         main()

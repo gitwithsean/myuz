@@ -66,6 +66,7 @@ class Genre(NovellerModelDecorator):
 class TargetAudience(NovellerModelDecorator):
     pass
 
+
 class Plot(NovellerModelDecorator):
     plot_for_book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_plots', null=True)
     events_of_plot = models.ManyToManyField('PlotEvent', blank=True)
@@ -84,6 +85,7 @@ class Plot(NovellerModelDecorator):
         brief += f"- Events: {self.events_of_plot} \n"
         
         return brief
+   
         
 class PlotEvent(NovellerModelDecorator):
     for_plot = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_events', null=True)
@@ -95,12 +97,14 @@ class PlotEvent(NovellerModelDecorator):
     foreshadowing = models.ManyToManyField('PlotEvent', 'SubPlotEvent', blank=True)
     is_climax_of_plot = models.BooleanField(blank=True, null=True)
 
+
 class SubPlot(Plot):
     sub_plot_of = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_subplot', null=True)
     events_of_subplot = models.ManyToManyField('SubPlotEvent', blank=True, related_name='subplots_events')
     
     class Meta:
         ordering = ['sub_plot_of__name', 'name']
+
 
 class SubPlotEvent(PlotEvent):
     subplot = models.ForeignKey('SubPlot', on_delete=models.CASCADE, related_name='subplots_events', null=True)
@@ -111,7 +115,7 @@ class SubPlotEvent(PlotEvent):
     class Meta:
         ordering = ['order_in_story_events']
 
-#Chapters, Outlines, Summaries
+
 class Chapter(NovellerModelDecorator):
     chapter_in_book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='book_characters', null=True)
     chapter_num = models.IntegerField(null=True)
@@ -124,6 +128,7 @@ class Chapter(NovellerModelDecorator):
     
     class Meta:
         ordering = ['chapter_num']
+
 
 class ChapterPart(NovellerModelDecorator):
     part_num = models.IntegerField(null=True)
@@ -142,6 +147,7 @@ class ChapterPart(NovellerModelDecorator):
     class Meta:
         ordering = ['for_chapter__chapter_num', 'part_num']
 
+
 class ChapterPartSummary(NovellerModelDecorator):
     for_chapter_part = models.OneToOneField('ChapterPart', on_delete=models.SET_NULL, blank=True, null=True)
     chapter_part_summary = models.TextField(blank=True, null=True)
@@ -155,6 +161,7 @@ class ChapterPartSummary(NovellerModelDecorator):
     class Meta:
         ordering = ['for_chapter_part__for_chapter__chapter_num', 'for_chapter_part__part_num']
 
+
 class ChapterPartSummaryItem(NovellerModelDecorator):
     for_chapter_part_summary = models.ForeignKey(ChapterPartSummary, on_delete=models.SET_NULL, blank=True, null=True)
     content = models.TextField(blank=True)
@@ -166,11 +173,11 @@ class ChapterPartSummaryItem(NovellerModelDecorator):
     class Meta:
         ordering = ['for_chapter_part_summary__for_chapter_part__for_chapter__book','for_chapter_part_summary__for_chapter_part__for_chapter__chapter_num', 'for_chapter_part_summary__for_chapter_part__part_num', 'order_in_part']
 
+
 class StoryPacing(NovellerModelDecorator):
     pass
     
-# Background, Setting and Research
-
+    
 class Setting(NovellerModelDecorator):
     books = models.ManyToManyField('Book', blank=True)
     background_events = models.ManyToManyField('BackgroundEvent', blank=True)
@@ -178,15 +185,19 @@ class Setting(NovellerModelDecorator):
     background_research = models.OneToOneField('BackgroundResearch', on_delete=models.SET_NULL, blank=True, null=True)
     general_setting = models.TextField(blank=True)
 
+
 class Location(NovellerModelDecorator):
     pass
+
 
 class BackgroundResearch(NovellerModelDecorator):
     research = models.TextField(blank=True)
     deeper_research_topics = models.ManyToManyField('DeeperBackgroundResearchTopic', blank=True)
     
+    
 class DeeperBackgroundResearchTopic(NovellerModelDecorator):
     notes = models.TextField(blank=True, null=True)
+
 
 class BackgroundEvent(NovellerModelDecorator):
     date_from = models.DateField(blank=True, null=True)
@@ -194,9 +205,11 @@ class BackgroundEvent(NovellerModelDecorator):
     order_in_story_events = models.IntegerField(blank=True, null=True)
     order_in_narrative_telling = models.IntegerField(blank=True, null=True)
 
+
 class Faction(NovellerModelDecorator):
     description = models.TextField(blank=True, null=True)
     members = models.ManyToManyField('CharacterVersion', blank=True)
+    
     
 class CharacterRelatedSettingTopic(NovellerModelDecorator):
     character_in_setting = models.ForeignKey('Setting', on_delete=models.SET_NULL, blank=True, null=True)
@@ -210,6 +223,7 @@ class CharacterRelatedSettingTopic(NovellerModelDecorator):
     
     # def __str__(self):
     #     return f"Setting as it relates to {self.character}"
+
 
 class Character(NovellerModelDecorator):
     books = models.ManyToManyField('Book')
@@ -244,6 +258,7 @@ class Character(NovellerModelDecorator):
         if self.versions: brief += f"- Versions: {[version.name for version in self.versions.all()]}\n"
         
         return brief
+
 
 class CharacterVersion(NovellerModelDecorator):
     for_character = models.ForeignKey('Character', blank=True, on_delete=models.SET_NULL, null=True)
@@ -365,23 +380,30 @@ class StoryTeller(NovellerModelDecorator):
 class LiteraryTheme(NovellerModelDecorator):
     pass
 
+
 class NarrativePerspective(NovellerModelDecorator):
     pass
+
 
 class LiteraryTrait(NovellerModelDecorator):
     pass
 
+
 class LiteraryTone(NovellerModelDecorator):
     pass
+
 
 class LiteraryMood(NovellerModelDecorator):
     pass
 
+
 class LiteraryImagery(NovellerModelDecorator):
     pass
 
+
 class LiterarySymbolism(NovellerModelDecorator):
     pass
+
 
 # Other
 class File(NovellerModelDecorator):
@@ -434,18 +456,8 @@ class Book(AbstractPhusisProject):
     agents_for_project = models.ManyToManyField(
         ContentType,
         related_name="projects_assigned_to",
-        through=AgentBookRelationship,
-        # limit_choices_to=models.Q(app_label='phusis', model='characteragent') |
-        #                  models.Q(app_label='phusis', model='poeticsagent') |
-        #                  models.Q(app_label='phusis', model='writingagent') |
-        #                  models.Q(app_label='phusis', model='researchagent')
+        through=AgentBookRelationship
     )
-    
-    
-    def convert_array_to_md_list(self, array):
-        md_list=""
-        for item in array:
-            md_list += f"- {item}\n"
     
     def project_brief(self):
         
@@ -453,7 +465,13 @@ class Book(AbstractPhusisProject):
         brief += f"## Project Type: {self.project_type} \n"
         brief += f"## Name: {self.name} \n"
         
-        if self.orc_agent_set_objectives: brief += f"## Goals: {self.orc_agent_set_objectives} \n"
+        if self.goals_for_project:
+            brief += f"## Goals: \n"
+            for goal in self.goals_for_project.all():
+                brief += f"## Goals: {goal.name} \n"
+                for step in goal.steps.all():
+                    brief += f"- {step.name} \n"
+        
         
         if self.genres: brief += f"## Genres: {self.convert_array_to_md_list([genre.name for genre in self.genres.all()])} \n"
         
@@ -473,6 +491,7 @@ class Book(AbstractPhusisProject):
     
     def add_agents_to(self, agents):
         for agent in agents:
+            # print(colored(f"Book.add_agents_to(): Assigning agent {agent} to book {self}", "green"))
             agent_content_type = ContentType.objects.get_for_model(agent)
             relationship, created= AgentBookRelationship.objects.get_or_create(content_type=agent_content_type, object_id=agent.id, book=self)
             relationship.save()
@@ -498,7 +517,7 @@ class Book(AbstractPhusisProject):
     
     def list_project_attributes(self):
         book_attributes_str = f"These are the various attributes, and their sub attributes of {self.name}:\n"
-        attributes = dir(self)
+        attributes = self.project_attributes
         models_dict = {}
         app_models = apps.get_app_config('noveller').get_models()
         for model in app_models:

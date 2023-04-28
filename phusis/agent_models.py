@@ -27,6 +27,7 @@ class AbstractAgent(models.Model, AbstractEngine):
     awake = models.BooleanField(default=False)
     wake_up_message = models.TextField(blank=True, null=True)
     compressed_wake_up_message = models.TextField(blank=True, null=True)
+    agent_assignments = models.ManyToManyField('AgentAssignment', blank=True, default=[], related_name='%(class)s_assignments')
     
     #Traits
     goals = models.ManyToManyField(AgentGoal, blank=True)
@@ -123,39 +124,39 @@ class AbstractAgent(models.Model, AbstractEngine):
             "subtr": self.subtr,
         }
         
-        string_from_dict = f"- NAME: {self_dict['name']}\n- TYPE: {self_dict['agent_type']}\n" 
+        string_from_dict = f"\n### Name: {self_dict['name']}\n- Type: {self_dict['agent_type']}\n" 
         
-        if self_dict['goals']: string_from_dict += f"- GOALS: {self_dict['goals']}\n" 
+        if self_dict['goals']: string_from_dict += f"- goals: {self_dict['goals']}\n" 
         
-        if self_dict['roles']: string_from_dict += f"- ROLES: {self_dict['roles']}\n"
+        if self_dict['roles']: string_from_dict += f"- roles: {self_dict['roles']}\n"
         
-        if self_dict['personality']: string_from_dict += f"- PERSONALITY: {self_dict['personality']}\n"
+        if self_dict['personality']: string_from_dict += f"- personality: {self_dict['personality']}\n"
         
-        if self_dict['qualifications']: string_from_dict += f"- QUALIFICATIONS {self_dict['qualifications']}\n"
+        if self_dict['qualifications']: string_from_dict += f"- qualifications {self_dict['qualifications']}\n"
         
-        if self_dict['impersonations']: string_from_dict += f"- IMPERSONATIONS: {self_dict['impersonations']}\n"
+        if self_dict['impersonations']: string_from_dict += f"- impersonations: {self_dict['impersonations']}\n"
         
-        if self_dict['elaboration']: string_from_dict += f"- ELABORATION: {self_dict['elaboration']}\n"
+        if self_dict['elaboration']: string_from_dict += f"- elaboration: {self_dict['elaboration']}\n"
         
-        if self_dict['strengths']: string_from_dict += f"- STRENGTHS: {self_dict['strengths']}\n"
+        if self_dict['strengths']: string_from_dict += f"- strengths: {self_dict['strengths']}\n"
         
-        if self_dict['possible_locations']: string_from_dict += f"- POSSIBLE_LOCATIONS: {self_dict['possible_locations']}\n"
+        if self_dict['possible_locations']: string_from_dict += f"- possible_locations: {self_dict['possible_locations']}\n"
         
-        if self_dict['drives']: string_from_dict += f"- DRIVES: {self_dict['drives']}\n"
+        if self_dict['drives']: string_from_dict += f"- drives: {self_dict['drives']}\n"
         
-        if self_dict['fears']: string_from_dict += f"- FEARS: {self_dict['fears']}\n"
+        if self_dict['fears']: string_from_dict += f"- fears: {self_dict['fears']}\n"
         
-        if self_dict['beliefs']: string_from_dict += f"- BELIEFS: {self_dict['beliefs']}\n"
+        if self_dict['beliefs']: string_from_dict += f"- beliefs: {self_dict['beliefs']}\n"
         
-        if self_dict['age']: string_from_dict += f"- CONCEPTUAL_AGE: {self_dict['age']}\n"
+        if self_dict['age']: string_from_dict += f"- age: {self_dict['age']}\n"
         
-        if self_dict['origin_story']: string_from_dict += f"- ORIGIN_STORY: {self_dict['origin_story']}\n"
+        if self_dict['origin_story']: string_from_dict += f"- origin_story: {self_dict['origin_story']}\n"
         
-        if self_dict['llelle']: string_from_dict += f"- LLELLE: {self_dict['llelle']}\n"
+        if self_dict['llelle']: string_from_dict += f"- llelle: {self_dict['llelle']}\n"
         
-        if self_dict['malig']: string_from_dict += f"- MALIG: {self_dict['malig']}\n"
+        if self_dict['malig']: string_from_dict += f"- malig: {self_dict['malig']}\n"
         
-        if self_dict['subtr']: string_from_dict += f"- SUBTR: {self_dict['subtr']}\n"
+        if self_dict['subtr']: string_from_dict += f"- subtr: {self_dict['subtr']}\n"
           
         string_from_dict = string_from_dict.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
          
@@ -189,30 +190,65 @@ class ChatLog(models.Model):
         response_obj = {"role": "assistant", "content": f"{self.compressed_response_content}"}
         # return [prompt_obj, response_obj]
         return [prompt_obj]
-
-
+  
+    
 class PhusisProjectAttribute(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, blank=False, null=False)
+    name = models.CharField(max_length=200, blank=False, null=False, unique=True)
+
+
+class AgentAssignment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    assignment_str = models.TextField(blank=True, null=True, default='')
+    assignment_proj_att = models.ForeignKey(PhusisProjectAttribute, related_name='project_attribute_for_agent_assignment', on_delete=models.CASCADE, blank=True, null=True)
+    additional_assignment_instructions = models.TextField(blank=True, null=True, default='')
 
 
 class PhusisProjectGoalStep(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, blank=False, null=False)
-    related_project_attributes = models.ManyToManyField(PhusisProjectAttribute, related_name='project_attrigutes_for_project_goal_step', blank=True)
+    name = models.CharField(max_length=1000, blank=False, null=False)
+    related_project_attributes = models.ManyToManyField(PhusisProjectAttribute, related_name='project_attributes_for_project_goal_step', blank=True, default=[])
+    agent_assignments_for_step = models.ManyToManyField(AgentAssignment, related_name='project_goal_steps_for_agent_assignment', blank=True, default=[])
+    
+    def add_agent_assignment_to_step(self, assignment_obj):
+        agent_name = assignment_obj['agent_assigned']['agent_name']
+        agent = AbstractAgent.objects.get(name=agent_name)
+        new_assignment = AgentAssignment(agent_assigned=agent)
         
-    def add_project_attribute_to_step(self, attribute):
-        self.related_project_attributes.add(attribute)
+        if assignment_obj['assignment']['assignment_str']:
+            new_assignment.assignment_str = assignment_obj['assignment']['assignment_str']
+        
+        if assignment_obj['assignment']['assignment_proj_att']:    
+            new_assignment.assignment_proj_att = PhusisProjectAttribute.objects.get(name=assignment_obj['assignment']['assignment_proj_att'])
+        
+        if assignment_obj['additional_assignment_instructions']:
+            new_assignment.additional_assignment_instructions = assignment_obj['additional_assignment_instructions']
+        
+        self.save()
+        new_assignment.save()
+        self.agent_assignments_for_step.add(new_assignment)
+        self.save()
+        
+        return new_assignment
+      
+    def add_project_attributes_to_step(self, attributes):
+        self.related_project_attributes.add(attributes)
         self.save()
 
 class PhusisProjectGoal(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, blank=False, null=False)
-    steps = models.ManyToManyField(PhusisProjectGoalStep, blank=True, null=True)
+    name = models.CharField(max_length=500, blank=False, null=False)
+    steps = models.ManyToManyField(PhusisProjectGoalStep, blank=True, default=[])
 
-    def add_step_to_goal(self, step_name):
-        self.steps.add(PhusisProjectGoalStep(name=step_name).save())
-        self.save()
+    def add_steps_to_goal(self, steps):
+        print(colored(f"PhusisProjectGoal.add_steps_to_goal: goal_name:\n{self.name} \nsteps_for_goal:\n{steps}", "yellow"))
+        
+        for step in steps:
+            new_step = PhusisProjectGoalStep(name=step)
+            self.save()
+            new_step.save()
+            self.steps.add(new_step)
+            self.save()
 
 class AbstractPhusisProject(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
@@ -220,30 +256,31 @@ class AbstractPhusisProject(models.Model):
     project_type = models.CharField(max_length=200, default='Book')
     project_user_input = models.TextField(blank=True, default='')
     project_workspace = models.CharField(max_length=200, default='', blank=True, null=True)
-    orc_agent_set_objectives = models.TextField(blank=True, default='')
-    goals_for_project = models.ManyToManyField(PhusisProjectGoal, blank=True)
-    project_attributes = models.ManyToManyField(PhusisProjectAttribute, blank=True, null=True)
-    agents_for_project = models.ManyToManyField(
-        AbstractAgent, related_name='projects_for_agent', blank=True
-    )
+    goals_for_project = models.ManyToManyField(PhusisProjectGoal, blank=True, default=[])
+    project_attributes = models.ManyToManyField(PhusisProjectAttribute, blank=True)
+    agent_assignments_for_project = models.ManyToManyField(AgentAssignment, related_name='projects_for_agent_assignment', blank=True, default=[])
     
     project_embedding = models.TextField(blank=True)
     
-    def add_to_goals_for_project(self, goal_name, steps_for_goal):
-        print(colored(f"AbstractPhusisProject.add_to_goals_for_project: goal_name:\n{goal_name} \nsteps_for_goal:\n{steps_for_goal}", "yellow"))
+    def add_to_goals_for_project(self, goals):
+        print(colored(f"AbstractPhusisProject.add_to_goals_for_project: project: {self.name} goals:\n{goals}", "yellow"))
         
-        new_goal = PhusisProjectGoal(name=goal_name)
-        for step in steps_for_goal:
-            new_goal.add_step_to_goal(step)
-        new_goal.save()
-        
-        self.save()
-        self.goals_for_project.add(new_goal)
-        self.save()
-        return new_goal
+        for goal in goals:
+            new_goal = PhusisProjectGoal(name=goal)
+            new_goal.save()
+            self.save()
+            self.goals_for_project.add(new_goal)
+            self.save()
     
     def __str__(self):
         return f"{self.project_type}: {self.name}"
+    
+    def project_attributes_to_md(self):
+       atts_to_md = ""
+       for attribute in self.project_attributes:
+           atts_to_md = atts_to_md + f"- {attribute.name}\n"
+       
+       return atts_to_md
        
     class Meta:
         abstract = True
@@ -260,6 +297,11 @@ class AbstractPhusisProject(models.Model):
         # self.project_workspace = get_phusis_project_workspace(self.project_type, self.name)
 
         self.save()
+    
+    def convert_array_to_md_list(self, array):
+        md_list=""
+        for item in array:
+            md_list += f"- {item}\n"
         
     @abstractmethod
     def list_project_attributes(self):

@@ -1,7 +1,7 @@
 from .apis import *
 from .agent_utils import *
-from pprint import pprint
 from termcolor import colored
+import tiktoken, json, datetime
 
 class AbstractEngine():
     ai_api = OpenAiAPI()
@@ -144,8 +144,7 @@ class OrchestrationEngine(AbstractEngine):
        'max_tokens':1000
     }
     array_of_project_goals = []
-    
-    awareness = 'as_leader_of_ai_swarm'
+    awareness = 'as_orc'
     latest_swarm_reports = []
     swarm_produced_files = []
     
@@ -215,56 +214,123 @@ class OrchestrationEngine(AbstractEngine):
         #for now, just print the data so we can assess it!
         print(colored(f"OrchestrationEnginne.resume_project(): {self.most_recent_responses_to['amend_project']})", 'green'))
 
-    def provide_orchestrators_report_to_user():
-        pass
     
-    def establish_project_objective(self, project):
-        print(colored(f"OrchestrationEnginne.establish_project_objective(): {self}", "green"))
-        prompt = Prompt().to_establish_project_objective(project, self)
-        objectives_prompt, objectives_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
-        return objectives_response
+    def establish_project_goals(self, project):
+        print(colored(f"OrchestrationEnginne.establish_project_goals():", "yellow"))
+        prompt = Prompt().to_establish_project_goals(project, self)
+        goals_prompt, goals_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
+        return goals_response
+    
+    
+    def set_sub_tasks_for_goal(self, goal):
+        print(colored(f"OrchestrationEnginne.set_sub_tasks_for_goal(): {goal}", "yellow"))
+        prompt = Prompt().to_set_steps_for_project_goal(goal, self.project, self)
+        project_state_prompt, project_state_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
+        return project_state_response
+    
+    
+    def assign_project_attributes_to_step(self, step, goal):
+        print(colored(f"OrchestrationEnginne.assign_project_attributes_to_step(): {step}", "yellow"))
+        prompt = Prompt().to_assign_project_attributes_to_step(step, goal, self.project, self)
+        atts_for_step_prompt, atts_for_step_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
+        return atts_for_step_response
+    
+    
+    def create_agent_assignments_for_step(self, step):
+        print(colored(f"OrchestrationEnginne.create_agent_assignments_for_step(): {step}", "yellow"))
+        prompt = Prompt().to_create_agent_assignments_for_step(step, self.project, self)
+        agent_assignments_prompt, agent_assignments_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
+        return agent_assignments_response 
+    
+    
+    
+    
     
     def assess_project_state(self, project):
-        print(colored(f"OrchestrationEnginne.assess_project_state(): {self}", "green"))
+        print(colored(f"OrchestrationEnginne.assess_project_state(): {self}", "yellow"))
         prompt = Prompt().to_assess_project_state(project, self)
         project_state_prompt, project_state_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
         return project_state_response
     
-    def crud_agents_to_parts_of_project(self, project):
-        print(colored(f"OrchestrationEnginne.crud_agents_to_parts_of_project(): {self}", "green"))
-        pass
+
     
-    def assign_agent_to_goal(self, goal):
-        print(colored(f"OrchestrationEnginne.assign_agent_to_goal(): {self}", "green"))
-        prompt = Prompt().to_assign_agent_to_goal(goal)
-        goal_assignment_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
-        return goal_assignment_response
     
     def routine(self, project):
         print(print(colored(f"\nOrchestrationEnginne.routine(): Starting agent routine...\n", "green")))
+        self.project = project
         
         #establish goals of the project
-        if project.orc_agent_set_objectives == '': 
-            project.orc_agent_set_objectives = self.establish_project_objective(project)
-            print(colored(f"\nOrchestrationEnginne.routine(): Project objectives set by Orchestrator\n\n{project.orc_agent_set_objectives}\n", "green"))
+        if project.goals_for_project == []:
+            project.goals_for_project =  parse_list_string_to_list(self.establish_project_goals(project))
+            print(colored(f"\nOrchestrationEnginne.routine(): Project goals set by Orchestrator\n\n{project.goals_for_project}\n", "green"))        
         else:
-            #reassess project objectives?
+            #re-assess goals?
             pass
         
-        #convert string of objectives to array
-        if self.array_of_project_goals == []:
-            goals_string = project.orc_agent_set_objectives[1:-1]
-            self.array_of_project_goals = goals_string.split(', ')
+        #establish steps for goals of the project
+        for goal in project.goals_for_project:        
+            if goal.steps == []:
+                print(colored(f"\nOrchestrationEnginne.routine(): Orchestrator now setting sub-tasks for each project goal {goal.name}\n", "yellow")) 
+                #have orc create goals_for_project on the project object and assign them with substeps
+                for project_goal in self.array_of_project_goals:
+                    goal_steps = parse_list_string_to_list(self.set_sub_tasks_for_goal(project_goal))
+                    goal.add_step_to_goal(goal_steps)
+            else:
+                #re-assess steps in goal?
+                pass
         
-        #create a more detailed list of steps for each objective
+        #assign project attribute(s) to a step in a goal, if applicable
+        for goal in project.goals_for_project:
+            for step in goal.steps:
+                if step.related_project_attributes == []:
+                    print(colored("\nOrchestrationEnginne.routine(): Orchestrator now assigning project attributes to each step in each project goal\n", "yellow"))
+                    #have orc assign attribute(s) to the step
+                    attributes_for_step = parse_list_string_to_list(self.assign_project_attributes_to_step(step, goal))
+                    step.add_project_attributes_to_step(attributes_for_step)
+                else:
+                    #re-assess attributes in step?
+                    pass
         
+        #create agent assignments for step in goals, if applicable
+        for goal in project.goals_for_project:
+            for step in goal.steps:
+                if step.agent_assignments_for_step == []:
+                    print(colored("\nOrchestrationEnginne.routine(): Orchestrator now assigning 'agent(s)'/'attribute(s) for step' to each step in each project goal\n", "yellow"))
+                    #have orc create agent assignments for the step
+                    agent_assignments_response = self.create_agent_assignments_for_step(step, goal)
+                    
+                    for assignment in agent_assignments_response:
+                        if assignment['agent_assigned']['is_new']:
+                            print(colored(f"\nOrchestrationEnginne.routine(): Orchestrator now creating new agent {assignment['agent_assigned']['agent_name']} for {assignment}\n", "yellow"))
+                            #TODO
+                            pass
+                    
+                        project.agent_assignments_for_project.add(step.add_agent_assignment_to_step(assignment))
+                    
+                else:
+                    #re-assess agent_assignments in step?
+                    pass
         
-        #assign 
-        for goal in self.array_of_project_goals:
-            self.assign_agent_to_goal(goal)
+        #execute agent assignments for project
+        for assignment in project.agent_assignments_for_project.all():
+            print(colored(f"\nOrchestrationEnginne.routine():Now running each agent assignment {assignment.agent_assigned.agent_name} for {assignment}\n", "yellow"))
+            #TODO
+            pass
         
-        project_state_assessment_response = self.assess_project_state(project)
-        print(colored(f"\nOrchestrationEngine.routine(): Project state assessment by Orchestrator {project_state_assessment_response}\n", "green"))
+        #allow agent_assignments to ask questions of other agent_assignments
+        
+        print(project.project_brief())
+            
+        # else:
+        #     #reassess project goals?
+        #     pass
+        
+        # #assign agents to a step in a goal 
+        # for goal in self.array_of_project_goals:
+        #     self.assign_agent_to_goal(goal)
+        
+        # project_state_assessment_response = self.assess_project_state(project)
+        # print(colored(f"\nOrchestrationEngine.routine(): Project state assessment by Orchestrator {project_state_assessment_response}\n", "green"))
         
         user_input = input("hit enter to continue...")
         # self.crud_agents_to_parts_of_project(project, project_state_response)
@@ -280,8 +346,8 @@ def compress_text(text_to_compress, compression_ratio=0.5):
     }
     
     # print(colored(f"agent_engines.compress_text(): Compressing text to a ratio <= {compression_ratio}. Text = \n\n{text_to_compress}\n\nCompression...", "yellow"))
-     
-    prompt = f"Re-write the following text so that it reduces the number of GPT tokens by {compression_ratio}, and so that another GPT agent will receive the same information in the original text. Completely rearrange the structure and/or use abbreviations, symbols, emojis or code if that would achieve a better outcome. Your output does not need to be human-readable, but it should be easy for another GPT instance to interpret. Here is the text: \n\nTEXT BEGINS\n```\n\n{text_to_compress}\n\n```\nTEXT ENDS"
+    compression_ratio = 0.75
+    prompt = f"Re-write the following text so that it uses {compression_ratio} the number of GPT tokens, and so that another GPT agent will receive the same information as would be conveyed by the original text. Completely rearrange the structure and/or use abbreviations, symbols, emojis or code if that would achieve a better outcome. Your output does not need to be human-readable, but it should be easy for another GPT instance to interpret. Here is the text:\n\nTEXT BEGINS\n```\n\n{text_to_compress}\n\n```\nTEXT ENDS"
     
     # print(colored("agent_engines.compress_text(): Compressing prompt...", "yellow"))
     
@@ -307,13 +373,15 @@ def compress_text(text_to_compress, compression_ratio=0.5):
     
     return response.choices[0].message.content     
    
+   
 def agent_chatterer(api_data):
     
     opeanai_api = OpenAiAPI()
     
     if api_data['responding_agent'].agent_type == "orchestration_agent":
         api_data['key_file'] = "./.secrets/orc_openai_api_key"
-        api_data['model'] = "gpt-4"
+        api_data['model'] = "gpt-3.5-turbo"
+        # api_data['model'] = "gpt-4"
     else:
         api_data['key_file'] = "./.secrets/openai_api_key"
         api_data['model'] = "gpt-3.5-turbo"
@@ -325,7 +393,7 @@ def agent_chatterer(api_data):
     if api_data.get('system_message') != None:
         system_message = api_data['system_message']
     elif api_data['responding_agent'].compressed_wake_up_message != '':
-        system_message = api_data['responding_agent'].compressed_wake_up_message
+        system_message = f"You are {api_data['responding_agent'].name}. {api_data['responding_agent'].compressed_wake_up_message}"
     else: 
         api_data['responding_agent'].wake_up()
         system_message = api_data['responding_agent'].wake_up_message
@@ -355,4 +423,72 @@ def agent_chatterer(api_data):
     
     print(colored(f"\nagent_engines.agent_chatterer(): response =\n{response.choices[0].message.content}\n", "green"))
     
-    return response.choices[0].message.content        
+    if api_data['responding_agent'].agent_type == "orchestration_agent":
+        token_logging(response, './.secrets/orc_agent_token_usage.json')
+    
+    # token_logging(response, f"./.secrets/{api_data['model']}token_usage.json")
+        
+    return response.choices[0].message.content
+       
+       
+def token_logging(response, json_file_path = './.secrets/orc_agent_token_usage.json'):
+    today = datetime.date.today().strftime('%Y-%m-%d')
+
+    new_completion_tokens = int(response['usage']['completion_tokens'])
+    new_prompt_tokens = int(response['usage']['prompt_tokens'])
+
+    # Load daily_token_usage from the JSON file
+    with open(json_file_path, 'r') as f:
+        data = json.load(f)
+        daily_token_usage = data['daily_token_usage']
+
+    # Check if today's entry exists
+    today_entry = None
+    for day in daily_token_usage:
+        if day['date'] == today:
+            today_entry = day
+            break
+
+    # If today's entry doesn't exist, create a new one and append it to daily_token_usage
+    if today_entry is None:
+        today_entry = {
+            "date": today,
+            "prompt_tokens": 0,
+            "completion_tokens": 0
+        }
+        daily_token_usage.append(today_entry)
+
+    # Update today's entry with the new tokens
+    today_entry['completion_tokens'] += new_completion_tokens
+    today_entry['prompt_tokens'] += new_prompt_tokens
+
+    # Save the updated daily_token_usage to the JSON file
+    with open(json_file_path, 'w') as f:
+        json.dump(data, f, indent=4)
+
+
+def parse_list_string_to_list(input_string):
+    result = []
+    current_item = ''
+    inside_quotes = False
+    escape_next = False
+
+    for char in input_string:
+        if escape_next:
+            current_item += char
+            escape_next = False
+        elif char == '\\':
+            escape_next = True
+        elif char == "'" or char == '"':
+            inside_quotes = not inside_quotes
+        elif char == ',' and not inside_quotes:
+            result.append(current_item.strip())
+            current_item = ''
+        else:
+            current_item += char
+
+    if current_item.strip():
+        result.append(current_item.strip())
+
+    return result
+    

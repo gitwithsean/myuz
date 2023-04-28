@@ -1,10 +1,6 @@
-import openai, time, json
-from pprint import pprint
+import openai
 from termcolor import colored
-from django.apps import apps
 from .agent_utils import memorize_chat
-from .secret_sauce import ph
-from .secret_sauce import quora
 
 
 class OpenAiAPI():
@@ -18,15 +14,15 @@ class OpenAiAPI():
         
         self.api.api_key = api_data['key']
         
-        print(colored("\nOpenAiApi.chat_response(): Submitting chat completion\n", "yellow"))
+        # print(colored("\nOpenAiApi.chat_response(): Submitting chat completion\n", "yellow"))
         
         completion = openai.ChatCompletion.create(
             model=api_data['model'],
             messages=api_data['messages_to_submit']
         )
         
-        print(colored("\nOpenAiApi.chat_response(): Response received\n", "green"))
-        
+        # print(colored("\nOpenAiApi.chat_response(): Response received\n", "green"))
+        # print(colored(f"\n{completion}\n", "green"))
         return completion
     
     def gpt_chat_response(self, api_data):

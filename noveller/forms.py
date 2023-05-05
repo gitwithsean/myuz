@@ -2,7 +2,7 @@ from django import forms
 from django.apps import apps
 from phusis.agent_models import *
 from noveller.noveller_models import *
-from django.db.models import Q
+from django_select2.forms import ModelSelect2MultipleWidget
 
 all_noveller_model_form_tuples = []
 
@@ -14,15 +14,14 @@ class BookForm(forms.ModelForm):
         model = Book
         fields = [
             'name',
-            'elaboration',
-            'expose_rest',
             'settings',
             'plots',
             'chapters',
             'characters',
             'themes',
             'genres',
-            'target_audiences'
+            'target_audiences',
+            'elaboration',
         ]
 
 class FormMaker:
@@ -35,22 +34,40 @@ class FormMaker:
             
             # print(f"\nCreating form for {model_name}")
             model = apps.get_model('noveller', model_name)
-                         
+             
+            included_fields = [f.name for f in model._meta.get_fields() if f.name not in ['expose_rest', 'content_type', 'id', 'useragentsingleton'] and isinstance(f, (models.Field, models.ManyToManyField))]
+
+            # print(colored(f"FormMaker: {model_name} included_fields: {included_fields}", "yellow"))
+               
             if model.__name__ == 'Book':
                 # print(colored(f"Creating specific form class for {model} as it has references from another app", "green"))
                 
-                agent_models = [model for model in AbstractAgent.__subclasses__()]
+                # agent_models = [model for model in AbstractAgent.__subclasses__()]
 
-                for agent_model in agent_models:
-                    field_name = agent_model.__name__.lower()
-                    form_field = forms.ModelChoiceField(queryset=agent_model.objects.all())
-                    BookForm.base_fields[field_name] = form_field
-                    BookForm.Meta.fields.append(field_name)
+                # for agent_model in agent_models:
+                #     field_name = agent_model.__name__.lower()
+                #     form_field = forms.ModelChoiceField(queryset=agent_model.objects.all())
+                #     BookForm.base_fields[field_name] = form_field
+                #     BookForm.Meta.fields.append(field_name)
                     
-                    form_class = BookForm
-                    
+                # print(colored(f"Creating form class for {model}", "green"))
+                form_class = BookForm
+                # pprint(BookForm.Meta.fields)    
             else:           
                 # print(colored(f"Creating form class for {model}", "green"))  
+                
+                widgets = {}
+                for field_name in included_fields:
+                    related_model = model._meta.get_field(field_name).related_model
+                    widgets[field_name] = ModelSelect2MultipleWidget(
+                        model=related_model,
+                        search_fields=['name__icontains'],
+                        attrs={
+                            'data-minimum-input-length': 1,
+                            'data-placeholder': f'Search for {field_name}'
+                        },
+                    )
+                
                 form_class = type(
                     f'{model_name}Form',
                     (forms.ModelForm,),
@@ -58,7 +75,8 @@ class FormMaker:
                         'Meta': type(
                             'Meta', (), {
                                 'model': model,
-                                'fields': '__all__'
+                                'fields': included_fields,
+                                'widgets': widgets,
                             }
                         )
                     }
@@ -75,6 +93,7 @@ def get_noveller_model_form_tuples_for(model_names):
     global all_noveller_model_form_tuples
     result = []
     for tuple in all_noveller_model_form_tuples:
+        # pprint(tuple)
         for model_name in model_names:
             if tuple['model_class'].__name__.lower() == model_name:
                 result.append(tuple)

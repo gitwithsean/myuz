@@ -1,11 +1,8 @@
 from __future__ import annotations
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
-from phusis.agent_models import AbstractPhusisProject, AgentBookRelationship, PhusisProjectAttribute
-import uuid
+from phusis.agent_models import AbstractPhusisProject, PhusisProjectAttribute, OrchestrationAgent
 from django.core.exceptions import ObjectDoesNotExist
-from pprint import pprint
-from rest_framework import serializers
 from django.apps import apps
 from abc import abstractmethod
 from termcolor import colored
@@ -27,6 +24,12 @@ class NovellerModelDecorator(PhusisProjectAttribute):
     
     # NovellerModelDecorator set_data
     def set_data(self, properties_dict):
+        """
+        Set the data for the instance based on the provided properties dictionary.
+        
+        Args:
+            properties_dict (dict): A dictionary containing the properties to set for the instance.
+        """
         # pprint(properties_dict)
         for key, value in properties_dict.items():
             # Get the field instance
@@ -69,45 +72,54 @@ class TargetAudience(NovellerModelDecorator):
 
 class Plot(NovellerModelDecorator):
     plot_for_book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_plots', null=True)
-    events_of_plot = models.ManyToManyField('PlotEvent', blank=True)
-    
+    scenes_of_plot = models.ManyToManyField('Scene', blank=True)
+    plot_beginning = models.TextField(blank=True, null=True)
+    plot_middle = models.TextField(blank=True, null=True)
+    plot_end = models.TextField(blank=True, null=True)
     def get_brief(self):
-        plot_events_to_brief = ""
-        if self.events_of_plot:
-            plot_events_to_brief = "- Events:\n"
+        """
+        Get a brief description of the instance.
+        
+        Returns:
+            str: A string containing a brief description of the instance.
+        """
+        plot_scenes_to_brief = ""
+        if self.scenes_of_plot.exists():
+            plot_scenes_to_brief = "- Scenes:\n"
             i = 1
-            for plot_event in self.events_of_plot.all():
-                plot_events_to_brief += f"  {i}: {plot_event.description} \n"
+            for plot_scene in self.scenes_of_plot.all():
+                plot_scenes_to_brief += f"  {i}: {plot_scene.description} \n"
                 i = i + 1
             
-        brief = "### Plot Brief \n"
-        brief += f"- Plot: {self.name} \n"
-        brief += f"- Events: {self.events_of_plot} \n"
+        brief = f"{self.name} \n"
+        if self.scenes_of_plot.exists(): brief += f"- Scenes:\n{convert_array_to_md_list(scene.name for scene in self.scenes_of_plot.all())} \n"
         
         return brief
    
         
-class PlotEvent(NovellerModelDecorator):
-    for_plot = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_events', null=True)
-    description = models.TextField(blank=True, null=True)
+class Scene(NovellerModelDecorator):
+    for_plot = models.ManyToManyField('Plot', related_name='plots_scenes')
     date_from = models.DateField(blank=True, null=True)
     date_to = models.DateField(blank=True, null=True)
     order_in_story_events = models.IntegerField(blank=True, null=True)
     order_in_narrative_telling = models.IntegerField(blank=True, null=True)
-    foreshadowing = models.ManyToManyField('PlotEvent', 'SubPlotEvent', blank=True)
-    is_climax_of_plot = models.BooleanField(blank=True, null=True)
+    foreshadowing = models.ManyToManyField('Scene', 'SubPlotEvent', blank=True)
+    scene_location = models.ForeignKey('Location', blank=True, on_delete=models.SET_NULL, null=True)
+    pacing = models.ForeignKey('StoryPacing', blank=True, on_delete=models.SET_NULL, null=True)
+    characters_present = models.ManyToManyField('CharacterVersion', blank=True)
+    scene_summary = models.TextField(blank=True, null=True)
 
 
 class SubPlot(Plot):
     sub_plot_of = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_subplot', null=True)
-    events_of_subplot = models.ManyToManyField('SubPlotEvent', blank=True, related_name='subplots_events')
+    scenes_of_subplot = models.ManyToManyField('SubPlotScene', blank=True, related_name='subplots_scenese')
     
     class Meta:
         ordering = ['sub_plot_of__name', 'name']
 
 
-class SubPlotEvent(PlotEvent):
-    subplot = models.ForeignKey('SubPlot', on_delete=models.CASCADE, related_name='subplots_events', null=True)
+class SubPlotScene(Scene):
+    subplot = models.ForeignKey('SubPlot', on_delete=models.CASCADE, related_name='subplots_scenes', null=True)
     
     # def __str__(self):
     #     return f"Story Event {self.order_in_story_events}: {self.description}"
@@ -170,8 +182,8 @@ class ChapterPartSummaryItem(NovellerModelDecorator):
     def __str__(self):
         return f"{self.for_chapter_part_summary}-{self.order_in_part}: {self.name}"
     
-    class Meta:
-        ordering = ['for_chapter_part_summary__for_chapter_part__for_chapter__book','for_chapter_part_summary__for_chapter_part__for_chapter__chapter_num', 'for_chapter_part_summary__for_chapter_part__part_num', 'order_in_part']
+    # class Meta:
+    #     ordering = ['for_chapter_part_summary__for_chapter_part__for_chapter__book','for_chapter_part_summary__for_chapter_part__for_chapter__chapter_num', 'for_chapter_part_summary__for_chapter_part__part_num', 'order_in_part']
 
 
 class StoryPacing(NovellerModelDecorator):
@@ -238,6 +250,12 @@ class Character(NovellerModelDecorator):
     character_arc = models.TextField(blank=True, null=True)
     
     def get_brief(self):  
+        """
+        Get a brief description of the instance.
+        
+        Returns:
+            str: A string containing a brief description of the instance.
+        """
         brief = "### Character Brief \n"
         brief += f"- Name: {self.name} \n"
         
@@ -277,8 +295,7 @@ class CharacterVersion(NovellerModelDecorator):
     fears = models.ManyToManyField('CharacterFear', blank=True)
     beliefs = models.ManyToManyField('CharacterBelief', blank=True)
     internal_conflicts = models.ManyToManyField('CharacterInternalConflict', blank=True)
-    relationships = models.OneToOneField('CharacterRelationship', blank=True, on_delete=models.SET_NULL, null=True)
-    subter = models.CharField(max_length=200, blank=True, null=True)
+    relationships = models.ManyToManyField('CharacterRelationship', blank=True)
     lit_style_guide = models.ForeignKey('LiteraryStyleGuide', blank=True, null=True, on_delete=models.SET_NULL)
 
     # def __str__(self):
@@ -412,31 +429,31 @@ class File(NovellerModelDecorator):
     expose_rest = False
 
  
-# class NovellerModellor(NovellerModelDecorator):
+class NovellerModeller(NovellerModelDecorator):
         
-#     class __NovellerModellorSingleton:
-#         def __init__(self):
-#             self.instance = NovellerModellor()
+    class __NovellerModellerSingleton:
+        def __init__(self):
+            self.instance = NovellerModeller()
         
-#         def __str__(self):
-#             return str(self.instance)
+        def __str__(self):
+            return str(self.instance)
         
-#         def __getattr__(self, name):
-#             return getattr(self.instance, name)
+        def __getattr__(self, name):
+            return getattr(self.instance, name)
         
-#         def __setattr__(self, name):
-#             return setattr(self.instance, name)
+        def __setattr__(self, name):
+            return setattr(self.instance, name)
         
-#         def __del__(self):
-#             raise TypeError("Singletons can't be deleted")
+        def __del__(self):
+            raise TypeError("Singletons can't be deleted")
     
-#     _instance = None  # class level variable to hold instance
+    _instance = None  # class level variable to hold instance
     
-#     @classmethod
-#     def get_instance(cls):
-#         if not cls._instance:
-#             cls._instance = cls.__NovellerModellorSingleton()
-#         return cls._instance
+    @classmethod
+    def get_instance(cls):
+        if not cls._instance:
+            cls._instance = cls.__NovellerModellerSingleton()
+        return cls._instance
 
 
 
@@ -444,82 +461,109 @@ class Book(AbstractPhusisProject):
     from_app = models.CharField(max_length=200, default='noveller')
     elaboration = models.TextField(blank=True, null=True)
     settings = models.ManyToManyField(Setting, blank=True, related_name='book_settings')
-    ##NEEDS plot.get_brief() method
-    plots = models.ManyToManyField(Plot, blank=True, related_name='books_events')
+    plots = models.ManyToManyField(Plot, blank=True, related_name='books_plots')
     chapters = models.ManyToManyField(Chapter, blank=True, related_name='books_chapters')
-    ##NEEDS character.get_brief() method
     characters = models.ManyToManyField(Character, blank=True, related_name='characters_book_characters')
     themes = models.ManyToManyField(LiteraryTheme, blank=True, related_name='book_themes')
     genres = models.ManyToManyField(Genre, blank=True, related_name='book_genres')
     target_audiences = models.ManyToManyField(TargetAudience, blank=True, related_name='book_audiences')  
     expose_rest = models.BooleanField(default=True)
-    agents_for_project = models.ManyToManyField(
-        ContentType,
-        related_name="projects_assigned_to",
-        through=AgentBookRelationship
-    )
-    
+        
     def project_brief(self):
+        """
+        Generate a project brief containing various attributes.
         
-        brief = "# PROJECT BRIEF \n"
-        brief += f"## Project Type: {self.project_type} \n"
-        brief += f"## Name: {self.name} \n"
+        Returns:
+            str: A string containing the project brief.
+        """
+        self.project_attributes()
+        brief = "# PROJECT BRIEF\n"
+        brief += f"## Project Type: {self.project_type}\n"
+        brief += f"## Name: {self.name}\n"
         
-        if self.goals_for_project:
-            brief += f"## Goals: \n"
+        goals = ""
+        
+        print(colored(f"Book.project_brief: self.goals_for_project:\n{self.goals_for_project}", "yellow"))
+        if self.goals_for_project.exists():
+            print(colored("Book.project_brief: self.goals_for_project.exists() is 'True'", "yellow"))
+            goals += f"## Goals:\n"            
+            print(colored(f"Book.project_brief: goals str = {goals}", "yellow"))
             for goal in self.goals_for_project.all():
-                brief += f"## Goals: {goal.name} \n"
-                for step in goal.steps.all():
-                    brief += f"- {step.name} \n"
+                goals += f"### {goal.name}\n"
+                print(colored(f"Book.project_brief: added {goal.name}, goals str now = {goals}", "yellow"))
+                if goal.steps.exists():        
+                    print(colored(f"Book.project_brief: goal.steps.exists() is 'True'", "yellow"))
+                    for step in goal.steps.all():
+                        goals += f"- {step.name} \n"
         
         
-        if self.genres: brief += f"## Genres: {self.convert_array_to_md_list([genre.name for genre in self.genres.all()])} \n"
+        if self.goals_for_project.exists():
+            brief += f"## Goals:\n"
+            for goal in self.goals_for_project.all():
+                brief += f"### {goal.name}\n"
+                if goal.steps.exists():
+                    for step in goal.steps.all():
+                        brief += f"- {step.name} \n"
         
-        if self.plots: brief += f"## Plots: {self.convert_array_to_md_list([plot.get_brief() for plot in self.plots.all()])} \n"
         
-        if self.characters: brief += f"## Characters: {[character.get_brief() for character in self.characters.all()]} \n"
+        if self.genres.exists(): brief += f"## Genres:\n{convert_array_to_md_list(genre.name for genre in self.genres.all())}"
         
-        if self.settings: brief += f"## Settings: {self.convert_array_to_md_list([setting.name for setting in self.settings.all()])} \n"
+        if self.plots.exists(): brief += f"## Plots:\n{(plot.get_brief() for plot in self.plots.all())}\n"
         
-        if self.themes: brief += f"## Themes: {self.convert_array_to_md_list([theme.name for theme in self.themes.all()])} \n"
+        if self.characters.exists(): brief += f"## Characters:\n{(character.get_brief() for character in self.characters.all())} \n"
         
-        if self.target_audiences: brief += f"## Target Audiences: {self.convert_array_to_md_list([audience.name for audience in self.target_audiences.all()])} \n"
+        if self.settings.exists(): brief += f"## Settings:\n{convert_array_to_md_list(setting.name for setting in self.settings.all())} \n"
         
-        if self.elaboration: brief += f"## Elaboration: {self.elaboration} \n"
+        if self.themes.exists(): brief += f"## Themes:\n{convert_array_to_md_list(theme.name for theme in self.themes.all())} \n"
+        
+        if self.target_audiences.exists(): brief += f"## Target Audiences:\n{convert_array_to_md_list(audience.name for audience in self.target_audiences.all())} \n"
+        
+        if self.elaboration: brief += f"## Elaboration:\n- {self.elaboration} \n"
         
         return brief
     
-    def add_agents_to(self, agents):
-        for agent in agents:
-            # print(colored(f"Book.add_agents_to(): Assigning agent {agent} to book {self}", "green"))
-            agent_content_type = ContentType.objects.get_for_model(agent)
-            relationship, created= AgentBookRelationship.objects.get_or_create(content_type=agent_content_type, object_id=agent.id, book=self)
-            relationship.save()
-            self.save()
-            agent.save()
+    def project_attributes(self):
+        """
+        Get the project attributes.
         
-        print(colored(f"Book.add_agents_to(): Agents assigned to book:\n{self.get_agents_for()}", "green")) 
-            
-    def get_agents_for(self):
-        agent_relationships = AgentBookRelationship.objects.filter(book=self)
-        agents = []
+        Returns:
+            list: A list containing the project attributes.
+        """
+        noveller_app = apps.get_app_config('noveller')
+        phusis_project_attribute_subclasses = [
+            model for model in noveller_app.get_models()
+            if issubclass(model, PhusisProjectAttribute) and model != PhusisProjectAttribute
+        ]
 
-        for relationship in agent_relationships:
-            agent_content_type = relationship.content_type
-            agent_object_id = relationship.object_id
-            try:
-                agent = agent_content_type.get_object_for_this_type(pk=agent_object_id)
-                agents.append(agent)
-            except ObjectDoesNotExist:
-                print(f"Book.get_agents_for(): Warning! Agent with content_type={agent_content_type} and object_id={agent_object_id} not found")
-
-        return agents
+        project_attributes = []
+        for model in phusis_project_attribute_subclasses:
+            project_attributes.append(model)
+        return project_attributes
+    
+    def project_attributes_to_md(self):
+        """
+        Convert the project attributes to a markdown string.
+        
+        Returns:
+            str: A markdown string containing the project attributes.
+        """
+        atts = self.project_attributes()
+        atts_to_md = ""
+        for attribute in atts:
+           atts_to_md = atts_to_md + f"- {attribute.name}\n"
+       
+        return atts_to_md
     
     def list_project_attributes(self):
+        """
+        List the project attributes and their sub-attributes.
+        
+        Returns:
+            tuple: A tuple containing a dictionary of the project attributes and a string representation.
+        """
         book_attributes_str = f"These are the various attributes, and their sub attributes of {self.name}:\n"
-        attributes = self.project_attributes
         models_dict = {}
-        app_models = apps.get_app_config('noveller').get_models()
+        app_models = self.project_attributes()
         for model in app_models:
             model_name = model.__name__
             fields = [field.name for field in model._meta.fields]
@@ -529,13 +573,15 @@ class Book(AbstractPhusisProject):
             book_attributes_str += f"Attribute: {model}\n"
         
         return models_dict, book_attributes_str
-
-    def get_project_details(self, to='assess'):
-        details=self.project_user_input
-        #TODO: Add in the rest of the project details
-        return details
     
     def set_data(self, properties_dict):
+        """
+        Set the data for the instance based on the provided properties dictionary.
+        
+        Args:
+            properties_dict (dict): A dictionary containing the properties to set for the instance.
+        """
+        self.project_attributes()
         for key, value in properties_dict.items():
             # Get the field instance
             field = self._meta.get_field(key)
@@ -556,10 +602,33 @@ class Book(AbstractPhusisProject):
                 setattr(self, key, value)
         self.save()  
     
-
-
+    
+def convert_array_to_md_list(array):
+    """
+    Convert an array of items to a markdown list.
+    
+    Args:
+        array (list): A list of items to convert to a markdown list.
+    
+    Returns:
+        str: A markdown string containing the list items.
+    """
+    items_to_md = ""
+    for item in array:
+        items_to_md = items_to_md + f"- {item}\n"
+    
+    return items_to_md
 
 def load_noveller_model_and_return_instance_from(json_data):
+    """
+    Load a model for the noveller app as JSON dict and return an instance based on the provided JSON data.
+    
+    Args:
+        json_data (dict): A dictionary containing the JSON data for the Noveller model.
+    
+    Returns:
+        object: An instance of the Noveller model created or updated based on the JSON data.
+    """
     from phusis.agent_utils import is_valid_init_json
     from termcolor import colored
     
@@ -579,6 +648,9 @@ def load_noveller_model_and_return_instance_from(json_data):
             # print(colored(f"noveller_models.create_noveller_model_from_instance: class_name {json_data['class_name']} not found in globals()", "yellow"))
             pass
 
+
+        print(colored(f"noveller_models.create_noveller_model_from_instance: model_class {model_class}. json_data['properties']['name'] {json_data['properties']['name']}", "green"))
+
         new_noveller_obj, created = model_class.objects.update_or_create(name=json_data['properties']['name'])
 
         new_noveller_obj.set_data(json_data['properties'])
@@ -594,16 +666,23 @@ def load_noveller_model_and_return_instance_from(json_data):
 
     return new_noveller_obj
 
-
 def find_and_update_or_create_attribute_by(attr_name, model_class):
+    """
+    Args:
+        attr_name (str): The name of the attribute to find or create.
+        model_class (class): The model class to search for the attribute in.
 
-    # print(f"find_attribute_by(): attr_name: {attr_name}\nmodel_class : {model_class}")
+    Returns:
+        tuple: A tuple containing the attribute class and the attribute instance.
+    """
+
+    # print(colored(f"noveller_models.find_and_update_or_create_attribute_by(): attr_name: {attr_name}\nmodel_class : {model_class}", "yellow"))
     
     # Check if the attribute exists in the model class
     if hasattr(model_class, attr_name):
         return model_class, getattr(model_class, attr_name)
 
-    # print(f"model class : {model_class}")
+    print(colored(f"model class : {model_class}", "yellow"))
 
     # Check if the attribute exists in any related models
     for related_object in model_class._meta.related_objects:

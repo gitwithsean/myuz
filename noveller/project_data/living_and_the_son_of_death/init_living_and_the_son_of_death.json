@@ -26,7 +26,8 @@
                     ],
                     "target_audiences":[
                         "Literary Young Adults",
-                        "Historical Fiction"
+                        "History Lovers",
+                        "Irish Readers"
                     ]
                 }
             }
@@ -222,7 +223,7 @@
             {
                 "properties": {
                     "name": "Chapter 1",
-                    "book": "Living and the Son of Death",
+                    "chapter_in_book": "Living and the Son of Death",
                     "chapter_num": "1",
                     "chapter_draft_file": "chapter_01_draft.txt",
                     "parts_for_chapter": [
@@ -238,8 +239,8 @@
             {
                 "properties": {
                     "name": "Eabha's and Mac Bais's Coming of Age",
-                    "book": "Living and the Son of Death",
-                    "events_of_plot": [
+                    "plot_for_book": "Living and the Son of Death",
+                    "scenes_of_plot": [
                         "Mac Bais and Eabha meet in the aftermath of the battle of Clontarf"
                     ]
                 }
@@ -247,7 +248,7 @@
         ]
     },
     {
-        "class_name": "PlotEvent",
+        "class_name": "Scene",
         "list_of_instances": [
             {
                 "properties": {
@@ -256,8 +257,7 @@
                     "date_from": "1014-03-14",
                     "date_to": "1014-03-14",
                     "order_in_story_events": 1,
-                    "order_in_narrative_telling": 1,
-                    "is_climax_of_plot": "False"
+                    "order_in_narrative_telling": 1
                 }
             }
         ]

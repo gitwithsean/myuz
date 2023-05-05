@@ -51,9 +51,7 @@ class AbstractEngine():
             request_data['content'] = prompt
             request_data['prompting_agent'] = get_user_agent_singleton()
             request_data['responding_agent'] = self
-            
-            # response = self.ai_api.gpt_chat_response(request_data)
-            
+                        
             #we actually don't need to submit the prompt to the API, because we already have the response ("I understand and I'm ready!")
             response = "I understand and I'm ready!"
             self.wake_up_message = prompt
@@ -132,9 +130,6 @@ class AbstractEngine():
         print(colored("AbstractEngine.report(): Report generated.", "green"))
         return report
 
- 
-class WritingAgentEngine(AbstractEngine):
-    pass
 
 
 class OrchestrationEngine(AbstractEngine):
@@ -216,6 +211,11 @@ class OrchestrationEngine(AbstractEngine):
 
     
     def establish_project_goals(self, project):
+        """
+        Establish the goals for a given project by submitting a chat prompt.
+        :param project: The project for which to establish goals.
+        :return: The goals response.
+        """
         print(colored(f"OrchestrationEnginne.establish_project_goals():", "yellow"))
         prompt = Prompt().to_establish_project_goals(project, self)
         goals_prompt, goals_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
@@ -223,6 +223,11 @@ class OrchestrationEngine(AbstractEngine):
     
     
     def set_sub_tasks_for_goal(self, goal):
+        """
+        Set subtasks for a given goal by submitting a chat prompt.
+        :param goal: The goal for which to set subtasks.
+        :return: The project state response.
+        """        
         print(colored(f"OrchestrationEnginne.set_sub_tasks_for_goal(): {goal}", "yellow"))
         prompt = Prompt().to_set_steps_for_project_goal(goal, self.project, self)
         project_state_prompt, project_state_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
@@ -230,6 +235,12 @@ class OrchestrationEngine(AbstractEngine):
     
     
     def assign_project_attributes_to_step(self, step, goal):
+        """
+        Assign project attributes to a given step by submitting a chat prompt.
+        :param step: The step to assign project attributes to.
+        :param goal: The goal associated with the step.
+        :return: The attributes for step response.
+        """
         print(colored(f"OrchestrationEnginne.assign_project_attributes_to_step(): {step}", "yellow"))
         prompt = Prompt().to_assign_project_attributes_to_step(step, goal, self.project, self)
         atts_for_step_prompt, atts_for_step_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
@@ -237,12 +248,15 @@ class OrchestrationEngine(AbstractEngine):
     
     
     def create_agent_assignments_for_step(self, step):
+        """
+        Create agent assignments for a given step by submitting a chat prompt.
+        :param step: The step for which to create agent assignments.
+        :return: The agent assignments response.
+        """
         print(colored(f"OrchestrationEnginne.create_agent_assignments_for_step(): {step}", "yellow"))
         prompt = Prompt().to_create_agent_assignments_for_step(step, self.project, self)
         agent_assignments_prompt, agent_assignments_response = self.submit_chat_prompt(prompt, get_user_agent_singleton, self)
         return agent_assignments_response 
-    
-    
     
     
     
@@ -259,43 +273,61 @@ class OrchestrationEngine(AbstractEngine):
         print(print(colored(f"\nOrchestrationEnginne.routine(): Starting agent routine...\n", "green")))
         self.project = project
         
-        #establish goals of the project
-        if project.goals_for_project == []:
-            project.goals_for_project =  parse_list_string_to_list(self.establish_project_goals(project))
-            print(colored(f"\nOrchestrationEnginne.routine(): Project goals set by Orchestrator\n\n{project.goals_for_project}\n", "green"))        
-        else:
-            #re-assess goals?
-            pass
+        print(colored(f"\nOrchestrationEnginne.routine(): Project goals set by Orchestrator\n\n{project.goals_for_project}\n", "yellow"))
         
+        goals_for_project = []
+        
+        #establish goals of the project
+        if not project.goals_for_project.exists():
+            print(colored(f"\nOrchestrationEnginne.routine(): Project goals set by Orchestrator\n\n{project.goals_for_project}\n", "green"))   
+            goals_for_project = parse_list_string_to_list(self.establish_project_goals(project))
+            
+            project.add_to_goals_for_project(goals_for_project)
+               
+        else:
+            print(colored(f"\nOrchestrationEnginne.routine(): Project goals already set by Orchestrator\n\n{project.goals_for_project}\n", "green"))
+            #TODO re-assess goals?
+        
+        user_input = input("hit enter to continue...")
+        
+        print(project.goals_for_project.all())
         #establish steps for goals of the project
-        for goal in project.goals_for_project:        
-            if goal.steps == []:
-                print(colored(f"\nOrchestrationEnginne.routine(): Orchestrator now setting sub-tasks for each project goal {goal.name}\n", "yellow")) 
+        for goal in project.goals_for_project.all():        
+            if not goal.steps.exists():
+                print(colored(f"\nOrchestrationEnginne.routine(): Orchestrator now setting sub-tasks for each project goal:\n{goal.name}\n", "yellow")) 
                 #have orc create goals_for_project on the project object and assign them with substeps
                 for project_goal in self.array_of_project_goals:
                     goal_steps = parse_list_string_to_list(self.set_sub_tasks_for_goal(project_goal))
-                    goal.add_step_to_goal(goal_steps)
+                    
+                    goal.add_steps_to_goal(goal_steps)
             else:
-                #re-assess steps in goal?
-                pass
-        
+                print(colored(f"\nOrchestrationEnginne.routine(): Orchestrator already set sub-tasks for this project goal {goal.name}\n\n{goal.steps}\n", "yellow"))
+                #TODO re-assess steps in goal?
+
+        user_input = input("hit enter to continue...")
+
+        print(project.goals_for_project.all())
         #assign project attribute(s) to a step in a goal, if applicable
-        for goal in project.goals_for_project:
-            for step in goal.steps:
-                if step.related_project_attributes == []:
+        for goal in project.goals_for_project.all():
+            for step in goal.steps.all():
+                if not step.related_project_attributes.exists():
                     print(colored("\nOrchestrationEnginne.routine(): Orchestrator now assigning project attributes to each step in each project goal\n", "yellow"))
                     #have orc assign attribute(s) to the step
                     attributes_for_step = parse_list_string_to_list(self.assign_project_attributes_to_step(step, goal))
+                    
                     step.add_project_attributes_to_step(attributes_for_step)
                 else:
+                    print(colored(f"\nOrchestrationEnginne.routine(): Orchestrator already assigned project attributes to this step {step.name}\n\n{step.related_project_attributes}\n", "yellow"))
                     #re-assess attributes in step?
                     pass
         
+        user_input = input("hit enter to continue...")       
+        
         #create agent assignments for step in goals, if applicable
-        for goal in project.goals_for_project:
-            for step in goal.steps:
-                if step.agent_assignments_for_step == []:
-                    print(colored("\nOrchestrationEnginne.routine(): Orchestrator now assigning 'agent(s)'/'attribute(s) for step' to each step in each project goal\n", "yellow"))
+        for goal in project.goals_for_project.all():
+            for step in goal.steps.all():
+                if not step.agent_assignments_for_step.exists():
+                    print(colored("\nOrchestrationEnginne.routine(): Orchestrator now assigning agent(s) to step/attribute(s) for step\n", "yellow"))
                     #have orc create agent assignments for the step
                     agent_assignments_response = self.create_agent_assignments_for_step(step, goal)
                     
@@ -308,8 +340,11 @@ class OrchestrationEngine(AbstractEngine):
                         project.agent_assignments_for_project.add(step.add_agent_assignment_to_step(assignment))
                     
                 else:
+                    print(colored(f"\nOrchestrationEnginne.routine(): Orchestrator already assigned agent(s) to step/attribute(s) for step {step.name}\n\n{step.agent_assignments_for_step}\n", "yellow"))
                     #re-assess agent_assignments in step?
                     pass
+        
+        user_input = input("hit enter to continue...")
         
         #execute agent assignments for project
         for assignment in project.agent_assignments_for_project.all():
@@ -337,17 +372,26 @@ class OrchestrationEngine(AbstractEngine):
         # self.run_agents(project)
         # self.assess_agent_output(project)
         # self.commit_agent_output_to_project(project)
-        
+
+ 
+class WritingAgentEngine(AbstractEngine):
+    pass     
     
-def compress_text(text_to_compress, compression_ratio=0.5):
+def compress_text(text_to_compress, compression_ratio=0.5):    
+    """
+    Asl gpt-3.5-turbo to ompress the given text by a ratio of {compression_ratio}
+    :param text_to_compress: The text to compress.
+    :param compression_ratio: The desired compression ratio (default is 0.5).
+    :return: The compressed text.
+    """
     opeanai_api = OpenAiAPI()
     open_ai_chat_data = {
         "model": "gpt-3.5-turbo",
     }
     
     # print(colored(f"agent_engines.compress_text(): Compressing text to a ratio <= {compression_ratio}. Text = \n\n{text_to_compress}\n\nCompression...", "yellow"))
-    compression_ratio = 0.75
-    prompt = f"Re-write the following text so that it uses {compression_ratio} the number of GPT tokens, and so that another GPT agent will receive the same information as would be conveyed by the original text. Completely rearrange the structure and/or use abbreviations, symbols, emojis or code if that would achieve a better outcome. Your output does not need to be human-readable, but it should be easy for another GPT instance to interpret. Here is the text:\n\nTEXT BEGINS\n```\n\n{text_to_compress}\n\n```\nTEXT ENDS"
+    # compression_ratio = 0.75
+    prompt = f"Re-write the following text so that it uses {compression_ratio} the number of GPT tokens, and so that another GPT agent will receive the same information as would be conveyed by the original text. Completely rearrange the structure and use any technique that would help you achieve a better outcome. Your output does not need to be human-readable, but it should be easy for another GPT instance to interpret. Here is the text:\n```\n\n{text_to_compress}\n\n```"
     
     # print(colored("agent_engines.compress_text(): Compressing prompt...", "yellow"))
     
@@ -375,7 +419,18 @@ def compress_text(text_to_compress, compression_ratio=0.5):
    
    
 def agent_chatterer(api_data):
+    """
+    Start/Continue a conversation with a phusis agent.
+    :param api_data: Data required for the conversation with the AI agent.
+    :return: The AI agent's response.
     
+    api_data: {
+        "repsonding_agent": <Agent object>,
+        "system_message": <message to send to chat agent to define what/who it is>,
+        "model": <openai model to use>,
+    }
+    
+    """
     opeanai_api = OpenAiAPI()
     
     if api_data['responding_agent'].agent_type == "orchestration_agent":
@@ -432,6 +487,12 @@ def agent_chatterer(api_data):
        
        
 def token_logging(response, json_file_path = './.secrets/orc_agent_token_usage.json'):
+    """
+    Log token usage for different kinds of agents (orc or otherwise).
+    :param response: The API response containing token usage information.
+    :param json_file_path: The path to the JSON file storing the daily token usage (default is './.secrets/orc_agent_token_usage.json').
+    """
+    
     today = datetime.date.today().strftime('%Y-%m-%d')
 
     new_completion_tokens = int(response['usage']['completion_tokens'])
@@ -468,11 +529,16 @@ def token_logging(response, json_file_path = './.secrets/orc_agent_token_usage.j
 
 
 def parse_list_string_to_list(input_string):
+    """
+    Parse a string representing a list into a Python list.
+    :param input_string: The input string to parse.
+    :return: The parsed list.
+    """
     result = []
     current_item = ''
     inside_quotes = False
     escape_next = False
-
+    input_string = input_string.removeprefix('[').removesuffix(']')
     for char in input_string:
         if escape_next:
             current_item += char

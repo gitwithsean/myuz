@@ -1,14 +1,12 @@
-import json, uuid, os
-from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+import uuid
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from .apis import *
 from termcolor import colored
 from django.db import models
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from .agent_attributes import *
-from .agent_engines import AbstractEngine, OrchestrationEngine, WritingAgentEngine, compress_text
-
+from .agent_engines import *
 
 class AbstractAgent(models.Model, AbstractEngine):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
@@ -16,7 +14,6 @@ class AbstractAgent(models.Model, AbstractEngine):
     agent_type = models.CharField(max_length=200, default="phusis_agent", editable=False)
     agent_system_prompt = models.TextField(blank=True)
     class_display_name = models.CharField(max_length=200, editable=False, default=f"Phusis {agent_type} Agent")
-    related_books = GenericRelation('AgentBookRelationship', related_query_name='agent')
     project_attributes_assigned_to = models.ManyToManyField('PhusisProjectAttribute', blank=True)
     expose_rest = True
     # [{"prompted_by":"", "AgentCapability":{}, "result":""}]
@@ -169,6 +166,36 @@ class AbstractAgent(models.Model, AbstractEngine):
         return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{str}"
 
 
+
+class OrchestrationAgent(AbstractAgent, OrchestrationEngine):
+    class_display_name = "Orchestration Agent"
+    agent_type = "orchestration_agent"
+    # capabilities =  get_agent_capabilities_by_capability_ids([100,101,102,103])
+
+
+
+
+class UserAgentSingleton(AbstractAgent):
+    name = "user"
+    agent_type = "user_agent"
+    class_display_name = 'User'
+    _instance = None
+    expose_rest = False
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    class Meta:
+        ordering = None
+
+    def save(self, *args, **kwargs):
+        if not self.pk and UserAgentSingleton.objects.exists():
+            raise ValueError("An instance of UserAgentSingleton already exists.")
+        return super(UserAgentSingleton, self).save(*args, **kwargs)
+
+
+
 class ChatLog(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     prompt = models.TextField(blank=False, null=False)
@@ -183,8 +210,8 @@ class ChatLog(models.Model):
         # print(colored(f"ChatLog.convert_log_to_chain_objects(): right before compression, prompt is {self.prompt}", "yellow"))
         # print(colored(f"ChatLog.convert_log_to_chain_objects(): right before compression, response is {self.response}", "yellow"))
         
-        if self.compressed_prompt_content == '' and self.prompt: self.compressed_prompt_content = compress_text(self.prompt, 0.25)
-        if not self.compressed_response_content == '' and self.response: self.compressed_response_content = compress_text(self.response, 0.25)
+        if self.compressed_prompt_content == '' and self.prompt: self.compressed_prompt_content = compress_text(self.prompt, 0.75)
+        if not self.compressed_response_content == '' and self.response: self.compressed_response_content = compress_text(self.response, 0.75)
         self.save()
         prompt_obj = {"role": "user", "content": f"{self.compressed_prompt_content}"}
         response_obj = {"role": "assistant", "content": f"{self.compressed_response_content}"}
@@ -192,9 +219,20 @@ class ChatLog(models.Model):
         return [prompt_obj]
   
     
+    
 class PhusisProjectAttribute(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, blank=False, null=False, unique=True)
+    name = models.CharField(max_length=200, blank=False, null=False)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    agent_assigments = models.ManyToManyField('AgentAssignment', related_name='agent_assignments_for_project_attribute', blank=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.content_type_id:  # Use self.content_type_id instead of self.content_type
+            self.content_type = ContentType.objects.get_for_model(self.__class__)
+        super().save(*args, **kwargs)
+            
+    class Meta:
+        unique_together = ('name', 'content_type')
 
 
 class AgentAssignment(models.Model):
@@ -202,6 +240,7 @@ class AgentAssignment(models.Model):
     assignment_str = models.TextField(blank=True, null=True, default='')
     assignment_proj_att = models.ForeignKey(PhusisProjectAttribute, related_name='project_attribute_for_agent_assignment', on_delete=models.CASCADE, blank=True, null=True)
     additional_assignment_instructions = models.TextField(blank=True, null=True, default='')
+    related_project_goal_steps = models.ManyToManyField('PhusisProjectGoalStep', related_name='project_goal_steps_for_agent_assignment', blank=True, default=[])
 
 
 class PhusisProjectGoalStep(models.Model):
@@ -235,6 +274,7 @@ class PhusisProjectGoalStep(models.Model):
         self.related_project_attributes.add(attributes)
         self.save()
 
+
 class PhusisProjectGoal(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=500, blank=False, null=False)
@@ -250,6 +290,7 @@ class PhusisProjectGoal(models.Model):
             self.steps.add(new_step)
             self.save()
 
+
 class AbstractPhusisProject(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=200, default='')
@@ -257,9 +298,8 @@ class AbstractPhusisProject(models.Model):
     project_user_input = models.TextField(blank=True, default='')
     project_workspace = models.CharField(max_length=200, default='', blank=True, null=True)
     goals_for_project = models.ManyToManyField(PhusisProjectGoal, blank=True, default=[])
-    project_attributes = models.ManyToManyField(PhusisProjectAttribute, blank=True)
-    agent_assignments_for_project = models.ManyToManyField(AgentAssignment, related_name='projects_for_agent_assignment', blank=True, default=[])
-    
+    agent_assignments_for_project = models.ManyToManyField(AgentAssignment, related_name='projects_for_agent_assignment', blank=True, default=[])   
+    orchestrator = models.ForeignKey(OrchestrationAgent, related_name='orchestrator_for_project', on_delete=models.CASCADE, blank=True, null=True)
     project_embedding = models.TextField(blank=True)
     
     def add_to_goals_for_project(self, goals):
@@ -274,13 +314,6 @@ class AbstractPhusisProject(models.Model):
     
     def __str__(self):
         return f"{self.project_type}: {self.name}"
-    
-    def project_attributes_to_md(self):
-       atts_to_md = ""
-       for attribute in self.project_attributes:
-           atts_to_md = atts_to_md + f"- {attribute.name}\n"
-       
-       return atts_to_md
        
     class Meta:
         abstract = True
@@ -297,22 +330,26 @@ class AbstractPhusisProject(models.Model):
         # self.project_workspace = get_phusis_project_workspace(self.project_type, self.name)
 
         self.save()
-    
-    def convert_array_to_md_list(self, array):
-        md_list=""
-        for item in array:
-            md_list += f"- {item}\n"
         
     @abstractmethod
     def list_project_attributes(self):
         pass
     
     @abstractmethod
+    def project_attributes(self):
+        pass
+    
+    @abstractmethod
+    def project_attributes_to_md(self):
+       pass
+    
+    @abstractmethod
     def get_project_details(self, to='assess'):
         pass
     
     @abstractmethod
-    def add_agents_to(self):
+    def add_agents_to(self, agents):
+        
         pass
     
     @abstractmethod
@@ -332,21 +369,14 @@ class AbstractPhusisProject(models.Model):
         pass
 
 
-
-class OrchestrationAgent(AbstractAgent, OrchestrationEngine):
-    class_display_name = "Orchestration Agent"
-    agent_type = "orchestration_agent"
-    # capabilities =  get_agent_capabilities_by_capability_ids([100,101,102,103])
-
-
-
 class WritingAgent(AbstractAgent, WritingAgentEngine):
     agent_type = "writing_agent"
     class_display_name = "Writing Agent"
 
 
+
 class PoeticsAgent(AbstractAgent):
-    """
+    type_description = """
     Agent class concerned with:
         * narrative technique
         * poetic literacy
@@ -355,93 +385,108 @@ class PoeticsAgent(AbstractAgent):
     """
     agent_type = "poetics_agent"
     class_display_name = "Poetics Agent"
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
-    object_id = models.UUIDField(null=True, blank=True)  # id of the project it is assigned to
-    projects_assigned_to = GenericForeignKey('content_type', 'object_id')
+    # content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+    # object_id = models.UUIDField(null=True, blank=True)  # id of the project it is assigned to
+    # projects_assigned_to = GenericForeignKey('content_type', 'object_id')
     
 
 
 class StructuralAgent(AbstractAgent):
-    # story plotting
-    # story structure (r.g. experimental and/or tried and tested structures)
-    # fleshing out the story structure and plotting based on the inputs from other agents in the swarm  
+    type_description = """
+    Agent class concerned with:
+    - story plotting
+    - story structure (r.g. experimental and/or tried and tested structures)
+    - scene sequencing
+    - fleshing out the story structure and plotting based on the inputs from other agents in the swarm  
+    """
     agent_type = "structural_agent"
     class_display_name = "Structural Agent"
 
 
+class SceneAgent(AbstractAgent):
+    type_description = """
+    Agent class concerned with:
+    - bringing together the work of the thematic, structural, world building, character and other agents to collaboratively flesh out scenes
+    """
+    agent_type = "scene_agent"
+    class_display_name = "Scene Agent"    
+
  
 class ResearchAgent(AbstractAgent):
-    # taking a subject area and a project goal, and thinking of research topics that could be researched for the book, 
-    # how to plan, structure and initially approach that research
-    # like an expert librarian, knowing or knowing how to find the best sources for researching a topic
-    # doing the background research on those specific topics to an expert degree
+    type_description = """
+    Agent class concerned with:
+    - taking a subject area and a project goal, and thinking of research topics that could be researched for the book, 
+    - how to plan, structure and initially approach that research
+    - like an expert librarian, knowing or knowing how to find the best sources for researching a topic
+    - doing the background research on those specific topics to an expert degree
+    """
     agent_type = "research_agent"
     class_display_name = "Research Agent"
 
 
 
 class CharacterAgent(AbstractAgent):
-    # agents that flesh out character profiles in various different genres, styles, target audience profiles, etc
-    # also agents that become the character so that a user or other agents can talk to them, or to produce dialog
+    type_description = """
+    Agent class concerned with:
+    - fleshing out character profiles
+    - 'becoming' the character so that a user or other agents can talk to them, produce dialog, discuss decisions, etc.
+    """
     agent_type = "character_agent"
     class_display_name = "Character Agent"
   
 
     
 class WorldBuildingAgent(AbstractAgent):
+    type_description = """
+    Agent class concerned with:
+    - building the world of the story
+    """
     agent_type = "world_building_agent"
     class_display_name = "World Building Agent"
 
+  
     
 class ThemeExploringAgent(AbstractAgent):
+    type_description = """
+    Agent class concerned with:
+    - considering the possible themes of the story and adding Theme objects to the story
+    - diving deeper into the theme objects to provide insight into how they might influcen the story
+    - informing other agents on how they could improve their work to better serve the themes
+    """
     agent_type = "theme_exploring_agent"
     class_display_name = "Theme Exploring Agent"
     
+   
     
 class ConflictAndResolutionAgent(AbstractAgent):
+    type_description = """
+    Agent class concerned with:
+    - setting conflicts within the story to drive plot
+    - conflicts between characters, the world, themes, events, internal, etc.
+    """
     agent_type = "conflict_and_resolution_agent"
     class_display_name = "Conflict And Resolution Agent"
     
+  
     
 class InterdisciplinaryAgent(AbstractAgent):
-    # These are relatively neutral agents that would consider the output from all agents in a swarm and make sure they are not deviating from each other, making sure that each of them are serving towards a common goal in a cohesive way, that research informs setting, informs themes, informs style etc. Not quite like a director of a film, more like assistant directors
-    # They will provide 'grades' to what is produced, but less about quality and more about how close they are to cohering with the work of the other agents working in different disciplines. With 0.5 being neutral, 1 being exemplary and 0 meaning heading in the wrong direction.
-    # 'impersonations' is less important with these agents, however let's add a field for 'personality' here, with personality traits that would help with their goals. These personality traits can be similar across each agent    
+    type_description = """
+    Agent class concerned with:
+    - These are relatively neutral agents that would consider the output from all agents in a swarm and make sure they are not deviating from each other, making sure that each of them are serving towards a common goal in a cohesive way, that research informs setting, informs themes, informs style etc. Not quite like a director of a film, more like assistant directors
+    - They will provide 'grades' to what is produced, but less about quality and more about how close they are to cohering with the work of the other agents working in different disciplines. With 0.5 being neutral, 1 being exemplary and 0 meaning heading in the wrong direction. 
+    """
     agent_type = "interdisciplinary_agent"
     class_display_name = "Interdisciplinary Agent"
 
 
+
 class QualityEvaluationAgent(AbstractAgent):
-    # evaluating the output and work of each of the agents.
-    # here is a list of each agent
+    type_description = """
+    Agent class concerned with:
+    - evaluating the output and work of each of the agents.
+    """
     agent_type = "qualitye_valuation_agent"
     class_display_name = "Quality Evaluation Agent"
-
-
-class UserAgentSingleton(AbstractAgent):
-    name = "user"
-    agent_type = "user_agent"
-    class_display_name = 'User'
-    _instance = None
-    expose_rest = False
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-    
-    class Meta:
-        ordering = None
-
-    def save(self, *args, **kwargs):
-        if not self.pk and UserAgentSingleton.objects.exists():
-            raise ValueError("An instance of UserAgentSingleton already exists.")
-        return super(UserAgentSingleton, self).save(*args, **kwargs)
-
-class AgentBookRelationship(models.Model):
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    agent = GenericForeignKey('content_type', 'object_id')
-    book = models.ForeignKey("noveller.Book", on_delete=models.CASCADE)
 
 
 

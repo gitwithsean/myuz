@@ -16,6 +16,9 @@ class OpenAiAPI():
         
         # print(colored("\nOpenAiApi.chat_response(): Submitting chat completion\n", "yellow"))
         
+        #hardocding it fpr now
+        api_data['model'] = 'gpt-4'
+        
         completion = openai.ChatCompletion.create(
             model=api_data['model'],
             messages=api_data['messages_to_submit']

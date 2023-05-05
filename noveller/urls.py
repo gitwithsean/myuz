@@ -19,13 +19,19 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
-    path('', views.index, name='index'),
+    # path('', views.index, name='index'),
     path('novel_project/', views.novel_project, name='novel_project'),
-    path('update_all_models/', UpdateAllNovellorModelsViewMaker.as_view(), name='update_all_models'),
-    path('get_all_models/', GetAllNovellorModelsViewMaker.as_view(), name='get_all_models'),
+    path('', views.select_project, name='select_project'),
+    path('create/', views.create_project, name='create_project'),
+    path('edit/', views.edit_project, name='edit_project'),
+    path('edit/<str:attribute_type>/', views.edit_project_attribute, name='edit_project_attribute'),
+    path('select_project/', views.select_project, name='select_project'),
+    re_path(r'^edit/(?P<attribute_type_plural>[a-zA-Z]+s)/$', views.redirect_plural_to_singular, name='redirect_plural_to_singular'),
+    # path('update_all_models/', UpdateAllNovellerModelsViewMaker.as_view(), name='update_all_models'),
+    # path('get_all_models/', GetAllNovellerModelsViewMaker.as_view(), name='get_all_models'),
 ]
 
-for tuple in NovellerListCreateViewMater.all_model_list_create_view_tuples():
+for tuple in NovellerListCreateViewMaker.all_model_list_create_view_tuples():
     model_name = tuple['model_class'].__name__.lower()
     view_class = tuple['view_class']  
     urlpatterns += [

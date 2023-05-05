@@ -75,7 +75,7 @@ if [ $REINIT_PINECONE  == true ]; then
     echo "PINECONE INDEX ${INDEX} DELETED" 
 fi
 
-echo "REINIT_PINECONE ${REINIT_PINECONE}"
+echo "REINIT_DB ${REINIT_DB}"
 
 if [ $REINIT_DB == true ]; then
     cd $SCRIPTS_DIR

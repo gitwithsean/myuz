@@ -16,7 +16,7 @@
         <p>Connect with your swarm</p>
         <form method="post">
             {% csrf_token %}
-            {% load string_utils %}
+            {% load noveller.templatetags.string_utils %}
             {% for model_name in model_names %}
                 {% with lowerCaseVar=model_name|lowercase %}                   
                     <div id="accordion">

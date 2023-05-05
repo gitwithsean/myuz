@@ -102,7 +102,7 @@ class Prompt():
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
-    please_respond_with_array = "\nPlease respond with an iterable array of comma separated, apostraphe-enclosed strings, no new lines, e.g. ['item one is...', 'second item, we think, is...', 'item three', ...]"
+    please_respond_with_array = '\nPlease respond with an iterable array of comma separated, quotation-enclosed strings, no new lines, e.g. ["item one is...", "second item, we think, is...", "item three", ...]'
     agent_assignments_model = [
         {
             "agent_assigned" : {
@@ -150,9 +150,8 @@ class Prompt():
     
     
     def to_establish_project_goals(self, project, agent):
-        project_models_dict, project_models_str = project.project_attributes()
-        prompt = f"{project.project_brief()}\n\n"
-        prompt += f"### Project Attributes:\n{project_models_str}\n\n"
+        prompt = f"{project.project_brief()}\n"
+        prompt += f"### Project Attributes:\n{project.project_attributes_to_md()}\n\n"
         prompt += f"Using the informtation provided, please define a number of High Level Goals, in the order they need to be achieved, to complete this project.\n"
         prompt += self.please_respond_with_array
         return self.auto_reminder(prompt, agent)
@@ -169,7 +168,7 @@ class Prompt():
     def to_assign_project_attributes_to_step(self, step, goal, project, agent):
         prompt = f"You recently lited these steps to achieve a goal for a project we are working on.\nGoal: {goal.name}\n Steps:\n"
         prompt += f"{goal.steps}\n"
-        prompt += f"The project iteslf has these attribute types, each project attribute may have multiple instances (e.g. multiple chapters for a Chapter attribute)\n\n{project.project_attributes}\n"
+        prompt += f"The project iteslf has these attribute types, each project attribute may have multiple instances (e.g. multiple chapters for a Chapter attribute)\n\n{project.project_attributes_to_md()}\n"
         prompt += f"Please consider the step, {step.name}, and list 0, 1 or 2 project attributes you believe should be related to that step. If you believe there is a project attribute missing from the list above, feel free to create one.\n"
         prompt += self.please_respond_with_array
         return self.auto_reminder(prompt, agent)

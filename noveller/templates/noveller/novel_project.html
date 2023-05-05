@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novellier - Phusis Application</title>
+    <title>Edit Book - Noveller</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
@@ -12,43 +12,48 @@
 
 <body>
     <div class="container mt-3">
-        <h1>Novellier - Phusis Application</h1>
-        <p>Create, read, update, and delete data for your novel project.</p>
-        <form method="post">
+        <h6>noveller - a phusis application</h6>
+        <h1>{{ action }} Book</h1>
+        <form method="post" action="">
             {% csrf_token %}
-            {% load string_utils %}
-            {% for model_name in model_names %}
-                {% with CamelCaseVar=model_name|camel_case %}
-                    <div id="accordion">
-                        <div class="card">
-                            <div class="card-header">
-                                <a class="card-link" data-toggle="collapse" href="#collapse{{ CamelCaseVar }}s">
-                                    {{ CamelCaseVar }}
-                                </a>
+            {% load widget_filters %}
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+                <br>
+                {{ field }}
+                {% if field|widget_in_classes:'Select,SelectMultiple' %}
+                <br>
+                    {% with field.name|cut:"_set" as attribute_type %}
+                        <a href="{% url 'edit_project_attribute' attribute_type %}?action=create_related&attribute_id={{ object.pk }}&related_field_name=books" class="btn btn-sm btn-primary">Create</a>
+                        {% for related_object in object.field_name.all %}
+                            <div class="related-object" data-object-id="{{ related_object.id }}">
+                                {{ related_object }}
                             </div>
-                            <div id="collapse{{ CamelCaseVar }}s" class="collapse" data-parent="#accordion">
-                                <div class="card-body">
-                                    <form method="post" action="{% url 'novel_project' %}">
-                                        {% csrf_token %}
-                                        {% with form_key=model_name|add:"_form" %}
-                                            {% for field in forms|get_item:form_key %}
-                                                <div class="form-group">
-                                                    <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
-                                                    <br>
-                                                    {{ field }}
-                                                </div>
-                                            {% endfor %}
-                                        {% endwith %}
-                                        <button type="submit" class="btn btn-primary">Save</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% endwith %}
-            {% endfor %}
+                        {% endfor %}
+                    {% endwith %}
+                {% endif %}
+            </div>
+        {% endfor %}
+        
+            <button type="submit" class="btn btn-primary">Save</button>
         </form>
     </div>
-</body>
 
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const relatedObjects = document.querySelectorAll('.related-object');
+
+        relatedObjects.forEach(function(relatedObject) {
+            relatedObject.addEventListener('dblclick', function(event) {
+                const objectId = event.target.getAttribute('data-object-id');
+                const attributeType = '{{ attribute_type }}';
+                const editUrl = `{% url 'edit_project_attribute' attribute_type  %}?action=edit_related&attribute_id=${objectId}`;
+
+                window.location.href = editUrl;
+            });
+        });
+    });
+    </script>
+</body>
 </html>

@@ -6,21 +6,16 @@ Usage: $(basename "$0") [OPTIONS]
 Options:
   db:       Drop and recreate the myuz database. 
   db_init:  Depends on db being set - intits the db with agents and book
-  venv:     Delete and recreate the Python virtual environment. 
   pinecone: Delete and recreate the myuz pinecone index. 
   --help:   Display this help and exit. 
 
 example: ./blank_slate.sh db venv pinecone'
 
 REINIT_DB=false
-REINIT_VENV=false
 REINIT_PINECONE=false
 REINIT_DB_DATA=false
 MYUZ_DIR=$(pwd)
 SCRIPTS_DIR="${MYUZ_DIR}/scripts"
-
-echo "MYUZ_DIR ${MYUZ_DIR}"
-echo "SCRIPTS_DIR ${SCRIPTS_DIR}"
 
 for arg in "$@"
 do
@@ -39,10 +34,6 @@ do
         db_init)
             echo 'db_init detected'
             REINIT_DB_DATA=true
-            ;;
-        venv)
-            echo 'venv detected'
-            REINIT_VENV=true
             ;;
         pinecone)
             echo 'pinecone detected'
@@ -97,18 +88,5 @@ if [ $REINIT_DB == true ]; then
         python manage.py init_agents phusis
         python manage.py init_book noveller
     fi
-fi
-
-echo "REINIT_VENV ${REINIT_VENV}"
-
-if [ $REINIT_VENV == true ]; then
-    cd $MYUZ_DIR
-    pip freeze > requirements.txt
-    deactivate
-    #re-init python env
-    rm -rf venv
-    python -m venv venv
-    . venv/bin/activate
-    pip install -r requirements.txt
 fi
 

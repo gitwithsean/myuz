@@ -1,9 +1,21 @@
-
 # myuz
 
 <div style="display: flex; justify-content: center; align-items: center; height: 35vh;">
   <img src="./myuz/logos/phusis_logo.png" width="200" class="img-fluid" alt="Phusis Logo">
 </div>
+
+- [myuz](#myuz)
+  - [Intro](#intro)
+  - [myuz's current state](#myuzs-current-state)
+    - [Back End](#back-end)
+    - [Front End](#front-end)
+  - [Setup](#setup)
+    - [Requirements](#requirements)
+    - [Setup Instructions](#setup-instructions)
+  - [Creating your own Agent definitions](#creating-your-own-agent-definitions)
+  - [Creating your own Phusis Project definitions](#creating-your-own-phusis-project-definitions)
+
+## Intro
 
 The core belief driving the Myuz platform is that the most effective AI applications arise from the collaboration between domain experts and AI systems. As demonstrated in the field of text-to-image AI generators, top-performing results are most often achieved when expert photographers work closely with AI technologies. By offering a platform for users with niche knowledge to develop custom AI-powered projects, Myuz seeks to give thinkers and creators from any field a simplified path to levaraging AI for their projects.
 
@@ -37,6 +49,8 @@ I am currently levaraging Django's UI tools to create a prototype, but I am plan
 * [a pinecone account, API key and region](https://www.pinecone.io/)
 
 The following instructions were put together and tested with WSL: Ubuntu on Windows 10 - setup may be different on your own machine
+
+### Setup Instructions
 
 ```bash
 # add your secrets to the secrets folder
@@ -148,7 +162,7 @@ This repo provides a novel writing project type (noveller) as an example. Howeve
 
 phusis (the platform) and noveller (the application) are each apps within the myuz project. You can create your own apps to implement your own project types.
 
-Check out the AbstractPhusisProject model and related classes in `myuz/phusis/agent_models.py` for the abstracts available to create new project types.
+Check out the AbstractPhusisProject model and related models in `myuz/phusis/agent_models.py` for the abstracts available to create new project types.
 
 Then check out the implementation of those abstracts in the noveller app in `myuz/noveller/noveller_models.py`
 

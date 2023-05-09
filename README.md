@@ -38,9 +38,6 @@ I am currently levaraging Django's UI tools to create a prototype, but I am plan
 
 The following instructions were put together and tested with WSL: Ubuntu on Windows 10 - setup may be different on your own machine
 
-<details><summary>Click for setup instructions</summary>
-
-
 ```bash
 # add your secrets to the secrets folder
 touch ./secrets/openai_api_key
@@ -85,9 +82,6 @@ sudo service postgresql status
 python3 manage.py runserver
 ```
 
-</details>
-
-
 ## Creating your own Agent definitions
 
 For now, my own agent recipes are remaining private, but here is a guide on creating your own.
@@ -97,8 +91,6 @@ Take a look at the AbstractAgent model in `myuz/phusis/agent_models.py` for poss
 You will need to create a JSON representation of your agent and save it in the `agent_data` directory `myuz/phusis/secret_sauce/phusis-secret-sauce/agent_data`
 
 You can even create a number of agents as an array in one json file. I like to keep agent 'types' in separate files, but you can do it however you like.
-
-<details><summary>Example:</summary>
 
 ```json
 [
@@ -141,8 +133,6 @@ You can even create a number of agents as an array in one json file. I like to k
 ]
 
 ```
-
-</details>
 
 Then when you have your agent data ready, you can run the following command to create your agents in the database:
 

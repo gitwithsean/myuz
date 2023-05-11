@@ -11,8 +11,7 @@ schema_view = get_schema_view(
         default_version='v1',
         description="API documentation for the noveller app",
         terms_of_service="https://www.google.com/policies/terms/",
-        contact=openapi.Contact(email="getintouchwithseanryan@gmail.com"),
-        license=openapi.License(name="BSD License"),
+        contact=openapi.Contact(email="getintouchwithseanryan@gmail.com")
     ),
     public=True,
     permission_classes=(permissions.AllowAny,),

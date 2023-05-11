@@ -1,4 +1,4 @@
-import uuid
+import uuid, os
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from .apis import *
@@ -7,24 +7,140 @@ from django.db import models
 from abc import abstractmethod
 from .agent_attributes import *
 from .agent_engines import *
+from .agent_memory import ProjectMemory
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+
+
+
+class ChatLog(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    prompt = models.TextField(blank=False, null=False)
+    response = models.TextField(blank=False, null=False)
+    compressed_prompt_content = models.TextField(blank=True, null=True, default='')
+    compressed_response_content = models.TextField(blank=True, null=True, default='')
+    responder_name = models.CharField(max_length=200, default='', blank=False, null=False)
+    responder_type = models.CharField(max_length=200, default='', blank=False, null=False)
+    responder_id = models.UUIDField(default=uuid.uuid4, auto_created=True, editable=False)
+    
+    def convert_log_to_chain_objects(self):
+        # print(colored(f"ChatLog.convert_log_to_chain_objects(): right before compression, prompt is {self.prompt}", "yellow"))
+        # print(colored(f"ChatLog.convert_log_to_chain_objects(): right before compression, response is {self.response}", "yellow"))
+        
+        if self.compressed_prompt_content == '' and self.prompt: self.compressed_prompt_content = compress_text(self.prompt, 0.75)
+        if not self.compressed_response_content == '' and self.response: self.compressed_response_content = compress_text(self.response, 0.75)
+        self.save()
+        prompt_obj = {"role": "user", "content": f"{self.compressed_prompt_content}"}
+        response_obj = {"role": "assistant", "content": f"{self.compressed_response_content}"}
+        # return [prompt_obj, response_obj]
+        return [prompt_obj]
+  
+
+        
+class AgentAssignment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    assignment_str = models.TextField(blank=True, null=True, default='')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, blank=True, null=True)
+    object_id = models.UUIDField(blank=True, null=True)
+    assignment_proj_att = GenericForeignKey('content_type', 'object_id')
+    additional_assignment_instructions = models.TextField(blank=True, null=True, default='')
+    related_project_goal_steps = models.ManyToManyField('PhusisProjectGoalStep', related_name='project_goal_steps_for_agent_assignment', blank=True, default=list)
+    
+  
+    
+class PhusisProjectGoalStep(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    name = models.CharField(max_length=1000, blank=False, null=False)
+    related_project_attributes = models.ManyToManyField('ConcretePhusisProjectAttribute', related_name='project_attributes_for_project_goal_step', blank=True, default=[])
+    
+    def add_agent_assignment_to_step(self, assignment_obj):
+        agent_name = assignment_obj['agent_assigned']['agent_name']
+        agent = AbstractAgent.objects.get(name=agent_name)
+        new_assignment = AgentAssignment(agent_assigned=agent)
+        
+        if assignment_obj['assignment']['assignment_str']:
+            new_assignment.assignment_str = assignment_obj['assignment']['assignment_str']
+        
+        if assignment_obj['assignment']['assignment_proj_att']:    
+            new_assignment.assignment_proj_att = AbstractPhusisProjectAttribute.objects.get(name=assignment_obj['assignment']['assignment_proj_att'])
+        
+        if assignment_obj['additional_assignment_instructions']:
+            new_assignment.additional_assignment_instructions = assignment_obj['additional_assignment_instructions']
+        
+        self.save()
+        new_assignment.save()
+        self.agent_assignments_for_step.add(new_assignment)
+        self.save()
+        
+        return new_assignment
+      
+    def add_project_attributes_to_step(self, attributes):
+        self.related_project_attributes.add(attributes)
+        self.save()
+    
+   
+       
+class PhusisProjectGoal(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    name = models.CharField(max_length=1000, blank=False, null=False, default='')
+    steps = models.ManyToManyField('PhusisProjectGoalStep', blank=True, default=[])
+
+    def add_steps_to_goal(self, steps):
+        print(colored(f"PhusisProjectGoal.add_steps_to_goal: goal_name:\n{self.name} \nsteps_for_goal:\n{steps}", "yellow"))
+        
+        for step in steps:
+            new_step = PhusisProjectGoalStep(name=step)
+            self.save()
+            new_step.save()
+            self.steps.add(new_step)
+            self.save()
+
+
+
+class AbstractPhusisProjectAttribute(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    name = models.CharField(max_length=200, blank=False, null=False)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    
+    def save(self, *args, **kwargs):
+        if not self.content_type_id:  # Use self.content_type_id instead of self.content_type
+            self.content_type = ContentType.objects.get_for_model(self.__class__)
+        super().save(*args, **kwargs)
+    
+    
+    def get_brief(self):
+        return f"{self.name}"
+               
+    class Meta:
+        abstract = True
+        unique_together = ('name', 'content_type')
+
+  
+   
+class ConcretePhusisProjectAttribute(AbstractPhusisProjectAttribute):
+    class Meta:
+        abstract = False   
+   
+
 
 class AbstractAgent(models.Model, AbstractEngine):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=200, unique=True)
     agent_type = models.CharField(max_length=200, default="phusis_agent", editable=False)
     agent_system_prompt = models.TextField(blank=True)
-    class_display_name = models.CharField(max_length=200, editable=False, default=f"Phusis {agent_type} Agent")
-    project_attributes_assigned_to = models.ManyToManyField('PhusisProjectAttribute', blank=True)
+    class_display_name = models.CharField(max_length=200, default='')
+    # project_attributes_assigned_to = models.ManyToManyField('AbstractPhusisProjectAttribute', blank=True)
     expose_rest = True
     # [{"prompted_by":"", "AgentCapability":{}, "result":""}]
     steps_taken = models.JSONField(default=list, blank=True)
-    capabilities = models.ManyToManyField('AgentCapability', blank=True)
+    capabilities = models.ManyToManyField(AgentCapability, blank=True)
     embedding_of_self = models.TextField(blank=True)
-    chat_logs = models.ManyToManyField('ChatLog', blank=True)
+    chat_logs = models.ManyToManyField(ChatLog, blank=True)
     awake = models.BooleanField(default=False)
     wake_up_message = models.TextField(blank=True, null=True)
     compressed_wake_up_message = models.TextField(blank=True, null=True)
-    agent_assignments = models.ManyToManyField('AgentAssignment', blank=True, default=[], related_name='%(class)s_assignments')
+    assignments_for_agent = models.ManyToManyField(AgentAssignment, blank=True, default=[], related_name='%(class)s_assigned_agents')
+    phusis_applicaton = "noveller"
     
     #Traits
     goals = models.ManyToManyField(AgentGoal, blank=True)
@@ -77,12 +193,13 @@ class AbstractAgent(models.Model, AbstractEngine):
             # Get the field instance
             field = self._meta.get_field(key)
 
-            #Deal with capabilities first
-            if key == 'capabilities':
-                self.capabilities.set(get_agent_capabilities_by_capability_ids()) 
+            # #Deal with capabilities first
+            # if key == 'capabilities':
+            #     self.capabilities.set(get_agent_capabilities_by_capability_ids()) 
                 
             # Check if it's a ManyToManyField
-            elif isinstance(field, models.ManyToManyField):
+            # elif isinstance(field, models.ManyToManyField):
+            if isinstance(field, models.ManyToManyField):
                 related_objects = []
 
                 # Find the related objects using find_agent_attribute_by function
@@ -97,6 +214,7 @@ class AbstractAgent(models.Model, AbstractEngine):
                 # Handle other attribute types as needed
                 setattr(self, key, value)
         self.save()
+        
         
     def to_dict_and_string(self):
         self_dict = {
@@ -122,42 +240,27 @@ class AbstractAgent(models.Model, AbstractEngine):
         }
         
         string_from_dict = f"\n### Name: {self_dict['name']}\n- Type: {self_dict['agent_type']}\n" 
-        
         if self_dict['goals']: string_from_dict += f"- goals: {self_dict['goals']}\n" 
-        
         if self_dict['roles']: string_from_dict += f"- roles: {self_dict['roles']}\n"
-        
         if self_dict['personality']: string_from_dict += f"- personality: {self_dict['personality']}\n"
-        
         if self_dict['qualifications']: string_from_dict += f"- qualifications {self_dict['qualifications']}\n"
-        
         if self_dict['impersonations']: string_from_dict += f"- impersonations: {self_dict['impersonations']}\n"
-        
         if self_dict['elaboration']: string_from_dict += f"- elaboration: {self_dict['elaboration']}\n"
-        
         if self_dict['strengths']: string_from_dict += f"- strengths: {self_dict['strengths']}\n"
-        
         if self_dict['possible_locations']: string_from_dict += f"- possible_locations: {self_dict['possible_locations']}\n"
-        
         if self_dict['drives']: string_from_dict += f"- drives: {self_dict['drives']}\n"
-        
         if self_dict['fears']: string_from_dict += f"- fears: {self_dict['fears']}\n"
-        
         if self_dict['beliefs']: string_from_dict += f"- beliefs: {self_dict['beliefs']}\n"
-        
         if self_dict['age']: string_from_dict += f"- age: {self_dict['age']}\n"
-        
         if self_dict['origin_story']: string_from_dict += f"- origin_story: {self_dict['origin_story']}\n"
-        
         if self_dict['llelle']: string_from_dict += f"- llelle: {self_dict['llelle']}\n"
-        
         if self_dict['malig']: string_from_dict += f"- malig: {self_dict['malig']}\n"
-        
         if self_dict['subtr']: string_from_dict += f"- subtr: {self_dict['subtr']}\n"
-          
+        
         string_from_dict = string_from_dict.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
          
         return self_dict, string_from_dict
+        
         
     def introduce_yourself(self, is_brief=True):
         capability_id=17
@@ -171,7 +274,6 @@ class OrchestrationAgent(AbstractAgent, OrchestrationEngine):
     class_display_name = "Orchestration Agent"
     agent_type = "orchestration_agent"
     # capabilities =  get_agent_capabilities_by_capability_ids([100,101,102,103])
-
 
 
 
@@ -196,112 +298,35 @@ class UserAgentSingleton(AbstractAgent):
 
 
 
-class ChatLog(models.Model):
+class AbstractPhusisProject(models.Model, ProjectMemory):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    prompt = models.TextField(blank=False, null=False)
-    response = models.TextField(blank=False, null=False)
-    compressed_prompt_content = models.TextField(blank=True, null=True, default='')
-    compressed_response_content = models.TextField(blank=True, null=True, default='')
-    responder_name = models.CharField(max_length=200, default='', blank=False, null=False)
-    responder_type = models.CharField(max_length=200, default='', blank=False, null=False)
-    responder_id = models.UUIDField(default=uuid.uuid4, auto_created=True, editable=False)
-    
-    def convert_log_to_chain_objects(self):
-        # print(colored(f"ChatLog.convert_log_to_chain_objects(): right before compression, prompt is {self.prompt}", "yellow"))
-        # print(colored(f"ChatLog.convert_log_to_chain_objects(): right before compression, response is {self.response}", "yellow"))
-        
-        if self.compressed_prompt_content == '' and self.prompt: self.compressed_prompt_content = compress_text(self.prompt, 0.75)
-        if not self.compressed_response_content == '' and self.response: self.compressed_response_content = compress_text(self.response, 0.75)
-        self.save()
-        prompt_obj = {"role": "user", "content": f"{self.compressed_prompt_content}"}
-        response_obj = {"role": "assistant", "content": f"{self.compressed_response_content}"}
-        # return [prompt_obj, response_obj]
-        return [prompt_obj]
-  
-    
-    
-class PhusisProjectAttribute(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, blank=False, null=False)
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    agent_assigments = models.ManyToManyField('AgentAssignment', related_name='agent_assignments_for_project_attribute', blank=True)
-    
-    def save(self, *args, **kwargs):
-        if not self.content_type_id:  # Use self.content_type_id instead of self.content_type
-            self.content_type = ContentType.objects.get_for_model(self.__class__)
-        super().save(*args, **kwargs)
-            
-    class Meta:
-        unique_together = ('name', 'content_type')
-
-
-class AgentAssignment(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    assignment_str = models.TextField(blank=True, null=True, default='')
-    assignment_proj_att = models.ForeignKey(PhusisProjectAttribute, related_name='project_attribute_for_agent_assignment', on_delete=models.CASCADE, blank=True, null=True)
-    additional_assignment_instructions = models.TextField(blank=True, null=True, default='')
-    related_project_goal_steps = models.ManyToManyField('PhusisProjectGoalStep', related_name='project_goal_steps_for_agent_assignment', blank=True, default=[])
-
-
-class PhusisProjectGoalStep(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=1000, blank=False, null=False)
-    related_project_attributes = models.ManyToManyField(PhusisProjectAttribute, related_name='project_attributes_for_project_goal_step', blank=True, default=[])
-    agent_assignments_for_step = models.ManyToManyField(AgentAssignment, related_name='project_goal_steps_for_agent_assignment', blank=True, default=[])
-    
-    def add_agent_assignment_to_step(self, assignment_obj):
-        agent_name = assignment_obj['agent_assigned']['agent_name']
-        agent = AbstractAgent.objects.get(name=agent_name)
-        new_assignment = AgentAssignment(agent_assigned=agent)
-        
-        if assignment_obj['assignment']['assignment_str']:
-            new_assignment.assignment_str = assignment_obj['assignment']['assignment_str']
-        
-        if assignment_obj['assignment']['assignment_proj_att']:    
-            new_assignment.assignment_proj_att = PhusisProjectAttribute.objects.get(name=assignment_obj['assignment']['assignment_proj_att'])
-        
-        if assignment_obj['additional_assignment_instructions']:
-            new_assignment.additional_assignment_instructions = assignment_obj['additional_assignment_instructions']
-        
-        self.save()
-        new_assignment.save()
-        self.agent_assignments_for_step.add(new_assignment)
-        self.save()
-        
-        return new_assignment
-      
-    def add_project_attributes_to_step(self, attributes):
-        self.related_project_attributes.add(attributes)
-        self.save()
-
-
-class PhusisProjectGoal(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=500, blank=False, null=False)
-    steps = models.ManyToManyField(PhusisProjectGoalStep, blank=True, default=[])
-
-    def add_steps_to_goal(self, steps):
-        print(colored(f"PhusisProjectGoal.add_steps_to_goal: goal_name:\n{self.name} \nsteps_for_goal:\n{steps}", "yellow"))
-        
-        for step in steps:
-            new_step = PhusisProjectGoalStep(name=step)
-            self.save()
-            new_step.save()
-            self.steps.add(new_step)
-            self.save()
-
-
-class AbstractPhusisProject(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
-    name = models.CharField(max_length=200, default='')
-    project_type = models.CharField(max_length=200, default='Book')
+    name = models.CharField(max_length=500, default='', unique=True)
+    project_type = models.CharField(max_length=200, default='Phusis Project')
     project_user_input = models.TextField(blank=True, default='')
     project_workspace = models.CharField(max_length=200, default='', blank=True, null=True)
     goals_for_project = models.ManyToManyField(PhusisProjectGoal, blank=True, default=[])
-    agent_assignments_for_project = models.ManyToManyField(AgentAssignment, related_name='projects_for_agent_assignment', blank=True, default=[])   
+    agent_assignments_for_project = models.ManyToManyField(AgentAssignment, related_name='projects_for_agent_assignment', blank=True, default=list)   
     orchestrator = models.ForeignKey(OrchestrationAgent, related_name='orchestrator_for_project', on_delete=models.CASCADE, blank=True, null=True)
     project_embedding = models.TextField(blank=True)
+    phusis_applicaton = models.CharField(max_length=200, default='', blank=False, null=False, auto_created=True, editable=False)
+    project_attributes = models.ManyToManyField(AbstractPhusisProjectAttribute, related_name='attributes_for_project', blank=True, default=list)   
+        
+    def __str__(self):
+        return f"{self.project_type}: {self.name}"
+
+       
+    class Meta:
+        abstract = True
+        ordering = ['name']
     
+    
+    def get_project_vector_metadata(self):
+        return {
+            "for_project": self.name,
+            "for_project_type": self.project_type,
+            "for_phusis_impl": self.phusis_applicaton,
+        }
+        
     def add_to_goals_for_project(self, goals):
         print(colored(f"AbstractPhusisProject.add_to_goals_for_project: project: {self.name} goals:\n{goals}", "yellow"))
         
@@ -311,14 +336,7 @@ class AbstractPhusisProject(models.Model):
             self.save()
             self.goals_for_project.add(new_goal)
             self.save()
-    
-    def __str__(self):
-        return f"{self.project_type}: {self.name}"
-       
-    class Meta:
-        abstract = True
-        ordering = ['name']
-    
+
     def set_data(self, properties_dict):
         for key, value in properties_dict.items():
             attr_type = type(getattr(self, key))
@@ -331,6 +349,27 @@ class AbstractPhusisProject(models.Model):
 
         self.save()
         
+    def get_phusis_project_workspaces(self):
+        INCOMING_FILES="/files_to_embed/"
+        OUTGOING_FILES="/files_created/"
+        LOGS="/logs/"
+        myuz_dir = os.getcwd() 
+        
+        print(colored(f"agent_utils.get_phusis_project_workspace: myuz_dir set to {myuz_dir}", "yellow"))
+        phusis_project_workspace = f"{myuz_dir}/{self.phusis_applicaton}/phusis-projects/{spaced_to_underscore(self.name)}"
+        
+        if self.project_workspace != "": 
+            phusis_project_workspace = self.project_workspace
+            
+        workspaces = {
+            "phusis_project_workspace" : phusis_project_workspace,
+            "incoming_files" : f"{phusis_project_workspace}{INCOMING_FILES}",
+            "outgoing_files" : f"{phusis_project_workspace}{OUTGOING_FILES}",
+            "logs" : f"{phusis_project_workspace}{LOGS}"
+        }  
+        
+        return workspaces   
+     
     @abstractmethod
     def list_project_attributes(self):
         pass
@@ -349,7 +388,6 @@ class AbstractPhusisProject(models.Model):
     
     @abstractmethod
     def add_agents_to(self, agents):
-        
         pass
     
     @abstractmethod
@@ -368,156 +406,40 @@ class AbstractPhusisProject(models.Model):
     def serialized(self):
         pass
 
-
-class WritingAgent(AbstractAgent, WritingAgentEngine):
-    agent_type = "writing_agent"
-    class_display_name = "Writing Agent"
-
-
-
-class PoeticsAgent(AbstractAgent):
-    type_description = """
-    Agent class concerned with:
-        * narrative technique
-        * poetic literacy
-        * literary/linguistic theory
-        * metaphoric / analogistic approaches to the content 
-    """
-    agent_type = "poetics_agent"
-    class_display_name = "Poetics Agent"
-    # content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
-    # object_id = models.UUIDField(null=True, blank=True)  # id of the project it is assigned to
-    # projects_assigned_to = GenericForeignKey('content_type', 'object_id')
-    
-
-
-class StructuralAgent(AbstractAgent):
-    type_description = """
-    Agent class concerned with:
-    - story plotting
-    - story structure (r.g. experimental and/or tried and tested structures)
-    - scene sequencing
-    - fleshing out the story structure and plotting based on the inputs from other agents in the swarm  
-    """
-    agent_type = "structural_agent"
-    class_display_name = "Structural Agent"
-
-
-class SceneAgent(AbstractAgent):
-    type_description = """
-    Agent class concerned with:
-    - bringing together the work of the thematic, structural, world building, character and other agents to collaboratively flesh out scenes
-    """
-    agent_type = "scene_agent"
-    class_display_name = "Scene Agent"    
-
  
-class ResearchAgent(AbstractAgent):
-    type_description = """
-    Agent class concerned with:
-    - taking a subject area and a project goal, and thinking of research topics that could be researched for the book, 
-    - how to plan, structure and initially approach that research
-    - like an expert librarian, knowing or knowing how to find the best sources for researching a topic
-    - doing the background research on those specific topics to an expert degree
-    """
-    agent_type = "research_agent"
-    class_display_name = "Research Agent"
 
-
-
-class CharacterAgent(AbstractAgent):
-    type_description = """
-    Agent class concerned with:
-    - fleshing out character profiles
-    - 'becoming' the character so that a user or other agents can talk to them, produce dialog, discuss decisions, etc.
-    """
-    agent_type = "character_agent"
-    class_display_name = "Character Agent"
-  
-
-    
-class WorldBuildingAgent(AbstractAgent):
-    type_description = """
-    Agent class concerned with:
-    - building the world of the story
-    """
-    agent_type = "world_building_agent"
-    class_display_name = "World Building Agent"
-
-  
-    
-class ThemeExploringAgent(AbstractAgent):
-    type_description = """
-    Agent class concerned with:
-    - considering the possible themes of the story and adding Theme objects to the story
-    - diving deeper into the theme objects to provide insight into how they might influcen the story
-    - informing other agents on how they could improve their work to better serve the themes
-    """
-    agent_type = "theme_exploring_agent"
-    class_display_name = "Theme Exploring Agent"
-    
-   
-    
-class ConflictAndResolutionAgent(AbstractAgent):
-    type_description = """
-    Agent class concerned with:
-    - setting conflicts within the story to drive plot
-    - conflicts between characters, the world, themes, events, internal, etc.
-    """
-    agent_type = "conflict_and_resolution_agent"
-    class_display_name = "Conflict And Resolution Agent"
-    
-  
-    
-class InterdisciplinaryAgent(AbstractAgent):
-    type_description = """
-    Agent class concerned with:
-    - These are relatively neutral agents that would consider the output from all agents in a swarm and make sure they are not deviating from each other, making sure that each of them are serving towards a common goal in a cohesive way, that research informs setting, informs themes, informs style etc. Not quite like a director of a film, more like assistant directors
-    - They will provide 'grades' to what is produced, but less about quality and more about how close they are to cohering with the work of the other agents working in different disciplines. With 0.5 being neutral, 1 being exemplary and 0 meaning heading in the wrong direction. 
-    """
-    agent_type = "interdisciplinary_agent"
-    class_display_name = "Interdisciplinary Agent"
-
-
-
-class QualityEvaluationAgent(AbstractAgent):
-    type_description = """
-    Agent class concerned with:
-    - evaluating the output and work of each of the agents.
-    """
-    agent_type = "qualitye_valuation_agent"
-    class_display_name = "Quality Evaluation Agent"
-
-
-
-def load_agent_model_and_return_instance_from(json_data):
-    new_agent_obj = {}
-    expected_json = {
-        "class_name": "AgentsClassName",
-        "properties": {
-            "name": "Agent name"
-        }
-    }
+# def load_agent_model_and_return_instance_from(json_data, app_name):
+#     new_agent_obj = {}
+#     expected_json = {
+#         "class_name": "AgentsClassName",
+#         "properties": {
+#             "name": "Agent name"
+#         }
+#     }
  
-    if is_valid_init_json(json_data):
-        model_class = {}
-        if json_data['class_name'] in globals():
-            model_class = apps.get_model("phusis", f"{json_data['class_name']}")
-        else: 
-            # print(colored(f"agent_models.create_agent_model_from_instance: class_name {json_data['class_name']} not found in globals()", "yellow"))
-            pass
-        new_agent_obj, created = model_class.objects.update_or_create(name=json_data['properties']['name'])
+#     if is_valid_init_json(json_data):
+#         model_class = {}
+#         if json_data['class_name'] in globals():
+#             model_class = globals.get_model(app_name, f"{json_data['class_name']}")
+#             print(colored(f"agent_models.load_agent_model_and_return_instance_from: model_class {model_class} found", "green"))
+#         else: 
+#             print(colored(f"agent_models.load_agent_model_and_return_instance_from: class_name {json_data['class_name']} not found in globals()", "red"))
+#             pass
         
-        new_agent_obj.set_data(json_data['properties'])
-        s = "found and updated"
-        if created: s = "created"
-        # print(colored(f"agent_models.load_agent_model_and_return_instance_from: {new_agent_obj.name} {s}", "green"))
+#         print(colored(f"agent_models.load_agent_model_and_return_instance_from: model_class: {model_class}", "yellow"))
+#         print(colored(f"agent_models.load_agent_model_and_return_instance_from: json_data: {json_data}", "yellow"))
+#         new_agent_obj, created = model_class.objects.update_or_create(name=json_data['properties']['name'])
         
-    else:
-        print(colored(f"agent_models.create_agent_model_from_instance: JSON data for agent not valid, expected schema below","red"))
-        print(colored(f"Data received: {json_data}", "red"))
-        print(colored(f"Minimum expected: {expected_json}", "yellow"))
+#         new_agent_obj.set_data(json_data['properties'])
+#         s = "found and updated"
+#         if created: s = "created"
+#         # print(colored(f"agent_models.load_agent_model_and_return_instance_from: {new_agent_obj.name} {s}", "green"))
+        
+#     else:
+#         print(colored(f"agent_models.create_agent_model_from_instance: JSON data for agent not valid, expected schema below","red"))
+#         print(colored(f"Data received: {json_data}", "red"))
+#         print(colored(f"Minimum expected: {expected_json}", "yellow"))
 
-    return new_agent_obj
+#     return new_agent_obj
 
 

@@ -59,73 +59,73 @@ class AgentGoal(AbstractAgentAttribute):
     agent_attribute_type = 'agent_goal'
 
 class OrcAgentGoal(AgentGoal):
-    agent_attribute_type = 'orc_agent_goal'
+    agent_attribute_type = 'orchestration_agent_goal'
 
 class AgentRole(AbstractAgentAttribute):
     agent_attribute_type = 'agent_role'
 
 class OrcAgentRole(AgentRole):
-    agent_attribute_type = 'orc_agent_role'
+    agent_attribute_type = 'orchestration_agent_role'
 
 class AgentPersonalityTrait(AbstractAgentAttribute):
     agent_attribute_type = 'agent_personality_trait'
 
 class OrcAgentPersonalityTrait(AgentPersonalityTrait):
-    agent_attribute_type = 'orc_agent_personality_trait'
+    agent_attribute_type = 'orchestration_agent_personality_trait'
 
 class AgentQualification(AbstractAgentAttribute):
     agent_attribute_type = 'agent_qualification'
 
 class OrcAgentQualification(AgentQualification):
-    agent_attribute_type = 'orc_agent_qualification'
+    agent_attribute_type = 'orchestration_agent_qualification'
 
 class AgentImpersonation(AbstractAgentAttribute):
     agent_attribute_type = 'agent_impersonation'
 
 class OrcAgentImpersonation(AgentImpersonation):
-    agent_attribute_type = 'orc_agent_impersonation'
+    agent_attribute_type = 'orchestration_agent_impersonation'
 
 class AgentStrength(AbstractAgentAttribute):
     agent_attribute_type = 'agent_strength'
 
 class OrcAgentStrength(AgentStrength):
-    agent_attribute_type = 'orc_agent_strength'
+    agent_attribute_type = 'orchestration_agent_strength'
 
 class AgentLocation(AbstractAgentAttribute):
     agent_attribute_type = 'agent_location'
 
 class OrcAgentLocation(AgentLocation):
-    agent_attribute_type = 'orc_agent_location'
+    agent_attribute_type = 'orchestration_agent_location'
 
 class AgentDrive(AbstractAgentAttribute):
     agent_attribute_type = 'agent_drive'
 
 class OrcAgentDrive(AgentDrive):
-    agent_attribute_type = 'orc_agent_drive'
+    agent_attribute_type = 'orchestration_agent_drive'
 
 class AgentFear(AbstractAgentAttribute):
     agent_attribute_type = 'agent_fear'
 
 class OrcAgentFear(AgentFear):
-    agent_attribute_type = 'orc_agent_fear'
+    agent_attribute_type = 'orchestration_agent_fear'
 
 class AgentBelief(AbstractAgentAttribute):
     agent_attribute_type = 'agent_belief'
 
 class OrcAgentBelief(AgentBelief):
-    agent_attribute_type = 'orc_agent_belief'
+    agent_attribute_type = 'orchestration_agent_belief'
 
 class AgentAttitude(AbstractAgentAttribute):
     agent_attribute_type = 'agent_belief'
 
 class OrcAgentAttitude(AgentAttitude):
-    agent_attribute_type = 'orc_agent_attitude'
+    agent_attribute_type = 'orchestration_agent_attitude'
 
 class AgentFavoredTheme(AbstractAgentAttribute):
     agent_attribute_type = 'agent_favored_theme'
  
 class OrcAgentFavoredTheme(AgentFavoredTheme):
-    agent_attribute_type = 'orc_agent_favored_theme'
+    agent_attribute_type = 'orchestration_agent_favored_theme'
 
 class AgentFavoredGenre(AbstractAgentAttribute):
    agent_attribute_type = 'agent_favored_genre'
@@ -155,18 +155,7 @@ class AgentCreatedTrait(AbstractAgentAttribute):
         self.save()
 
 class OrcAgentCreatedTrait(AgentCreatedTrait):
-    agent_attribute_type = 'orc_agent_created_trait'
-
-
-def get_agent_capabilities_by_capability_ids(capability_ids=
-                                             [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]):
-
-    capabilities = []
-    for id in capability_ids:
-        capability = AgentCapability.objects.get(capability_id=id)
-        capabilities.append(capability)
- 
-    return capabilities
+    agent_attribute_type = 'orchestration_agent_created_trait'
 
 
 def find_agent_attribute_by(attribute_name, attribute_class=AbstractAgentAttribute):

@@ -1,37 +1,7 @@
-import os, re, json
+import re, json
 from termcolor import colored
 from django.apps import apps
-from django.db.models.fields import CharField
 from django.core.exceptions import ObjectDoesNotExist
-# from .agent_models import *
-# from .agent_memory import ProjectMemory
-# from .apis import OpenAiAPI
-
-PROJECT_ROOT="myuz"
-INCOMING_FILES="/files_to_embed/"
-OUTGOING_FILES="/files_created/"
-LOGS="/logs/"
-def get_phusis_project_workspace(project_type, project_name):
-    
-    if not isinstance(project_type, CharField):
-    
-        myuz_dir = os.getcwd()
-        
-        print(colored(f"agent_utils.get_phusis_project_workspace: myuz_dir set to {myuz_dir}", "yellow"))
-        
-        if PROJECT_ROOT in myuz_dir:
-            myuz_dir = myuz_dir[:myuz_dir.index(PROJECT_ROOT) + len(PROJECT_ROOT)]
-            
-        phusis_project_workspace = f"{myuz_dir}/phusis/phusis_projects/{spaced_to_underscore(project_type)}/{spaced_to_underscore(project_name)}" 
-        
-        print(colored(f"agent_utils.get_phusis_project_workspace: phusis_project_workspace set to {phusis_project_workspace}", "yellow"))
-        
-        
-        os.makedirs(f"{phusis_project_workspace}{INCOMING_FILES}", exist_ok=True)
-        os.makedirs(f"{phusis_project_workspace}{OUTGOING_FILES}", exist_ok=True)
-        os.makedirs(f"{phusis_project_workspace}{LOGS}", exist_ok=True)
-        
-        return phusis_project_workspace 
 
 
 def model_has_content_and_content(model):
@@ -91,9 +61,81 @@ def get_user_agent_singleton():
     return UserAgentSingleton()
 
 
-def get_project_memory_singleton():
-    from phusis.agent_memory import ProjectMemory
-    return ProjectMemory()
+def load_model_and_return_instance_from(json_data, app_name):
+    """
+    With dict json_data and app_name and parms either create or find an instance based on the provided JSON data in app_name and return it.
+    
+    Args:
+        json_data (dict): A dictionary containing the JSON data for the model.
+        app_name (str): The name of the app to search for or create the model in.
+    
+    Returns:
+        object: An instance of the model created or updated based on the JSON data.
+    """
+    
+    new_project_obj = {}
+    expected_json = {
+        "class_name": "ModelClassName",
+        "properties": {
+            "name": "Instance Name"
+        }
+    }
+ 
+    if is_valid_init_json(json_data):
+        try:
+            model_class = apps.get_model(app_name, f"{json_data['class_name']}")
+        except LookupError:
+            print(colored(f"agent_utils.create_project_model_from_instance: class_name {json_data['class_name']} not found in globals()", "red"))
+
+        # print(colored(f"agent_utils.create_project_model_from_instance: model_class {model_class}. json_data['properties']['name'] {json_data['properties']['name']}", "green"))
+
+        new_project_obj, created = model_class.objects.update_or_create(name=json_data['properties']['name'])
+
+        new_project_obj.set_data(json_data['properties'])
+        new_project_obj.save()
+        s = f"found and updated with:\n{json_data['properties']}"
+        if created: s = "created"
+        # print(colored(f"agent_utils.create_project_model_from_instance: {new_project_obj.name} {s}", "green"))
+        
+    else:
+        print(colored(f"agent_utils.create_project_model_from_instance: JSON data for model not valid, minimum expected schema below","red"))
+        print(colored(f"Data received: {json_data}", "red"))
+        print(colored(f"Minimum expected: {expected_json}", "yellow"))
+
+    return new_project_obj
+
+
+def find_and_update_or_create_attribute_by(attr_name, model_class):
+    """
+    Args:
+        attr_name (str): The name of the attribute to find or create.
+        model_class (class): The model class to search for the attribute in.
+
+    Returns:
+        tuple: A tuple containing the attribute class and the attribute instance.
+    """
+
+    # print(colored(f"agent_utils.find_and_update_or_create_attribute_by(): attr_name: {attr_name}\nmodel_class : {model_class}", "yellow"))
+    
+    # Check if the attribute exists in the model class
+    if hasattr(model_class, attr_name):
+        return model_class, getattr(model_class, attr_name)
+
+    # print(colored(f"model class : {model_class}", "yellow"))
+
+    # Check if the attribute exists in any related models
+    for related_object in model_class._meta.related_objects:
+        related_model_class = related_object.related_model
+
+        if hasattr(related_model_class, attr_name):
+            # Create an instance of the related model to return
+            instance = related_model_class.objects.get(**{related_object.field.name: model_class})
+            return related_model_class, instance
+        else:
+            #If the Attribute wasn't found, create it 
+            new_attribute, created = model_class.objects.update_or_create(name=attr_name)
+            return related_model_class, new_attribute
+
 
 class Prompt():
     expose_rest = False
@@ -103,7 +145,7 @@ class Prompt():
             cls._instance = super().__new__(cls)
         return cls._instance
     please_respond_with_array = '\nPlease respond with an iterable array of comma separated, quotation-enclosed strings, no new lines, e.g. ["item one is...", "second item, we think, is...", "item three", ...]'
-    agent_assignments_model = [
+    example_agent_assignments_model = [
         {
             "agent_assigned" : {
                 "is_new" : False,
@@ -117,18 +159,13 @@ class Prompt():
             }
         }
     ]
-    agent_assignments_model_str = f"agent_assignments:{json.dumps(agent_assignments_model, separators=(',',':'))}"
+    example_agent_assignments_model_str = f"agent_assignments:{json.dumps(example_agent_assignments_model, separators=(',',':'))}"
     
     
-    def complete_prompt(self, prompt, prompter):
-        prompt = f"The following prompt comes from a {prompter}:\n\n--------------------\n\n{prompt}"
-        return self.auto_reminder(prompt, prompter)
-    
-    
-    def auto_reminder(self, prompt, prompter):
-        # if self.prompts_since_reminder >= 5:
-        #     prompt = f"{prompt} Just Reminding you: {self.to_remind(prompter)}"
-        #     self.prompts_since_reminder = 0
+    def auto_reminder(self, prompt, agent):
+        # if agent.prompts_since_reminder >= 5:
+        #     prompt = f"{prompt} \nAlso, just Reminding you: {self.to_remind(agent)}"
+        #     agent.prompts_since_reminder = 0
         # return f"{prompt}"
         return prompt
        
@@ -179,8 +216,8 @@ class Prompt():
         prompt += f"Step: {step.name}\n"
         prompt += f"Project Attributes:\n{step.project_attributes}\n\n"
         prompt += f"It is now time to assign a GPT agent of the swarm to work on this step (and/or it's attributes).\n"
-        prompt += f"Please create one or more agent assignments for this step using the JDON representation below. If you believe there is an agent you need that isn't listed, feel free to create one.\n"
-        prompt += self.agent_assignment_model_str
+        prompt += f"Please create one or more agent assignments for this step using the JSON representation below. If you believe there is an agent you need that isn't listed, feel free to create one.\n"
+        prompt += self.example_agent_assignments_model_str
         return self.auto_reminder(prompt, agent)
     
           
@@ -189,7 +226,6 @@ class Prompt():
         
         list_of_agent_types = AbstractAgent.__subclasses__()
         
-    
         prompt = "# GPT Agent Types\n\n"
         
         for agent_type in list_of_agent_types:
@@ -284,5 +320,3 @@ class Prompt():
         # print(colored(f"PromptBuilderSingleton().to_remind: prompt set to {prompt}", "yellow"))
         
         return self.auto_reminder(prompt, agent)  
-
-

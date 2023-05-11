@@ -131,7 +131,6 @@ class AbstractEngine():
         return report
 
 
-
 class OrchestrationEngine(AbstractEngine):
     auto_mode = False
     open_ai_chat_data = {
@@ -268,7 +267,7 @@ class OrchestrationEngine(AbstractEngine):
     
 
     
-    
+        
     def routine(self, project):
         print(print(colored(f"\nOrchestrationEnginne.routine(): Starting agent routine...\n", "green")))
         self.project = project
@@ -373,9 +372,7 @@ class OrchestrationEngine(AbstractEngine):
         # self.assess_agent_output(project)
         # self.commit_agent_output_to_project(project)
 
- 
-class WritingAgentEngine(AbstractEngine):
-    pass     
+
     
 def compress_text(text_to_compress, compression_ratio=0.5):    
     """

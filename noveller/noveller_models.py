@@ -1,13 +1,12 @@
 from __future__ import annotations
 from django.db import models
-from django.contrib.contenttypes.models import ContentType
-from phusis.agent_models import AbstractPhusisProject, PhusisProjectAttribute, OrchestrationAgent
-from django.core.exceptions import ObjectDoesNotExist
+from phusis.agent_models import AbstractPhusisProject, AbstractPhusisProjectAttribute
 from django.apps import apps
 from abc import abstractmethod
 from termcolor import colored
 
-class NovellerModelDecorator(PhusisProjectAttribute):
+
+class NovellerModelDecorator(AbstractPhusisProjectAttribute):
     elaboration = models.TextField(blank=True, null=True)
     expose_rest = True
     
@@ -62,6 +61,70 @@ class NovellerModelDecorator(PhusisProjectAttribute):
         self.save()        
         
 
+class Location(NovellerModelDecorator):
+    pass
+
+
+class LiteraryInspiration(NovellerModelDecorator):
+    pass
+
+
+class StoryTeller(NovellerModelDecorator):
+    character_version = models.ForeignKey('CharacterVersion', on_delete=models.CASCADE, null=True)
+    lit_style_guide = models.ForeignKey('LiteraryStyleGuide', on_delete=models.CASCADE, null=True)
+    
+    # def __str__(self):
+    #     return f"{self.character_version} style as a story teller"
+    
+    class Meta:
+        ordering = ['character_version__for_character__name']
+
+
+class LiteraryTheme(NovellerModelDecorator):
+    pass
+
+
+class NarrativePerspective(NovellerModelDecorator):
+    pass
+
+
+class LiteraryTrait(NovellerModelDecorator):
+    pass
+
+
+class LiteraryTone(NovellerModelDecorator):
+    pass
+
+
+class LiteraryMood(NovellerModelDecorator):
+    pass
+
+
+class LiteraryImagery(NovellerModelDecorator):
+    pass
+
+
+class LiterarySymbolism(NovellerModelDecorator):
+    pass
+
+
+class StoryPacing(NovellerModelDecorator):
+    pass
+
+
+class LiteraryStyleGuide(NovellerModelDecorator):
+    perspective = models.ForeignKey(NarrativePerspective, on_delete=models.CASCADE, null=True)
+    inspirations = models.ManyToManyField(LiteraryInspiration, blank=True)
+    tone = models.ManyToManyField(LiteraryTone, blank=True)
+    imagery = models.ManyToManyField(LiteraryImagery, blank=True)
+    symbolism = models.ManyToManyField(LiterarySymbolism, blank=True)
+    traits = models.ManyToManyField(LiteraryTrait, related_name='litstyleguide_traits', blank=True)
+    avoid = models.ManyToManyField(LiteraryTrait, related_name='litstyleguide_avoid', blank=True)
+    style_guide = models.TextField(blank=True, null=True)
+    compressed_sg = models.TextField(blank=True, null=True)
+    writing_samples = models.TextField(blank=True, null=True)
+
+
 class Genre(NovellerModelDecorator):
     pass
 
@@ -70,12 +133,75 @@ class TargetAudience(NovellerModelDecorator):
     pass
 
 
+class BackgroundEvent(NovellerModelDecorator):
+    date_from = models.DateField(blank=True, null=True)
+    date_to = models.DateField(blank=True, null=True)
+    order_in_story_events = models.IntegerField(blank=True, null=True)
+    order_in_narrative_telling = models.IntegerField(blank=True, null=True)
+
+
+class Faction(NovellerModelDecorator):
+    description = models.TextField(blank=True, null=True)
+    members = models.ManyToManyField('CharacterVersion', blank=True)
+    
+    
+class DeeperBackgroundResearchTopic(NovellerModelDecorator):
+    notes = models.TextField(blank=True, null=True)
+
+
+class BackgroundResearch(NovellerModelDecorator):
+    research = models.TextField(blank=True)
+    deeper_research_topics = models.ManyToManyField(DeeperBackgroundResearchTopic, blank=True)
+
+    
+class Setting(NovellerModelDecorator):
+    books = models.ManyToManyField('Book', blank=True)
+    background_events = models.ManyToManyField(BackgroundEvent, blank=True)
+    factions = models.ManyToManyField(Faction, blank=True)
+    background_research = models.OneToOneField(BackgroundResearch, on_delete=models.SET_NULL, blank=True, null=True)
+    general_setting = models.TextField(blank=True)
+
+        
+class Scene(NovellerModelDecorator):
+    for_plot = models.ManyToManyField('Plot', related_name='plots_scenes')
+    date_from = models.DateField(blank=True, null=True)
+    date_to = models.DateField(blank=True, null=True)
+    order_in_story_events = models.IntegerField(blank=True, null=True)
+    order_in_narrative_telling = models.IntegerField(blank=True, null=True)
+    foreshadowing = models.ManyToManyField('Scene', blank=True)
+    scene_location = models.ForeignKey(Location, blank=True, on_delete=models.SET_NULL, null=True)
+    pacing = models.ForeignKey('StoryPacing', blank=True, on_delete=models.SET_NULL, null=True)
+    characters_present = models.ManyToManyField('CharacterVersion', blank=True)
+    scene_summary = models.TextField(blank=True, null=True)
+    
+    def get_brief(self):
+        """
+        Get a brief description of the instance.
+        
+        Returns:
+            str: A string containing a brief description of the instance.
+        """
+        brief = f"- Scene: {self.name} \n"
+        if self.characters_present.exists(): brief += f"  - Characters present:\n{(character_version.name for character_version in self.characters_present.all())} \n"
+        if self.scene_location: brief += f"  - Location: {self.scene_location.name} \n"
+        if self.date_from: brief += f"  - From: {self.date_from} \n"
+        if self.date_to: brief += f"  - To: {self.date_to} \n"
+        if self.scene_summary: brief += f"  - Summary: {self.scene_summary} \n"
+        if self.foreshadowing.exists(): brief += f"  - Foreshadowing: {(foreshadowing_scene.name for foreshadowing_scene in self.foreshadowing.all())} \n"
+        if self.pacing: brief += f"  - Pacing: {self.pacing.name} \n" 
+        
+        return brief
+
+
+
 class Plot(NovellerModelDecorator):
     plot_for_book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='books_plots', null=True)
-    scenes_of_plot = models.ManyToManyField('Scene', blank=True)
+    scenes_of_plot = models.ManyToManyField(Scene, blank=True)
     plot_beginning = models.TextField(blank=True, null=True)
     plot_middle = models.TextField(blank=True, null=True)
     plot_end = models.TextField(blank=True, null=True)
+    is_sub_plot = models.BooleanField(default=False)
+    
     def get_brief(self):
         """
         Get a brief description of the instance.
@@ -88,45 +214,14 @@ class Plot(NovellerModelDecorator):
             plot_scenes_to_brief = "- Scenes:\n"
             i = 1
             for plot_scene in self.scenes_of_plot.all():
-                plot_scenes_to_brief += f"  {i}: {plot_scene.description} \n"
+                plot_scenes_to_brief += f"  {i}: {plot_scene.name} \n"
                 i = i + 1
             
         brief = f"{self.name} \n"
-        if self.scenes_of_plot.exists(): brief += f"- Scenes:\n{convert_array_to_md_list(scene.name for scene in self.scenes_of_plot.all())} \n"
+        if self.scenes_of_plot.exists(): brief += f"{plot_scenes_to_brief}"
         
         return brief
    
-        
-class Scene(NovellerModelDecorator):
-    for_plot = models.ManyToManyField('Plot', related_name='plots_scenes')
-    date_from = models.DateField(blank=True, null=True)
-    date_to = models.DateField(blank=True, null=True)
-    order_in_story_events = models.IntegerField(blank=True, null=True)
-    order_in_narrative_telling = models.IntegerField(blank=True, null=True)
-    foreshadowing = models.ManyToManyField('Scene', 'SubPlotEvent', blank=True)
-    scene_location = models.ForeignKey('Location', blank=True, on_delete=models.SET_NULL, null=True)
-    pacing = models.ForeignKey('StoryPacing', blank=True, on_delete=models.SET_NULL, null=True)
-    characters_present = models.ManyToManyField('CharacterVersion', blank=True)
-    scene_summary = models.TextField(blank=True, null=True)
-
-
-class SubPlot(Plot):
-    sub_plot_of = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='plots_subplot', null=True)
-    scenes_of_subplot = models.ManyToManyField('SubPlotScene', blank=True, related_name='subplots_scenese')
-    
-    class Meta:
-        ordering = ['sub_plot_of__name', 'name']
-
-
-class SubPlotScene(Scene):
-    subplot = models.ForeignKey('SubPlot', on_delete=models.CASCADE, related_name='subplots_scenes', null=True)
-    
-    # def __str__(self):
-    #     return f"Story Event {self.order_in_story_events}: {self.description}"
-    
-    class Meta:
-        ordering = ['order_in_story_events']
-
 
 class Chapter(NovellerModelDecorator):
     chapter_in_book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='book_characters', null=True)
@@ -184,43 +279,6 @@ class ChapterPartSummaryItem(NovellerModelDecorator):
     
     # class Meta:
     #     ordering = ['for_chapter_part_summary__for_chapter_part__for_chapter__book','for_chapter_part_summary__for_chapter_part__for_chapter__chapter_num', 'for_chapter_part_summary__for_chapter_part__part_num', 'order_in_part']
-
-
-class StoryPacing(NovellerModelDecorator):
-    pass
-    
-    
-class Setting(NovellerModelDecorator):
-    books = models.ManyToManyField('Book', blank=True)
-    background_events = models.ManyToManyField('BackgroundEvent', blank=True)
-    factions = models.ManyToManyField('Faction', blank=True)
-    background_research = models.OneToOneField('BackgroundResearch', on_delete=models.SET_NULL, blank=True, null=True)
-    general_setting = models.TextField(blank=True)
-
-
-class Location(NovellerModelDecorator):
-    pass
-
-
-class BackgroundResearch(NovellerModelDecorator):
-    research = models.TextField(blank=True)
-    deeper_research_topics = models.ManyToManyField('DeeperBackgroundResearchTopic', blank=True)
-    
-    
-class DeeperBackgroundResearchTopic(NovellerModelDecorator):
-    notes = models.TextField(blank=True, null=True)
-
-
-class BackgroundEvent(NovellerModelDecorator):
-    date_from = models.DateField(blank=True, null=True)
-    date_to = models.DateField(blank=True, null=True)
-    order_in_story_events = models.IntegerField(blank=True, null=True)
-    order_in_narrative_telling = models.IntegerField(blank=True, null=True)
-
-
-class Faction(NovellerModelDecorator):
-    description = models.TextField(blank=True, null=True)
-    members = models.ManyToManyField('CharacterVersion', blank=True)
     
     
 class CharacterRelatedSettingTopic(NovellerModelDecorator):
@@ -235,6 +293,26 @@ class CharacterRelatedSettingTopic(NovellerModelDecorator):
     
     # def __str__(self):
     #     return f"Setting as it relates to {self.character}"
+
+
+class CharacterTrait(NovellerModelDecorator):
+    pass
+
+
+class CharacterDrive(NovellerModelDecorator):
+    pass
+
+
+class CharacterFear(NovellerModelDecorator):
+    pass
+
+
+class CharacterBelief(NovellerModelDecorator):
+    pass
+  
+    
+class CharacterInternalConflict(NovellerModelDecorator):
+    pass
 
 
 class Character(NovellerModelDecorator):
@@ -256,24 +334,16 @@ class Character(NovellerModelDecorator):
         Returns:
             str: A string containing a brief description of the instance.
         """
-        brief = "### Character Brief \n"
-        brief += f"- Name: {self.name} \n"
+        brief = f"- Name: {self.name} \n"
         
-        if self.age_at_start: brief += f"- Age: {self.age_at_start} \n"
-        
-        if self.gender: brief += f"- Gender: {self.gender}\n"
-        
-        if self.sex: brief += f"- Sex assigned at Birth: {self.sex}\n"
-        
-        if self.sexuality: brief += f"- Sexuality: {self.sexuality}\n"
-        
-        if self.origin: brief += f"- Origin: {self.origin}\n"
-        
-        if self.representative_of: brief  += f"- Themes: {[literary_theme.name for literary_theme in self.representative_of.all()]}\n"
-        
-        if self.permanent_characteristics: brief += f"- Permanent Characteristics: {self.permanent_characteristics}\n"
-        
-        if self.versions: brief += f"- Versions: {[version.name for version in self.versions.all()]}\n"
+        if self.age_at_start: brief += f"  - Age: {self.age_at_start} \n"
+        if self.gender: brief += f"  - Gender: {self.gender}\n"
+        if self.sex: brief += f"  - Gender assigned at Birth: {self.sex}\n"
+        if self.sexuality: brief += f"  - Sexuality: {self.sexuality}\n"
+        if self.origin: brief += f"  - Origin: {self.origin}\n"
+        if self.representative_of: brief  += f"  - Themes: {[literary_theme.name for literary_theme in self.representative_of.all()]}\n"
+        if self.permanent_characteristics: brief += f"  - Permanent Characteristics: {self.permanent_characteristics}\n"
+        if self.versions: brief += f"  - Versions: {[version.name for version in self.versions.all()]}\n"
         
         return brief
 
@@ -346,114 +416,37 @@ class CharacterAppearanceModifiers(NovellerModelDecorator):
     #     return f"{self.character_version}'s appearance"
 
 
-class CharacterTrait(NovellerModelDecorator):
-    pass
-
-
-class CharacterDrive(NovellerModelDecorator):
-    pass
-
-
-class CharacterFear(NovellerModelDecorator):
-    pass
-
-
-class CharacterBelief(NovellerModelDecorator):
-    pass
-  
-    
-class CharacterInternalConflict(NovellerModelDecorator):
-    pass
-
-
-class LiteraryStyleGuide(NovellerModelDecorator):
-    perspective = models.ForeignKey('NarrativePerspective', on_delete=models.CASCADE, null=True)
-    inspirations = models.ManyToManyField('LiteraryInspiration', blank=True)
-    tone = models.ManyToManyField('LiteraryTone', blank=True)
-    imagery = models.ManyToManyField('LiteraryImagery', blank=True)
-    symbolism = models.ManyToManyField('LiterarySymbolism', blank=True)
-    traits = models.ManyToManyField('LiteraryTrait', related_name='litstyleguide_traits', blank=True)
-    avoid = models.ManyToManyField('LiteraryTrait', related_name='litstyleguide_avoid', blank=True)
-    style_guide = models.TextField(blank=True, null=True)
-    compressed_sg = models.TextField(blank=True, null=True)
-    writing_samples = models.TextField(blank=True, null=True)
-
-
-class LiteraryInspiration(NovellerModelDecorator):
-    pass
-
-
-class StoryTeller(NovellerModelDecorator):
-    character_version = models.ForeignKey('CharacterVersion', on_delete=models.CASCADE, null=True)
-    lit_style_guide = models.ForeignKey('LiteraryStyleGuide', on_delete=models.CASCADE, null=True)
-    
-    # def __str__(self):
-    #     return f"{self.character_version} style as a story teller"
-    
-    class Meta:
-        ordering = ['character_version__for_character__name']
-
-
-class LiteraryTheme(NovellerModelDecorator):
-    pass
-
-
-class NarrativePerspective(NovellerModelDecorator):
-    pass
-
-
-class LiteraryTrait(NovellerModelDecorator):
-    pass
-
-
-class LiteraryTone(NovellerModelDecorator):
-    pass
-
-
-class LiteraryMood(NovellerModelDecorator):
-    pass
-
-
-class LiteraryImagery(NovellerModelDecorator):
-    pass
-
-
-class LiterarySymbolism(NovellerModelDecorator):
-    pass
-
-
-# Other
 class File(NovellerModelDecorator):
     file_location = models.CharField(max_length=255, null=True)
     file_content = models.TextField(blank=True, null=True)
     expose_rest = False
 
  
-class NovellerModeller(NovellerModelDecorator):
+# class NovellerModeller(NovellerModelDecorator):
         
-    class __NovellerModellerSingleton:
-        def __init__(self):
-            self.instance = NovellerModeller()
+#     class __NovellerModellerSingleton:
+#         def __init__(self):
+#             self.instance = NovellerModeller()
         
-        def __str__(self):
-            return str(self.instance)
+#         def __str__(self):
+#             return str(self.instance)
         
-        def __getattr__(self, name):
-            return getattr(self.instance, name)
+#         def __getattr__(self, name):
+#             return getattr(self.instance, name)
         
-        def __setattr__(self, name):
-            return setattr(self.instance, name)
+#         def __setattr__(self, name):
+#             return setattr(self.instance, name)
         
-        def __del__(self):
-            raise TypeError("Singletons can't be deleted")
+#         def __del__(self):
+#             raise TypeError("Singletons can't be deleted")
     
-    _instance = None  # class level variable to hold instance
+#     _instance = None  # class level variable to hold instance
     
-    @classmethod
-    def get_instance(cls):
-        if not cls._instance:
-            cls._instance = cls.__NovellerModellerSingleton()
-        return cls._instance
+#     @classmethod
+#     def get_instance(cls):
+#         if not cls._instance:
+#             cls._instance = cls.__NovellerModellerSingleton()
+#         return cls._instance
 
 
 
@@ -468,6 +461,7 @@ class Book(AbstractPhusisProject):
     genres = models.ManyToManyField(Genre, blank=True, related_name='book_genres')
     target_audiences = models.ManyToManyField(TargetAudience, blank=True, related_name='book_audiences')  
     expose_rest = models.BooleanField(default=True)
+    phusis_applicaton = 'noveller'
         
     def project_brief(self):
         """
@@ -507,17 +501,11 @@ class Book(AbstractPhusisProject):
         
         
         if self.genres.exists(): brief += f"## Genres:\n{convert_array_to_md_list(genre.name for genre in self.genres.all())}"
-        
         if self.plots.exists(): brief += f"## Plots:\n{(plot.get_brief() for plot in self.plots.all())}\n"
-        
         if self.characters.exists(): brief += f"## Characters:\n{(character.get_brief() for character in self.characters.all())} \n"
-        
         if self.settings.exists(): brief += f"## Settings:\n{convert_array_to_md_list(setting.name for setting in self.settings.all())} \n"
-        
         if self.themes.exists(): brief += f"## Themes:\n{convert_array_to_md_list(theme.name for theme in self.themes.all())} \n"
-        
         if self.target_audiences.exists(): brief += f"## Target Audiences:\n{convert_array_to_md_list(audience.name for audience in self.target_audiences.all())} \n"
-        
         if self.elaboration: brief += f"## Elaboration:\n- {self.elaboration} \n"
         
         return brief
@@ -532,7 +520,7 @@ class Book(AbstractPhusisProject):
         noveller_app = apps.get_app_config('noveller')
         phusis_project_attribute_subclasses = [
             model for model in noveller_app.get_models()
-            if issubclass(model, PhusisProjectAttribute) and model != PhusisProjectAttribute
+            if issubclass(model, AbstractPhusisProjectAttribute) and model != AbstractPhusisProjectAttribute
         ]
 
         project_attributes = []
@@ -619,7 +607,7 @@ def convert_array_to_md_list(array):
     
     return items_to_md
 
-def load_noveller_model_and_return_instance_from(json_data):
+def load_model_and_return_instance_from(json_data, app_name):
     """
     Load a model for the noveller app as JSON dict and return an instance based on the provided JSON data.
     
@@ -645,11 +633,11 @@ def load_noveller_model_and_return_instance_from(json_data):
         if json_data['class_name'] in globals():
             model_class = apps.get_model("noveller", f"{json_data['class_name']}")
         else: 
-            # print(colored(f"noveller_models.create_noveller_model_from_instance: class_name {json_data['class_name']} not found in globals()", "yellow"))
+            # print(colored(f"noveller_models.create_project_model_from_instance: class_name {json_data['class_name']} not found in globals()", "yellow"))
             pass
 
 
-        print(colored(f"noveller_models.create_noveller_model_from_instance: model_class {model_class}. json_data['properties']['name'] {json_data['properties']['name']}", "green"))
+        print(colored(f"noveller_models.create_project_model_from_instance: model_class {model_class}. json_data['properties']['name'] {json_data['properties']['name']}", "green"))
 
         new_noveller_obj, created = model_class.objects.update_or_create(name=json_data['properties']['name'])
 
@@ -660,7 +648,7 @@ def load_noveller_model_and_return_instance_from(json_data):
         # print(colored(f"load_noveller_model_and_return_instance_from: {new_noveller_obj.name} {s}", "green"))
         
     else:
-        print(colored(f"models.create_agent_model_from_instance: JSON data for agent not valid, expected schema below","red"))
+        print(colored(f"noveller_models.create_project_model_from_instance: JSON data for agent not valid, expected schema below","red"))
         print(colored(f"Data received: {json_data}", "red"))
         print(colored(f"Minimum expected: {expected_json}", "yellow"))
 
@@ -682,7 +670,7 @@ def find_and_update_or_create_attribute_by(attr_name, model_class):
     if hasattr(model_class, attr_name):
         return model_class, getattr(model_class, attr_name)
 
-    print(colored(f"model class : {model_class}", "yellow"))
+    # print(colored(f"model class : {model_class}", "yellow"))
 
     # Check if the attribute exists in any related models
     for related_object in model_class._meta.related_objects:

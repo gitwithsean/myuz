@@ -1,16 +1,16 @@
-import uuid, textract, time
-import numpy as np
+from pprint import pprint
+import uuid, textract, re
 from scipy.spatial.distance import cosine
 from .agent_utils import get_embeddings_for
 from django.db import models
 import pinecone
-from django.contrib.postgres.fields import ArrayField
 from termcolor import colored
 
-class Vector():
-    vector_id = ''
-    embeddings = []
-    vector_metadata = {}
+class Vector(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    vector_id = models.CharField(max_length=200, default='', blank=False, null=False)
+    embeddings = models.JSONField(default=list, blank=True, null=True)
+    vector_metadata = models.JSONField(default=list, blank=True, null=True)
     
     def __init__(self, vector_id='', embeddings=[], vector_metadata={}):
         self.vector_id = str(vector_id)
@@ -23,8 +23,9 @@ class Vector():
         else:
            return (self.vector_id, self.embeddings,)     
 
+
 class PineconeApi():
-    index = {}
+    index = None
     
     # Singleton
     _instance = None
@@ -56,40 +57,43 @@ class PineconeApi():
     def upsert_embedding(self, vector_id, embeddings, vector_metadata={}):
         vector = Vector(vector_id=vector_id, embeddings=embeddings, vector_metadata=vector_metadata)
         self.index.upsert([vector.for_upsert()])
+        return [vector]
         
     def upsert_embeddings(self, objects):
         vectors_to_upsert = []
+        
+        print(colored(f"PineconeApi.upsert_embeddings(): Creating {len(objects)} vector objects to upsert...", "green"))
+        
         for obj in objects:
-            vector = Vector(vector_id=obj['id'], embeddings=['embeddings'], vector_metadata=['vector_metadata'])
+            vector = Vector(vector_id=obj['id'], embeddings=obj['embeddings'], vector_metadata=obj['vector_metadata'])
             vectors_to_upsert.append(vector.for_upsert())
-            
+        
+        print(colored(f"PineconeApi.upsert_embeddings(): Vectors created...", "green"))
+        # pprint(vectors_to_upsert)
+           
         self.index.upsert(vectors_to_upsert)
+        return vectors_to_upsert
 
 
 class FileParagraph(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     path_to_file = models.CharField(max_length=255)
-    text = ArrayField(models.TextField(), blank=True, null=True)
+    text = models.TextField(blank=True, null=True)
 
 
 class ProjectMemory():
-    
-    pinecone_api = PineconeApi()
-    
-    # Singleton
-    _instance = None
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+    # id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
+    project_vectors = models.ManyToManyField(Vector, blank=True)
+
 
     def add_chat_log_to_memory(self, prompt, response, responder):
+        
         from .agent_models import ChatLog
         chat_log = ChatLog.objects.create(prompt=prompt, response=response, responder_id=responder.id, responder_name=responder.name, responder_type=responder.agent_type)
         chat_log_id = chat_log.id
-        text_embeddings = get_embeddings_for(f"Prompt: {prompt}\nResponder: {responder.id} {responder.agent_type} {responder.name}:\n Response: {response}")
+        text_embeddings = get_embeddings_for(f"Prompt: {prompt}\nResponder: {responder.id} {responder.agent_type} {responder.name}:\nResponse: {response}")
         
-        self.pinecone_api.upsert_embedding(chat_log_id, text_embeddings)
+        PineconeApi().upsert_embedding(chat_log_id, text_embeddings)
     
     def add_chat_log_db_instance_to_pinecone_memory(self, chat_log):
         chat_log_id = chat_log.id
@@ -101,24 +105,30 @@ class ProjectMemory():
         
         text_embeddings = get_embeddings_for(f"Prompt: {prompt}\nResponder: {responder_id} {responder_type} {responder_name}:\n Response: {response}")
         
-        self.pinecone_api.upsert_embedding(chat_log_id, text_embeddings)
+        PineconeApi().upsert_embedding(chat_log_id, text_embeddings)
         
     def add_file_to_memory(self, path_to_file):
-        paragraphs = self.get_chunked_text_chunks_from_any_file(path_to_file)
+        print(colored(f"ProjectMemory.add_file_to_memory(): Adding {path_to_file} to memory...", "yellow"))
+        paragraphs = self.extract_text_and_split_into_paragraphs(path_to_file)
         objects_to_upsert = []
+        metadata = self.get_project_vector_metadata()
+        metadata["path_to_file"] = path_to_file
+        i=0
         for paragraph in paragraphs:
-            paragraph_embeddings = self.openai_api.get_embedding_for(paragraph)
+            i += 1
+            print(colored(f"ProjectMemory.add_file_to_memory(): Getting embeddings for paragraph {paragraph[:50]}...", "yellow"))
+            paragraph_embeddings = get_embeddings_for(paragraph)
             paragraph_obj = FileParagraph.objects.create(path_to_file=path_to_file, text=paragraph)
             paragraph_obj_id = paragraph_obj.id
-            objects_to_upsert.append({"id": paragraph_obj_id, "embeddings": paragraph_embeddings})
+            metadata["paragraph_num"] =  f"{i}"
+            objects_to_upsert.append({"id": paragraph_obj_id, "embeddings": paragraph_embeddings, "vector_metadata": metadata})
         
+        print(colored(f"ProjectMemory.add_file_to_memory(): upserting vector data for the paragraphs to pinecone", "yellow"))
+        PineconeApi().upsert_embeddings(objects_to_upsert)
         
-        self.pinecone_api.upsert_embeddings(objects_to_upsert)
-        
-    
     def search_memory_store(self, prompt, top_k=5):
         # Generate embeddings for the given prompt using the OpenAI API
-        prompt_embeddings = self.openai_api.get_embedding_for(prompt)
+        prompt_embeddings = get_embeddings_for(prompt)
 
         # Compute the cosine similarity between the prompt embeddings and the embeddings in the memory store
         similarities = []
@@ -130,18 +140,21 @@ class ProjectMemory():
         sorted_results = sorted(similarities, key=lambda x: x["similarity"], reverse=True)
         return sorted_results[:top_k]
     
-    def extract_text_and_split_into_paragraphs(file_path):
-        # Extract text from the file
+    def extract_text_and_split_into_paragraphs(self, file_path):
+             
+        print(colored(f"ProjectMemory.extract_text_and_split_into_paragraphs(): Extracting paragraphs from {file_path}", "yellow"))
+        
         content = textract.process(file_path).decode('utf-8')
-
-        # Normalize line endings by replacing all \r with \n
         content = content.replace('\r', '\n')
+        
+        # Use regular expressions to split the text into paragraphs
+        paragraphs = re.split(r'\n\s*\n', content)
 
-        # Split text into paragraphs using a single newline
-        paragraphs = content.split('\n')
+        # Keep only paragraphs with at least one alphabetical character
+        paragraphs = [p.strip() for p in paragraphs if p.strip() and re.search('[a-zA-Z]', p)]
 
-        # Remove leading and trailing whitespace from paragraphs
-        paragraphs = [p.strip() for p in paragraphs if p.strip()]
+        print(colored(f"ProjectMemory.extract_text_and_split_into_paragraphs(): {paragraphs.__len__()} paragraphs extracted from {file_path}, here's the first one...", "green"))
+        print(colored(f"{paragraphs[0]}", "green"))
 
         return paragraphs
     

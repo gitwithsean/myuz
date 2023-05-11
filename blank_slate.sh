@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 help_message=$'
 Usage: $(basename "$0") [OPTIONS]
 
@@ -21,44 +23,43 @@ for arg in "$@"
 do
     case $arg in
         all)
-            echo 'all detected'
             REINIT_DB=true
             REINIT_PINECONE=true
-            REINIT_VENV=true
             REINIT_DB_DATA=true
             ;;
         db)
-            echo 'db detected'
             REINIT_DB=true
             ;;
         db_init)
-            echo 'db_init detected'
             REINIT_DB_DATA=true
             ;;
         pinecone)
-            echo 'pinecone detected'
             REINIT_PINECONE=true
             ;;
         --help)
-            echo '--help detected'
             REINIT_PINECONE=true
             ;;
         *)
-            echo "Unknown argument: $arg"
             echo -e "$help_message"
             exit 1
             ;;
     esac
 done
 
+echo "REINIT_DB ${REINIT_DB}"
+echo "REINIT_DB_DATA ${REINIT_DB_DATA}"
 echo "REINIT_PINECONE ${REINIT_PINECONE}"
+echo "MYUZ_DIR ${MYUZ_DIR}"
 
 if [ $REINIT_PINECONE  == true ]; then
+
     cd $MYUZ_DIR
     INDEX='phusis'
-    read -r PINECONE_ENV < $MYUZ_DIR/.secrets/pinecone_api_region
-    read -r PINECONE_API_KEY < $MYUZ_DIR/.secrets/pinecone_api_key
-    echo "DELETING PINECONE INDEX"
+
+    PINECONE_ENV=$(cat ${MYUZ_DIR}/.secrets/pinecone_api_region | tr -d '\n')
+    PINECONE_API_KEY=$(cat ${MYUZ_DIR}/.secrets/pinecone_api_key | tr -d '\n')
+
+    echo "Deleting pinecone index"
     echo "curl -i -X DELETE https://controller.${PINECONE_ENV}.pinecone.io/databases/${INDEX} \
     -H "Api-Key: ${PINECONE_API_KEY}""
     curl -i -X DELETE https://controller.${PINECONE_ENV}.pinecone.io/databases/${INDEX} \
@@ -66,27 +67,35 @@ if [ $REINIT_PINECONE  == true ]; then
     echo "PINECONE INDEX ${INDEX} DELETED" 
 fi
 
-echo "REINIT_DB ${REINIT_DB}"
-
 if [ $REINIT_DB == true ]; then
+
     cd $SCRIPTS_DIR
-    python3 drop_and_recreate_myuz_db.py
+    python drop_and_recreate_myuz_db.py
     cd $MYUZ_DIR
-    #delete migrations
+
+    echo "deleting existing migrations files"
     rm -rf **/migrations/*.py
     rm -rf **/migrations/__pycache__
-    # python manage.py check
+
+    echo "making new migrations files"
+    python manage.py check
     python manage.py makemigrations noveller --empty
     python manage.py makemigrations phusis --empty
     python manage.py makemigrations phusis
     python manage.py makemigrations noveller
+
+    echo "migrating"
     python manage.py migrate 
 
     echo "REINIT_DB_DATA ${REINIT_DB_DATA}"
 
     if [ $REINIT_DB_DATA == true ]; then
-        python manage.py init_agents phusis
-        python manage.py init_book noveller
+
+        echo "initializing db data - agents"
+        python manage.py init_agents noveller
+
+        echo "initializing db data - project"
+        python manage.py init_project noveller living_and_the_son_of_death
     fi
 fi
 

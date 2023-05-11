@@ -10,7 +10,6 @@ from .noveller_models import *
 from .serializers import *
 from .forms import get_noveller_model_form_tuples_for, all_noveller_model_form_tuples, BookForm
 from django.shortcuts import render
-# from pprint import pprint
   
 all_noveller_model_names = apps.all_models['noveller']
   

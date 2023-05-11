@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Book - Noveller</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+    <div class="container mt-3">
+        <h6>noveller - a phusis application</h6>
+        <h1>{{ action }} Book</h1>
+        <form method="post" action="">
+            {% csrf_token %}
+            {% load widget_filters %}
+            {% for field in form %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+                <br>
+                {{ field }}
+                {% if field|widget_in_classes:'Select,SelectMultiple' %}
+                <br>
+                    {% with field.name|cut:"_set" as attribute_type %}
+                        <a href="{% url 'edit_project_attribute' attribute_type %}?action=create_related&attribute_id={{ object.pk }}&related_field_name=books" class="btn btn-sm btn-primary">Create</a>
+                        {% for related_object in object.field_name.all %}
+                            <div class="related-object" data-object-id="{{ related_object.id }}">
+                                {{ related_object }}
+                            </div>
+                        {% endfor %}
+                    {% endwith %}
+                {% endif %}
+            </div>
+        {% endfor %}
+        
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const relatedObjects = document.querySelectorAll('.related-object');
+
+        relatedObjects.forEach(function(relatedObject) {
+            relatedObject.addEventListener('dblclick', function(event) {
+                const objectId = event.target.getAttribute('data-object-id');
+                const attributeType = '{{ attribute_type }}';
+                const editUrl = `{% url 'edit_project_attribute' attribute_type  %}?action=edit_related&attribute_id=${objectId}`;
+
+                window.location.href = editUrl;
+            });
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+**/__pycache__
+**scratch**
+venv/
+phusis/files_to_embed/*
+*/phusis-projects/
+.secrets/**
+venv
+.vscode
+**/fixtures/
+logs.txt

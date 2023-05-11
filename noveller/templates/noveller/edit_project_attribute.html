@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit {{ attribute_type|title }}</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</head>
+
+<body>
+    <div class="container mt-3">
+        <h1>Edit {{ attribute_type|title }}</h1>
+        <div>
+            <ul>
+                <li><a href="?">Add new {{ attribute_type|title }}</a></li>
+                {% for attribute in attributes %}
+                    <li><a href="?attribute_id={{ attribute.id }}">{{ attribute }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            {% load widget_filters %}
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+                    <br>
+                    {{ field }}
+                    {% if field|widget_in_classes:'Select,SelectMultiple' %}
+                    <br>
+                        <a href="{% url 'edit_project_attribute' attribute_type %}?action=create_related&attribute_id={{ object.pk }}" class="btn btn-sm btn-primary">Create</a>
+                        {% if field.value %}
+                            <a href="{% url 'edit_project_attribute' attribute_type %}?action=edit_related&attribute_id={{ field.value }}" class="btn btn-sm btn-secondary">Edit</a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">Save</button>
+        </form>
+    </div>
+</body>
+
+</html>

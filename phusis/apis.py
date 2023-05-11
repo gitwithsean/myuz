@@ -1,0 +1,36 @@
+import openai
+from termcolor import colored
+from .agent_utils import memorize_chat
+
+
+class OpenAiAPI():
+    api = openai
+    
+    def __init__(self):
+        with open('./.secrets/openai_api_key', 'r') as f:
+            openai.api_key = f.read()
+    
+    def chat_response(self, api_data):
+        
+        self.api.api_key = api_data['key']
+        
+        # print(colored("\nOpenAiApi.chat_response(): Submitting chat completion\n", "yellow"))
+        
+        #hardocding it for now
+        api_data['model'] = 'gpt-3.5-turbo'
+        
+        completion = openai.ChatCompletion.create(
+            model=api_data['model'],
+            messages=api_data['messages_to_submit']
+        )
+        
+        # print(colored("\nOpenAiApi.chat_response(): Response received\n", "green"))
+        # print(colored(f"\n{completion}\n", "green"))
+        return completion
+
+    def get_embeddings_for(self, input, model="text-embedding-ada-002"):
+        response = openai.Embedding.create(
+            model=model,
+            input=input,
+        )
+        return response['data'][0]['embedding']

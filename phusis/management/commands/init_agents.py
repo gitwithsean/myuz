@@ -2,7 +2,7 @@ import os, json
 from django.core.management.base import BaseCommand, CommandError
 from pprint import pprint
 from phusis.agent_models import *
-from phusis.agent_utils import find_and_update_or_create_attribute_by, load_model_and_return_instance_from
+from phusis.phusis_utils import find_and_update_or_create_attribute_by, load_model_and_return_instance_from
 from termcolor import colored
 
 data_directory =''

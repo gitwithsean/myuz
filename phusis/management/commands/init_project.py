@@ -2,7 +2,7 @@ import os, json
 from django.core.management.base import BaseCommand, CommandError
 from termcolor import colored
 from noveller.noveller_models import Book
-from phusis.agent_utils import load_model_and_return_instance_from, spaced_to_underscore
+from phusis.phusis_utils import load_model_and_return_instance_from, spaced_to_underscore
 from phusis.agent_models import AbstractPhusisProject
 
 data_directory =''

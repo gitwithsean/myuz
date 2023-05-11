@@ -101,7 +101,7 @@ class UpdateAllPhusisModelsViewMaker(APIView):
         models = apps.all_models['phusis']
         for model_name in models:
             model = models[model_name]
-            if '_' not in model_name and model.expose_rest == True:
+            if '_' not in model_name:
                 for entry in SerializerMaker.all_phusis_model_serializer_tuples:
                     if entry['model-class'].__name__ == model:
                         model = entry['model_class']

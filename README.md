@@ -61,9 +61,9 @@ The following instructions were put together and tested with WSL: Ubuntu on Wind
 
 ```bash
 # add your secrets to the secrets folder
-touch ./secrets/openai_api_key
-touch ./secrets/pinecone_api_key
-touch ./secrets/pinecone_api_region # this looks something like 'asia-southeast1-gcp' and can be found alongside your API key in the pinecone console
+touch .secrets/openai_api_key
+touch .secrets/pinecone_api_key
+touch .secrets/pinecone_api_region # this looks something like 'asia-southeast1-gcp' and can be found alongside your API key in the pinecone console
 
 # set up your virtual environment
 python3 -m venv venv

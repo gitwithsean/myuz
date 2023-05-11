@@ -14,23 +14,22 @@ class SerializerMaker:
         if '_' not in model_name:
             try:
                 model_class = apps.get_model('noveller', model_name)
-                if model_class.expose_rest == True: 
-                    class_name = model_name + 'Serializer'
-                    meta_attrs = {
-                        'model': model_class,
-                        'fields': '__all__'
+                class_name = model_name + 'Serializer'
+                meta_attrs = {
+                    'model': model_class,
+                    'fields': '__all__'
+                }
+                
+                serializer_class = type(
+                    class_name, 
+                    (serializers.ModelSerializer,), 
+                    {
+                        'Meta': type('Meta', (), meta_attrs)
                     }
-                    
-                    serializer_class = type(
-                        class_name, 
-                        (serializers.ModelSerializer,), 
-                        {
-                            'Meta': type('Meta', (), meta_attrs)
-                        }
-                    
-                    )
-                    globals()[class_name] = serializer_class
-                    all_noveller_model_serializer_tuples.append({"model_class":model_class, "serializer_class": serializer_class})
+                
+                )
+                globals()[class_name] = serializer_class
+                all_noveller_model_serializer_tuples.append({"model_class":model_class, "serializer_class": serializer_class})
             except apps.exceptions.LookupError as e:
                 print(f"Could not retrieve model {model_name} from the app. Error: {e}")
             

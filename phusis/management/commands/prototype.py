@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 from phusis.agent_models import *
 from noveller.noveller_models import *
 from pprint import pprint
-from phusis.agent_utils import get_user_agent_singleton
+from phusis.phusis_utils import get_user_agent_singleton
 
 #globals
 commands = ['exit!', 'go!', 'update!', 'switch_orc!', 'new_agent!', '.intro!']
@@ -112,9 +112,9 @@ def retrieve_and_load_project():
         add_agents_to_project(user_selected_project)
         user_selected_project.save()
     else:
-        user = 'y'
+        user = 'n'
         # user = 'n'
-        # user = input("Do you want to start again with fresh agents for your project?\n(y/n)\n")
+        # user = input("Do you want to start again with fresh agents and init data for your project?\n(y/n)\n")
         if user == 'y':   
             if user_selected_project.goals_for_project.exists():
                 print(colored(f"deleting memory of {user_selected_project.name}", "yellow"))
@@ -123,13 +123,13 @@ def retrieve_and_load_project():
                 goals.delete()  
                 user_selected_project.save()   
             if user_selected_project.orchestrator != None:
-                if orc.chat_logs.exists():
+                if user_selected_project.orchestrator.chat_logs.exists():
                     print(colored(f"deleting memory for {orc.name}", "yellow"))
-                    chat_logs = orc.chat_logs.all()
-                    orc.chat_logs.clear()
-                    orc.awake = False
+                    chat_logs = user_selected_project.orchestrator.chat_logs.all()
+                    user_selected_project.orchestrator.chat_logs.clear()
+                    user_selected_project.orchestrator.awake = False
                     chat_logs.delete()
-                    orc.save()
+                    user_selected_project.orchestrator.save()
             add_agents_to_project(user_selected_project)
         else:
             print("loading_data_from_book")

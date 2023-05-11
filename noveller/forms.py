@@ -40,7 +40,7 @@ class FormMaker:
             # print(colored(f"FormMaker: model: {model} fields:", "yellow"))
             # pprint(model._meta.get_fields()) 
              
-            included_fields = [f.name for f in model._meta.get_fields() if f.name not in ['expose_rest', 'content_type', 'id', 'useragentsingleton'] and isinstance(f, (models.Field, models.ManyToManyField, models.ForeignKey))]
+            included_fields = [f.name for f in model._meta.get_fields() if f.name not in ['content_type', 'id', 'useragentsingleton'] and isinstance(f, (models.Field, models.ManyToManyField, models.ForeignKey))]
 
             # print(colored(f"FormMaker: {model_name} included_fields: {included_fields}", "yellow"))
                

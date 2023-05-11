@@ -1,7 +1,7 @@
 from pprint import pprint
 import uuid, textract, re
 from scipy.spatial.distance import cosine
-from .agent_utils import get_embeddings_for
+from .phusis_utils import get_embeddings_for, retry_with_exponential_backoff
 from django.db import models
 import pinecone
 from termcolor import colored
@@ -54,11 +54,13 @@ class PineconeApi():
             )
         self.index = pinecone.Index(table_name)
 
+    @retry_with_exponential_backoff(max_retries=10, initial_delay=1)   
     def upsert_embedding(self, vector_id, embeddings, vector_metadata={}):
         vector = Vector(vector_id=vector_id, embeddings=embeddings, vector_metadata=vector_metadata)
         self.index.upsert([vector.for_upsert()])
         return [vector]
-        
+    
+    @retry_with_exponential_backoff(max_retries=5, initial_delay=1)    
     def upsert_embeddings(self, objects):
         vectors_to_upsert = []
         

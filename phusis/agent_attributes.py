@@ -10,7 +10,6 @@ class AbstractAgentAttribute(models.Model):
     name = models.CharField(max_length=200, null=True, unique=True)
     agent_attribute_type = models.CharField(max_length=200)
     elaboration = models.TextField(blank=True)
-    expose_rest = True
     
     class Meta:
         abstract = True

@@ -24,23 +24,22 @@ class SerializerMaker:
             try:
                 # print(f"{agent_model_class.__name__ }")
                 # print(f"{agent_model_class}")
-                if agent_model_class.expose_rest == True: 
-                    class_name = agent_model_class.__name__ + 'Serializer'
-                    meta_attrs = {
-                        'model': agent_model_class,
-                        'fields': '__all__'
+                class_name = agent_model_class.__name__ + 'Serializer'
+                meta_attrs = {
+                    'model': agent_model_class,
+                    'fields': '__all__'
+                }
+                
+                serializer_class = type(
+                    class_name, 
+                    (serializers.ModelSerializer,), 
+                    {
+                        'Meta': type('Meta', (), meta_attrs)
                     }
-                    
-                    serializer_class = type(
-                        class_name, 
-                        (serializers.ModelSerializer,), 
-                        {
-                            'Meta': type('Meta', (), meta_attrs)
-                        }
-                    
-                    )
-                    globals()[class_name] = serializer_class
-                    all_phusis_model_serializer_tuples.append({"model_class":agent_model_class, "serializer_class": serializer_class})
+                
+                )
+                globals()[class_name] = serializer_class
+                all_phusis_model_serializer_tuples.append({"model_class":agent_model_class, "serializer_class": serializer_class})
             except ObjectDoesNotExist as e:
                 print(f"Could not retrieve model {agent_model_class.__name__} from the app. Error: {e}")
             

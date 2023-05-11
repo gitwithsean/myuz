@@ -35,7 +35,6 @@ class ChatLog(models.Model):
         # return [prompt_obj, response_obj]
         return [prompt_obj]
   
-
         
 class AgentAssignment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
@@ -45,13 +44,30 @@ class AgentAssignment(models.Model):
     assignment_proj_att = GenericForeignKey('content_type', 'object_id')
     additional_assignment_instructions = models.TextField(blank=True, null=True, default='')
     related_project_goal_steps = models.ManyToManyField('PhusisProjectGoalStep', related_name='project_goal_steps_for_agent_assignment', blank=True, default=list)
+    agent_for_assignment = models.ForeignKey('AbstractAgent', related_name='agent_for_assignment', on_delete=models.CASCADE, blank=True, null=True)
     
-  
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "agent_assigned" : {
+                "agent_id" : str(self.agent_for_assignment.id),
+                "agent_type" : self.agent_for_assignment.agent_type,
+                "agent_name" : self.agent_for_assignment.agent_name,
+            },
+            "assignment" :{                
+                "assignment_proj_att" : self.assignment_proj_att.name,
+                "assignment_str" : self.assignment_str
+            }
+        }
+    
     
 class PhusisProjectGoalStep(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=1000, blank=False, null=False)
     related_project_attributes = models.ManyToManyField('ConcretePhusisProjectAttribute', related_name='project_attributes_for_project_goal_step', blank=True, default=[])
+    
+    def __str__(self):
+        return f"{self.name}"
     
     def add_agent_assignment_to_step(self, assignment_obj):
         agent_name = assignment_obj['agent_assigned']['agent_name']
@@ -78,6 +94,12 @@ class PhusisProjectGoalStep(models.Model):
         self.related_project_attributes.add(attributes)
         self.save()
     
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "name": self.name,
+            "related_project_attributes": [att.to_dict() for att in self.related_project_attributes.all()]
+        }
    
        
 class PhusisProjectGoal(models.Model):
@@ -85,8 +107,11 @@ class PhusisProjectGoal(models.Model):
     name = models.CharField(max_length=1000, blank=False, null=False, default='')
     steps = models.ManyToManyField('PhusisProjectGoalStep', blank=True, default=[])
 
+    def __str__(self):
+        return f"{self.name}"
+
     def add_steps_to_goal(self, steps):
-        print(colored(f"PhusisProjectGoal.add_steps_to_goal: goal_name:\n{self.name} \nsteps_for_goal:\n{steps}", "yellow"))
+        print(colored(f"PhusisProjectGoal.add_steps_to_goal:\n   goal_name: {self.name}\n   steps_for_goal:\n{steps}", "yellow"))
         
         for step in steps:
             new_step = PhusisProjectGoalStep(name=step)
@@ -95,7 +120,23 @@ class PhusisProjectGoal(models.Model):
             self.steps.add(new_step)
             self.save()
 
+    def steps_for_goal_to_str(self):
+        steps = ""
+        i = 0
+        for step in self.steps.all():
+            i += 1
+            steps += f"Step {i}: {step.name}\n"
+            if step.related_project_attributes.exists():
+                steps += f"- related attributes: {step.related_project_attributes.all()}\n"
+        
+        return steps
 
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "name": self.name,
+            "steps": [step.to_dict() for step in self.steps.all()]
+        }
 
 class AbstractPhusisProjectAttribute(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
@@ -130,7 +171,6 @@ class AbstractAgent(models.Model, AbstractEngine):
     agent_system_prompt = models.TextField(blank=True)
     class_display_name = models.CharField(max_length=200, default='')
     # project_attributes_assigned_to = models.ManyToManyField('AbstractPhusisProjectAttribute', blank=True)
-    expose_rest = True
     # [{"prompted_by":"", "AgentCapability":{}, "result":""}]
     steps_taken = models.JSONField(default=list, blank=True)
     capabilities = models.ManyToManyField(AgentCapability, blank=True)
@@ -268,6 +308,14 @@ class AbstractAgent(models.Model, AbstractEngine):
         
         return f"Hi! I am an instance of the {self.agent_type} type of AI agent.\nHere are my basic attributes:\n{str}"
 
+    def goals_dict(self):
+        goals_dict = []
+        
+        for goal in self.goals.all():
+            goal_dict = goal.to_dict()
+            goals_dict.append(goal_dict)
+        
+        return goals_dict
 
 
 class OrchestrationAgent(AbstractAgent, OrchestrationEngine):
@@ -282,7 +330,6 @@ class UserAgentSingleton(AbstractAgent):
     agent_type = "user_agent"
     class_display_name = 'User'
     _instance = None
-    expose_rest = False
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
@@ -369,6 +416,9 @@ class AbstractPhusisProject(models.Model, ProjectMemory):
         }  
         
         return workspaces   
+    
+    def goals_for_project_to_str(self):
+        return [goal.name for goal in self.goals_for_project.all()]
      
     @abstractmethod
     def list_project_attributes(self):

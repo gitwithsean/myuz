@@ -1,6 +1,6 @@
 import openai
 from termcolor import colored
-from .agent_utils import memorize_chat
+from .phusis_utils import retry_with_exponential_backoff
 
 
 class OpenAiAPI():
@@ -10,6 +10,7 @@ class OpenAiAPI():
         with open('./.secrets/openai_api_key', 'r') as f:
             openai.api_key = f.read()
     
+    @retry_with_exponential_backoff(max_retries=5, initial_delay=0.1)   
     def chat_response(self, api_data):
         
         self.api.api_key = api_data['key']
@@ -28,6 +29,7 @@ class OpenAiAPI():
         # print(colored(f"\n{completion}\n", "green"))
         return completion
 
+    @retry_with_exponential_backoff(max_retries=5, initial_delay=0.1) 
     def get_embeddings_for(self, input, model="text-embedding-ada-002"):
         response = openai.Embedding.create(
             model=model,

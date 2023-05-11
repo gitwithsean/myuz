@@ -688,6 +688,7 @@ class Book(AbstractPhusisProject):
         brief = "# PROJECT BRIEF\n"
         brief += f"## Project Type: {self.project_type}\n"
         brief += f"## Name: {self.name}\n"
+        brief += f"## Orchestrator: {self.orchestrator.name}\n"
         
         #GOALS
         if self.goals_for_project.exists():

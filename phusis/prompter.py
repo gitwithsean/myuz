@@ -14,21 +14,23 @@ class Prompter():
     
     please_respond_with_array = '\nPlease respond with a valid JSON array of comma separated, quotation-enclosed strings, square brackets, all on one line, e.g. ["item one is...", "second item, we think, is...", "item three", ...]'
     
-    example_agent_assignments_model = [
-        {
-            "agent_assigned" : {
-                "is_new" : False,
-                "agent_type" : "poetics_agent",
-                "agent_name" : "Lyrical Prose",
-            },
-            "assignment" :{                
-                "assignment_proj_att" : "Optional, the project attribute assigned.",
-                "assignment_str" : "Optional, but required if no project attribute assigned, enter your instructions for the agent here."
+    example_agent_assignments_model = {
+        "agent_assignments": [
+            {
+                "agent_assigned" : {
+                    "is_new" : False,
+                    "agent_type" : "poetics_agent",
+                    "agent_name" : "Lyrical Prose",
+                },
+                "assignment" :{                
+                    "assignment_proj_att" : "Optional, the project attribute assigned.",
+                    "assignment_str" : "Optional, but required if no project attribute assigned, enter your instructions for the agent here."
 
+                }
             }
-        }
-    ]
-    example_agent_assignments_model_str = f"agent_assignments:{json.dumps(example_agent_assignments_model, separators=(',',':'))}"
+        ]
+    }
+    example_agent_assignments_model_str = f"{json.dumps(example_agent_assignments_model, separators=(',',':'))}"
     
     
     def auto_reminder(self, prompt, agent):
@@ -72,10 +74,9 @@ class Prompter():
         
     
     def to_assign_project_attributes_to_step(self, step, goal, project, agent):
-        prompt = f"You recently lited these steps to achieve a goal for a project we are working on.\nGoal: {goal.name}\nSteps:\n"
-        prompt += f"{goal.steps_for_goal_to_str()}"
+        prompt = f"You recently listed a number of steps to achieve this goal for a project we are working on.\nGoal: {goal.name}\n"
         prompt += f"The project iteslf has these attribute types, each project attribute may have multiple instances (e.g. multiple chapters for a Chapter attribute)\n\n{project.project_attributes_to_md()}\n"
-        prompt += f"Please consider the step, '{step.name}', and list 0, 1 or 2 project attributes you believe should be related to that step. If you believe there is a project attribute missing from the list above, feel free to create one.\n"
+        prompt += f"Please consider the step, '{step.name}', and list 0, 1 or 2 project attributes you believe should be related to that step. If you believe there is a project attribute missing from the list above, feel free to suggest one by adding it to the list.\n"
         prompt += self.please_respond_with_array
         return self.auto_reminder(prompt, agent)
     
@@ -83,26 +84,35 @@ class Prompter():
     def to_create_agent_assignments_for_step(self, step, project, agent):
         prompt = "You recently assigned project attributes to a step in a project we are working on (though some steps might be assigned to no attribute).\n"
         prompt += f"Step: {step.name}\n"
-        prompt += f"Project Attributes:\n{step.project_attributes}\n\n"
+        prompt += f"Project Attributes:\n{step.to_dict()['related_project_attributes']}\n\n"
         prompt += f"It is now time to assign a GPT agent of the swarm to work on this step (and/or it's attributes).\n"
-        prompt += f"Please create one or more agent assignments for this step using the JSON representation below. If you believe there is an agent you need that isn't listed, feel free to create one.\n"
+        prompt += f"Here is a list of all the agent types and instances of those types available to the swarm\n"
+        prompt += self.to_learn_about_agent_types()
+        prompt += f"Please respond with valid JSON in a similar form to the example below, creating one or more agent assignments for this step. If you believe there is an agent you need that isn't listed, feel free to create one.\n"
         prompt += self.example_agent_assignments_model_str
         return self.auto_reminder(prompt, agent)
     
           
-    def to_learn_about_agent_types(self, purpose):
+    def to_learn_about_agent_types(self):
         from .agent_models import AbstractAgent
         
         list_of_agent_types = AbstractAgent.__subclasses__()
         
-        prompt = "# GPT Agent Types\n\n"
+        prompt = "# Swarm Agents\n\n"
         
-        for agent_type in list_of_agent_types:
-            prompt += f"## {agent_type.__name__}\n"
-            prompt += f"{agent_type.__description__}\n\n"
+        for agent_type in reversed(list_of_agent_types):
+            
+            if "UserAgentSingleton" in agent_type.__name__ or "Abstract" in agent_type.__name__  or "OrchestrationAgent" in agent_type.__name__ or 'Concrete' in agent_type.__name__:
+                continue   
+            else:
+                print(colored(f"Prompt.to_learn_about_agent_types: agent_type is {agent_type}", "yellow"))
+                prompt += f"\n## {agent_type.__name__}\n"
+                prompt += f"### Description:\n{agent_type.type_description}\n"
+                prompt += f"### Instances Available:\n"
+                for agent_instance in agent_type.objects.all():
+                    prompt += f"* {agent_instance.name}\n"
 
-        prompt += f"Which of these agent types do you want to assign to the following purpose?\n\n{purpose}"
-    
+        return prompt
     
     def to_assign_agent_to_goal(self, goal):
         from .agent_models import AbstractAgent

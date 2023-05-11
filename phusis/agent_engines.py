@@ -1,3 +1,4 @@
+from pprint import pprint
 from .apis import *
 from .phusis_utils import *
 from .prompter import Prompter
@@ -14,13 +15,12 @@ class AbstractEngine():
     }
     
     def submit_chat_prompt(self, prompt, prompting_agent, responding_agent):
-        print(colored("AbstractEngine.submit_chat_Prompter(): Submitting chat prompt...", "green"))
+        print(colored("AbstractEngine.submit_chat_prompt: Submitting chat prompt...", "green"))
         request_data = self.open_ai_chat_data
         request_data['content'] = prompt
         request_data['prompting_agent'] = prompting_agent
         request_data['responding_agent'] = responding_agent
         response = agent_chatterer(request_data)
-        print(colored("AbstractEngine.submit_chat_Prompter(): Chat prompt submitted.\n\n", "green"))
         return prompt, response
         
     def start_engine(self):
@@ -119,7 +119,7 @@ class OrchestrationEngine(AbstractEngine):
         print(print(colored(f"\nOrchestrationEngine.routine(): Starting agent routine...\n", "green")))
         self.project = project
         
-        print(colored(f"\nOrchestrationEngine.routine(): Project goals set by Orchestrator\n\n{project.goals_for_project}\n", "yellow"))
+        print(colored(f"\nOrchestrationEngine.routine(): Project goals set by Orchestrator\n\n{project.goals_for_project_to_str()}\n", "yellow"))
         
         goals_for_project = []
         
@@ -149,7 +149,7 @@ class OrchestrationEngine(AbstractEngine):
                 goal.save()
                 project.save()
             else:
-                print(colored(f"\nOrchestrationEngine.routine(): Orchestrator already set sub-tasks for this project goal {goal.name}\n\n{goal.steps}\n", "yellow"))
+                print(colored(f"\nOrchestrationEngine.routine(): Orchestrator already set sub-tasks for this project goal:\nTo '{goal.name}'\n{goal.steps_for_goal_to_str()}", "green"))
                 #TODO re-assess steps in goal?
 
         user_input = input("hit enter to continue...")
@@ -158,14 +158,16 @@ class OrchestrationEngine(AbstractEngine):
         #assign project attribute(s) to a step in a goal, if applicable
         for goal in project.goals_for_project.all():
             for step in goal.steps.all():
-                if not step.related_project_attributes.exists():
+                if step.get_related_attributes() == []:
                     print(colored("\nOrchestrationEngine.routine(): Orchestrator now assigning project attributes to each step in each project goal\n", "yellow"))
                     #have orc assign attribute(s) to the step
                     attributes_for_step = json.loads(self.assign_project_attributes_to_step(step, goal))
                     
-                    step.add_project_attributes_to_step(attributes_for_step)
+                    step.add_project_attributes_to_step(attributes_for_step, project.phusis_applicaton)
+                    step.save()
+                    project.save()
                 else:
-                    print(colored(f"\nOrchestrationEngine.routine(): Orchestrator already assigned project attributes to this step {step.name}\n\n{step.related_project_attributes}\n", "yellow"))
+                    print(colored(f"\nOrchestrationEngine.routine(): Orchestrator already assigned project attributes to this step '{step.name}'\n\n{step.to_dict()['related_project_attributes']}\n", "yellow"))
                     #re-assess attributes in step?
                     pass
         
@@ -173,21 +175,32 @@ class OrchestrationEngine(AbstractEngine):
         
         #create agent assignments for step in goals, if applicable
         for goal in project.goals_for_project.all():
-            print(colored(f"agent_engines.routine(): goal {goal} has steps {goal.steps.all()}", "green"))
             for step in goal.steps.all():
-                print(colored(f"\nOrchestrationEngine.routine(): {step.agent_assignments_for_step.all()}", "green"))
                 if not step.agent_assignments_for_step.exists():
                     print(colored("\nOrchestrationEngine.routine(): Orchestrator now assigning agent(s) to step/attribute(s) for step\n", "yellow"))
                     #have orc create agent assignments for the step
-                    agent_assignments_response = self.create_agent_assignments_for_step(step, goal)
+                    agent_assignments_response = self.create_agent_assignments_for_step(step)
                     
-                    for assignment in agent_assignments_response:
-                        if assignment['agent_assigned']['is_new']:
+                    print(colored(f"\nOrchestrationEngine.routine(): agent_assignments_response\n{agent_assignments_response}\n", "yellow"))
+                    
+                    response_dict = json.loads(agent_assignments_response)
+                    
+                    print(colored(f"{response_dict}", "green"))
+                    
+                    for assignment in response_dict:
+                        print(colored("\nOrchestrationEngine.routine(): Orchestrator now adding agent assignment to step\n", "yellow"))
+                        
+                        print(assignment['agent_assigned']['is_new'])
+                        
+                        if not assignment['agent_assigned']['is_new']:
+                            project.agent_assignments_for_project.add(step.add_agent_assignment_to_step(assignment))
+                        
+                        else:
                             print(colored(f"\nOrchestrationEngine.routine(): Orchestrator now creating new agent {assignment['agent_assigned']['agent_name']} for {assignment}\n", "yellow"))
                             #TODO
                             pass
                     
-                        project.agent_assignments_for_project.add(step.add_agent_assignment_to_step(assignment))
+
                     
                 else:
                     print(colored(f"\nOrchestrationEngine.routine(): Orchestrator already assigned agent(s) to step/attribute(s) for step {step.name}\n\n{step.agent_assignments_for_step}\n", "yellow"))
@@ -309,10 +322,10 @@ def agent_chatterer(api_data):
     
     api_data['messages_to_submit'].append({"role": "user", "content": api_data.get("content")})
     
-    print(colored(f"\nagent_engines.agent_chatterer(): messages_to_submit = \n", "yellow"))
+    print(colored(f"\nagent_engines.agent_chatterer(): messages_to_submit:", "yellow"))
     
     for message in api_data['messages_to_submit']:
-        print(colored(f"\nrole: {message['role']}\n{message['content']}\n--------------", "yellow"))
+        print(colored(f"\nrole: {message['role']}\nmessage: {message['content']}\n--------------", "yellow"))
     
     print(colored(f"\nagent_engines.agent_chatterer(): sumbitting messages to api\n", "yellow"))
     

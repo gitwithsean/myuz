@@ -8,7 +8,7 @@ from abc import abstractmethod
 from .agent_attributes import *
 from .agent_engines import *
 from .agent_memory import ProjectMemory
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 
 
@@ -44,7 +44,7 @@ class AgentAssignment(models.Model):
     assignment_proj_att = GenericForeignKey('content_type', 'object_id')
     additional_assignment_instructions = models.TextField(blank=True, null=True, default='')
     related_project_goal_steps = models.ManyToManyField('PhusisProjectGoalStep', related_name='project_goal_steps_for_agent_assignment', blank=True, default=list)
-    agent_for_assignment = models.ForeignKey('AbstractAgent', related_name='agent_for_assignment', on_delete=models.CASCADE, blank=True, null=True)
+    agent_for_assignment = models.ForeignKey('ConcreteAbstractAgent', related_name='agent_for_assignment', on_delete=models.CASCADE, blank=True, null=True)
     
     def to_dict(self):
         return {
@@ -60,12 +60,14 @@ class AgentAssignment(models.Model):
             }
         }
     
-    
+
 class PhusisProjectGoalStep(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=1000, blank=False, null=False)
-    related_project_attributes = models.ManyToManyField('ConcretePhusisProjectAttribute', related_name='project_attributes_for_project_goal_step', blank=True, default=[])
-    
+    related_project_attribute_names = models.JSONField(null=True, blank=True, default=list)
+    on_hold = models.BooleanField(default=True)
+    agent_assignments_for_step = models.ManyToManyField('AgentAssignment', related_name='agent_assignments_for_step', blank=True, default=list)
+
     def __str__(self):
         return f"{self.name}"
     
@@ -90,15 +92,29 @@ class PhusisProjectGoalStep(models.Model):
         
         return new_assignment
       
-    def add_project_attributes_to_step(self, attributes):
-        self.related_project_attributes.add(attributes)
-        self.save()
+    def add_project_attributes_to_step(self, attributes, app_name):
+        for attribute_name in attributes:
+            self.related_project_attribute_names.append(
+                {"attribute_name": attribute_name, "app_name": app_name}
+            )
+            self.save()
+    
+    def get_related_attributes(self):
+        list = []
+        for attribute in self.related_project_attribute_names:
+            try:
+                model_class = apps.get_model(attribute['app_name'], attribute['attribute_name'])
+                list.append(model_class)
+            except:
+                print(colored(f"PhusisProjectGoalStep.get_related_attributes(): could not find model class {attribute['attribute_name']} in app {attribute['app_name']}", "red"))
+        return list    
     
     def to_dict(self):
         return {
             "id": str(self.id),
             "name": self.name,
-            "related_project_attributes": [att.to_dict() for att in self.related_project_attributes.all()]
+            "on_hold": self.on_hold,
+            "related_project_attributes": [att.__name__ for att in self.get_related_attributes()]
         }
    
        
@@ -106,7 +122,8 @@ class PhusisProjectGoal(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=1000, blank=False, null=False, default='')
     steps = models.ManyToManyField('PhusisProjectGoalStep', blank=True, default=[])
-
+    on_hold = models.BooleanField(default=True)
+    
     def __str__(self):
         return f"{self.name}"
 
@@ -125,9 +142,7 @@ class PhusisProjectGoal(models.Model):
         i = 0
         for step in self.steps.all():
             i += 1
-            steps += f"Step {i}: {step.name}\n"
-            if step.related_project_attributes.exists():
-                steps += f"- related attributes: {step.related_project_attributes.all()}\n"
+            steps += f"- Step {i}: {step.name}\n"
         
         return steps
 
@@ -135,6 +150,7 @@ class PhusisProjectGoal(models.Model):
         return {
             "id": str(self.id),
             "name": self.name,
+            "on_hold": self.on_hold,
             "steps": [step.to_dict() for step in self.steps.all()]
         }
 
@@ -161,9 +177,8 @@ class AbstractPhusisProjectAttribute(models.Model):
 class ConcretePhusisProjectAttribute(AbstractPhusisProjectAttribute):
     class Meta:
         abstract = False   
+
    
-
-
 class AbstractAgent(models.Model, AbstractEngine):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True, editable=False, unique=True)
     name = models.CharField(max_length=200, unique=True)
@@ -181,6 +196,7 @@ class AbstractAgent(models.Model, AbstractEngine):
     compressed_wake_up_message = models.TextField(blank=True, null=True)
     assignments_for_agent = models.ManyToManyField(AgentAssignment, blank=True, default=[], related_name='%(class)s_assigned_agents')
     phusis_applicaton = "noveller"
+    type_description = models.TextField(blank=True)
     
     #Traits
     goals = models.ManyToManyField(AgentGoal, blank=True)
@@ -316,6 +332,11 @@ class AbstractAgent(models.Model, AbstractEngine):
             goals_dict.append(goal_dict)
         
         return goals_dict
+
+
+class ConcreteAbstractAgent(AbstractAgent):
+    class Meta:
+        abstract = False   
 
 
 class OrchestrationAgent(AbstractAgent, OrchestrationEngine):

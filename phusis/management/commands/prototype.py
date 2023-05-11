@@ -83,7 +83,7 @@ def add_agents_to_project(project):
     orc.wake_up()
 
 def retrieve_and_load_project():
-
+    global orc
     projects_available = Book.objects.all()
     user_selected_project = {}
     print("Projects available to load:")
@@ -133,6 +133,7 @@ def retrieve_and_load_project():
             add_agents_to_project(user_selected_project)
         else:
             print("loading_data_from_book")
+            print(user_selected_project.project_brief())
             orc = user_selected_project.orchestrator
     
     return user_selected_project        

@@ -36,9 +36,17 @@ By offering such a customizable and adaptable platform, myuz empowers users with
 
 > NOTE: In it's current incarnation, developing your own phusis project implementation requires an understanding of some of the principles of Object Oriented Programming and an ability to code in Python. While the noveller example should provide most people a good jumping off point for their own projects, we're hoping to make this more accessible in the future.
 
+There are also undeveloped 'stubs' for future implementations of the phusis platform:
+* harmonia
+  * A GPT powered 'third' or additional partner that can help a relationship grow in understanding and harmony. The harmonia partner will offer insights into what the other in their relationship might be thinking and feeling, what they want to tell you but find it hard to put the words together, how to help them be happy, how to understand them better and to mediate difficult moments. I think this could be especially useful for people with communication difficulties such as autism (like myself), as Harmonia can take what each user contributes confidentially in their chat 'sessions' and use that knowledge to help with communicative intimacy and understanding.
+* groceryogi
+  * Our grocery shopping costs have doubled in the past 2 years, and now that I'm looking for work I'm paying a lot more attention to in-store deals and all those coupon mailers that come in. But there are so many of them, and I'm never really sure if I'm actually getting good value. My groceryogi will help stretch those dollars by consolidating information from various sources, including online deals and mailers from your local stores, to create the best value grocery store run for your requirements.
+*  bacchanalia 
+   * Another swarm of agents with specific goals, roles and abilities for help researching, brainstorming, planning, budgeting and putting together different kinds of events (birthdays, concerts, dinner parties)
+
 ### Front end
 
-I am currently levaraging Django's UI tools to create a prototype, but I am planning to move to a React front end in the near future. Would be very interested in collaborating with a front end developer on this project.
+I am currently levaraging Django's UI tools to create a prototype, but I am planning to move to a React front end in the near future. Hoping to work towards a common UI language for phusis projects that could be customized to its various implementations. Would be very interested in collaborating with a front end developer on this project.
 
 ## Setup
 

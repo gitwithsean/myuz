@@ -9,16 +9,12 @@ class OpenAiAPI():
     def __init__(self):
         with open('./.secrets/openai_api_key', 'r') as f:
             openai.api_key = f.read()
+            
     
     @retry_with_exponential_backoff(max_retries=5, initial_delay=0.1)   
     def chat_response(self, api_data):
-        
-        self.api.api_key = api_data['key']
-        
+                
         # print(colored("\nOpenAiApi.chat_response(): Submitting chat completion\n", "yellow"))
-        
-        #hardocding it for now
-        api_data['model'] = 'gpt-3.5-turbo'
         
         completion = openai.ChatCompletion.create(
             model=api_data['model'],

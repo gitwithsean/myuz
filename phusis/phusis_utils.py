@@ -1,21 +1,17 @@
 import re, time
 from termcolor import colored
 from django.apps import apps
-from django.core.exceptions import ObjectDoesNotExist
 from functools import wraps
 from typing import Callable
 import random
 
-def model_has_content_and_content(model):
-    try:
-        content = model.objects.all()
-        if content.exists():
-            return True, content
-        else:
-            return False, None
-    except ObjectDoesNotExist:
-        return False, None
-
+def extract_backtick_enclosed_content(text):
+    pattern = r"```(.*?)```"
+    match = re.search(pattern, text, re.DOTALL)  # re.DOTALL makes . match also the newline character
+    if match:
+        return match.group(1)  # return the content enclosed by backticks
+    else:
+        return None  # return None if no match is found
 
 def camel_case_to_underscore(name):
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)

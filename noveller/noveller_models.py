@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pprint import pprint
 from django.db import models
-from phusis.agent_models import AbstractPhusisProject, AbstractPhusisProjectAttribute
+from phusis.agent_models import AbstractPhusisProject, AbstractPhusisProjectAttribute, File
 from django.apps import apps
 from abc import abstractmethod
 from termcolor import colored
@@ -346,7 +346,7 @@ class Chapter(NovellerModelDecorator):
     chapter_in_book = models.ForeignKey('Book', on_delete=models.CASCADE, related_name='book_characters', null=True)
     chapter_num = models.IntegerField(null=True)
     chapter_goals = models.TextField(blank=True, null=True, default="not yet set")
-    chapter_draft_file = models.OneToOneField('File', on_delete=models.SET_NULL, blank=True, null=True)
+    chapter_draft_file = models.OneToOneField(File, on_delete=models.SET_NULL, blank=True, null=True)
     parts_for_chapter = models.ManyToManyField('ChapterPart', blank=True, related_name='chapters')
     
     def to_dict(self):
@@ -629,11 +629,6 @@ class CharacterAppearanceModifiers(NovellerModelDecorator):
     
     # def __str__(self):
     #     return f"{self.character_version}'s appearance"
-
-
-class File(NovellerModelDecorator):
-    file_location = models.CharField(max_length=255, null=True)
-    file_content = models.TextField(blank=True, null=True)
 
  
 # class NovellerModeller(NovellerModelDecorator):

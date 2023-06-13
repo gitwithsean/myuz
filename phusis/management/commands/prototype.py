@@ -112,25 +112,22 @@ def retrieve_and_load_project():
         add_agents_to_project(user_selected_project)
         user_selected_project.save()
     else:
-        user = 'n'
-        # user = 'n'
+        user = 'y'
         # user = input("Do you want to start again with fresh agents and init data for your project?\n(y/n)\n")
         if user == 'y':   
-            if user_selected_project.goals_for_project.exists():
-                print(colored(f"deleting memory of {user_selected_project.name}", "yellow"))
-                goals = user_selected_project.goals_for_project.all()
-                user_selected_project.goals_for_project.clear()
-                goals.delete()  
-                user_selected_project.save()   
-            if user_selected_project.orchestrator != None:
-                if user_selected_project.orchestrator.chat_logs.exists():
-                    print(colored(f"deleting memory for {orc.name}", "yellow"))
-                    chat_logs = user_selected_project.orchestrator.chat_logs.all()
-                    user_selected_project.orchestrator.chat_logs.clear()
-                    user_selected_project.orchestrator.awake = False
-                    chat_logs.delete()
-                    user_selected_project.orchestrator.save()
             add_agents_to_project(user_selected_project)
+            # if user_selected_project.orchestrator != None:
+            #     if user_selected_project.orchestrator.chat_logs.exists():
+            #         print(colored(f"deleting memory for {orc.name}", "yellow"))
+            #         chat_logs = user_selected_project.orchestrator.chat_logs.all()
+            #         user_selected_project.orchestrator.chat_logs.clear()
+            #         user_selected_project.orchestrator.is_awake = False
+            #         chat_logs.delete()
+            #         user_selected_project.orchestrator.save()
+            
+            # PhusisProjectGoal.objects.all().delete()
+            # PhusisProjectGoalStep.objects.all().delete()
+            AgentAssignment.objects.all().delete()
         else:
             print("loading_data_from_book")
             print(user_selected_project.project_brief())
@@ -140,7 +137,7 @@ def retrieve_and_load_project():
     
     
 def main():
-    print("========================= NOVELIER - a phusis application =========================\n\n")
+    print("========================= NOVELLER - a phusis application =========================\n\n")
     global user
     user = get_user_agent_singleton()
     global orc
@@ -152,13 +149,13 @@ def main():
     # else:
     #     project = project_init()
 
-    if not orc.awake:
-        print(colored(f"prototype.main() - orc.awake? {orc.awake}", "yellow")) 
+    if not orc.is_awake:
+        print(colored(f"prototype.main() - orc.is_awake? {orc.is_awake}", "yellow")) 
         orc.wake_up()
         orc.auto_mode = True
         orc.save()
         
-    print(colored(f"prototype.main() - orc.awake: {orc.awake}", "green")) 
+    print(colored(f"prototype.main() - orc.is_awake: {orc.is_awake}", "green")) 
             
     iteration = 0
     while True:
@@ -173,4 +170,14 @@ class Command(BaseCommand):
     help = 'Run the phusis noveller prototype'
     
     def handle(self, *args, **options):
+        import subprocess
+        #make sure postgres server is running
+        commands = ['sudo service postgresql start', 'sudo service postgresql status']
+        for command in commands:
+            result = subprocess.run(command.split(), capture_output=True, text=True)
+            print(result.stdout)
+    
+        if not 'online' in result.stdout:
+            raise RuntimeError("postgres service not running")
+        
         main()

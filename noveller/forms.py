@@ -4,6 +4,7 @@ from phusis.agent_models import *
 from noveller.noveller_models import *
 from noveller.noveller_engines import *
 from noveller.noveller_agents import *
+from django.contrib.contenttypes.fields import GenericRelation
 
 all_noveller_model_form_tuples = []
 

@@ -12,7 +12,8 @@ class Prompter():
     
     please_respond_with_array = '\nPlease respond with a valid JSON array of comma separated, quotation-enclosed strings, square brackets, all on one line, e.g. ["item one is...", "second item, we think, is...", "item three", ...]'
     
-    example_agent_assignments_model = [
+    example_agent_assignments_model = {
+        "assignments": [
             {
                 "agent_assigned" : {
                     "agent_already_exists" : True,
@@ -25,6 +26,7 @@ class Prompter():
                 }
             }
         ]
+    }
     example_agent_assignments_model_str = f"{json.dumps(example_agent_assignments_model, separators=(',',':'))}"
     
     
@@ -96,10 +98,10 @@ class Prompter():
         prompt_content = "You recently assigned project attributes to a step in a project we are working on (though some steps might be assigned to no attribute).\n"
         prompt_content += f"Step: {step.name}\n"
         prompt_content += f"Project Attributes:\n{step.to_dict()['related_project_attributes']}\n\n"
-        prompt_content += f"It is now time to assign a GPT agent of the swarm to work on this step (and/or it's attributes).\n"
         prompt_content += f"Here is a list of all the agent types and instances of those types available to the swarm\n"
         prompt_content += f"{self.to_learn_about_agent_types()['content']}"
-        prompt_content += f"\nPlease respond ONLY with valid JSON in the same schema as the example below, to create one or more agent assignments for this step. All fields are required unless otherwise stated. If you believe there is an agent you need that isn't listed, feel free to create one.\n"
+        prompt_content += f"It is now time to assign a GPT agent of the swarm to work on this step (and/or it's attributes).\n"
+        prompt_content += f"\nPlease respond ONLY with valid JSON in the same schema as the example below, to create one or more agent assignments for this step. All fields are required. If you believe there is an agent you need that isn't listed, feel free to create one.\n"
         prompt_content += self.example_agent_assignments_model_str
         prompt["content"] = prompt_content
         # print(colored(f"Prompt.to_create_agent_assignments_for_step: prompt['example_output_schema'] set to \n{prompt['example_output_schema']}", "yellow"))

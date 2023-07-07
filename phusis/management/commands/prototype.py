@@ -169,15 +169,5 @@ if __name__ == "__main__":
 class Command(BaseCommand):
     help = 'Run the phusis noveller prototype'
     
-    def handle(self, *args, **options):
-        import subprocess
-        #make sure postgres server is running
-        commands = ['sudo service postgresql start', 'sudo service postgresql status']
-        for command in commands:
-            result = subprocess.run(command.split(), capture_output=True, text=True)
-            print(result.stdout)
-    
-        if not 'online' in result.stdout:
-            raise RuntimeError("postgres service not running")
-        
+    def handle(self, *args, **options):   
         main()

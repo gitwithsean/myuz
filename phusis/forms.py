@@ -18,7 +18,10 @@ class AgentFormMaker:
         # Omit relationship classes and Singletons
         if '_' not in agent_model_class.__name__ and 'Singleton' not in agent_model_class.__name__:          
             # print(f"phusis.forms.AgentFormMaker: Creating form class for {agent_model_class.__name__}")
-            model_class = apps.get_model('phusis', agent_model_class.__name__)
+            try:
+                model_class = apps.get_model('phusis', agent_model_class.__name__)
+            except:
+                model_class = apps.get_model('noveller', agent_model_class.__name__)   
             # pprint(vars(model_class))
             
             form_class = type(

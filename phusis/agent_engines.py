@@ -241,14 +241,16 @@ class OrchestrationEngine(AbstractEngine):
                     
                     print(colored(f"{agent_assignments}", "green"))
                     
-                    for assignment in agent_assignments:
+                    for assignment in agent_assignments.get("assignments"):
+                        pprint(assignment)
+                        
                         print(colored("\nOrchestrationEngine.routine().assignment: Orchestrator now adding agent assignments to step\n", "yellow"))
                         
-                        print(colored(f"\nOrchestrationEngine.routine().assignment: assignment.get('agent_assigned'): {assignment.get('agent_assigned')}"))
+                        print(colored(f"\nOrchestrationEngine.routine().assignment: assignment.get('agent_assigned'): {assignment.get('agent_assigned').get('agent_name')}"))
+
+                        print(colored(f"\nOrchestrationEngine.routine().assignment: assignment['agent_assigned']['agent_already_exists']: {assignment.get('agent_assigned').get('agent_already_exists', True)}"))
                         
-                        print(colored(f"\nOrchestrationEngine.routine().assignment: assignment['agent_assigned']['agent_already_exists']: {assignment['agent_assigned']['agent_already_exists']}"))
-                        
-                        if assignment['agent_assigned']['agent_already_exists']:
+                        if assignment.get('agent_assigned').get('agent_already_exists', False):
                             print(colored("\nOrchestrationEngine.routine(): Creating assignment instance\n", "yellow"))
                             step_assignment = step.add_agent_assignment_to_step(assignment)
                             if step_assignment is not None:
@@ -271,6 +273,9 @@ class OrchestrationEngine(AbstractEngine):
                     # assignments.delete()
                     #re-assess agent_assignments in step?
                     pass
+        
+        
+        
         
         input("hit enter to continue or ctrl-c to quit...")
         
@@ -320,7 +325,7 @@ def validate_response(prompt, gpt_output):
     return True
     
 
-def gpt_response_repair(gpt_output, prompt, exception, model="gpt-3.5-turbo"):
+def gpt_response_repair(gpt_output, prompt, exception, model="gpt-3.5-turbo-16k"):
     opeanai_api = OpenAiAPI()
     language="python"
     api_data = {
@@ -336,7 +341,7 @@ def gpt_response_repair(gpt_output, prompt, exception, model="gpt-3.5-turbo"):
     api_data['messages_to_submit'].append({"role": "user", "content": retry_prompt})
     api_data['messages_to_submit'].append({"role": "system", "content": f"You are taking on the role of a python function with the role of repairing the output of another agent. You take three parameters, gpt_output, example_schema, exception. Your job is to repair 'gpt_output' to match the 'example_output_schema' and/or fix it for the 'exception' produced by {language}. No data is to be lost from gpt_output. Please respond with the repaired data enclosed in triple backticks (i.e. ```)."})
     
-    print(colored(f"\nagent_engines.gpt_response_repair(): messages_to_submit = \n", "yellow"))
+    print(colored(f"\nagent_engines.gpt_response_repair(): messages_to_submit:", "yellow"))
     
     for message in api_data['messages_to_submit']:
         print(colored(f"\nrole: {message['role']}\n{message['content']}\n--------------", "yellow"))
@@ -362,9 +367,9 @@ def gpt_response_repair(gpt_output, prompt, exception, model="gpt-3.5-turbo"):
         return gpt_response_repair(gpt_output, prompt, "The output did not match the expected JSON schema", "gpt-4")
    
     
-def compress_text(text_to_compress, compression_ratio=0.5, model="gpt-3.5-turbo"):    
+def compress_text(text_to_compress, compression_ratio=0.5, model="gpt-3.5-turbo-16k"):    
     """
-    Ask gpt-3.5-turbo to compress the given text by a ratio of {compression_ratio}
+    Ask gpt-3.5-turbo-16k to compress the given text by a ratio of {compression_ratio}
     if that fails, try again with gpt-4
     :param text_to_compress: The text to compress.
     :param compression_ratio: The desired compression ratio (default is 0.5).
@@ -416,7 +421,7 @@ def agent_chatterer(api_data):
     
     """
     opeanai_api = OpenAiAPI()
-    api_data["model"] = "gpt-3.5-turbo"
+    api_data["model"] = "gpt-3.5-turbo-16k"
 
     # if api_data['responding_agent'].model_override != None:
     #     pass

@@ -84,7 +84,7 @@ class AgentAssignment(models.Model):
             }
         }
     
-    def __str__(self) -> str:
+    def to_display_string(self) -> str:
         assignment_dict = self.to_dict()
         agent_string = f"{assignment_dict['agent_assigned']['type']}, {assignment_dict['agent_assigned']['name']}"
         
